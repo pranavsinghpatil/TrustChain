@@ -1,0 +1,54 @@
+{% load static %}
+<html>
+<head>
+<title>Blockchain Based E-Tendering System</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div id="logo">
+      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
+	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    </div>
+   
+  
+    </div>
+  </div>
+  <div id="menu">
+    <ul>
+      <li><a href="{% url 'index' %}">Home</a></li>
+      <li><a href="{% url 'TenderLogin' %}">Tender Officer Login</a></li>
+	  <li><a href="{% url 'BidderLogin' %}">Bidder Login</a></li>
+      <li><a href="{% url 'Register' %}">New Bidder Signup Here</a></li>
+      
+   </ul>
+  </div>
+  <div id="page">
+   <div id="content">
+      <div class="post">
+        <div class="title">
+          <h2>Blockchain Based Tendering System </h2>
+         </div>
+        <div class="entry">
+		 <br/><br/><br/>
+{{ data }}
+	 
+	 <br>
+          <p><img src="{% static 'images/images.jpg' %}" alt="" width="890" height="200" class="left" /><p></p><font size="4" color="white">
+          <center><br/>About Tender System </center></font></p>
+          <p><font size="" color="white">The main objective of this project is To ensure the complete tender management process is
+		  secure and efficient we make use of block chain technology to solve tender management issues. </p>
+          </div>
+        
+      </div>
+     
+       
+       
+    </div>
+    
+  </div>
+
+</body>
+</html>

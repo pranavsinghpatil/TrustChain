@@ -1,0 +1,3 @@
+pip install Django==2.1.7
+pip install pyaes==1.6.1
+pip install pbkdf2==1.3

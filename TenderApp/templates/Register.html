@@ -1,0 +1,128 @@
+{% load static %}
+<html>
+<head>
+<title>Smart Tender/Contract Management System Using Blockchain</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+ <script LANGUAGE="Javascript" >
+function validate(){
+	var x=document.forms["f1"]["username"].value;
+	var y=document.forms["f1"]["password"].value;
+	var c=document.forms["f1"]["contact"].value;
+	var e=document.forms["f1"]["email"].value;
+	var cname=document.forms["f1"]["cname"].value;
+	var a=document.forms["f1"]["address"].value;
+	if(x == null || x==""){
+		window.alert("Username must be enter");
+		document.f1.username.focus();
+		return false;
+	}
+	if(y == null || y==""){
+		window.alert("Password must be enter");
+		document.f1.password.focus();
+		return false;
+	}
+	if(c == null || c==""){
+		window.alert("Contact No must be enter");
+		document.f1.contact.focus();
+		return false;
+	}
+	if(isNaN(c)){
+		window.alert("Please enter valid contact number");
+		document.f1.contact.focus();
+		return false;
+	}
+	if(e == null || e==""){
+		window.alert("Email ID must be enter");
+		document.f1.email.focus();
+		return false;
+	}
+	var filter = /^([a-zA-Z0-9_\.\-])+\@(gmail+\.)+(com)+$/;
+	if (!filter.test(e)) {
+		window.alert('enter a valid email address');
+		document.f1.email.focus();
+		return false;
+	}
+	if(cname == null || cname==""){
+		window.alert("Company Name must be enter");
+		document.f1.address.focus();
+		return false;
+	}
+	if(a == null || a==""){
+		window.alert("Company Address must be enter");
+		document.f1.address.focus();
+		return false;
+	}
+	return true;
+}
+		
+	
+	</script>
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div id="logo">
+      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
+	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    </div>
+   
+  
+    </div>
+  </div>
+  <div id="menu">
+     <ul>
+      <li><a href="{% url 'index' %}">Home</a></li>
+      <li><a href="{% url 'TenderLogin' %}">Tender Officer Login</a></li>
+	  <li><a href="{% url 'BidderLogin' %}">Bidder Login</a></li>
+      <li><a href="{% url 'Register' %}">New Bidder Signup Here</a></li>
+      
+   </ul>
+  </div>
+  <div class="entry">
+   <br/><br/><br/>
+	<font size="" color="white"><center>{{ data|safe }}</center></font>
+	 <br>
+	 <center><font size="3" color="white">New Bidder Signup Screen</font></center>
+	<form name="f1" method="post" action={% url 'Signup' %} OnSubmit="return validate()">
+	{% csrf_token %}
+	<br><br>
+	<TABLE align=center width="35%" class="notepad">
+		<TR><TH align="left"><font size="" color="white">Username
+		<TD>&nbsp;&nbsp;<Input type=text name="username" value='' class="form-control" size="30">
+		<div id='nameid'></div>
+		</TD>
+		</TR>
+		
+		<TR><TH align="left"><font size="" color="white">Password
+		<TD>&nbsp;&nbsp;<Input type='password' name="password"  value='' size="30">
+		</TR>
+		
+		<TR><TH align="left"><font size="" color="white">Contact No
+		<TD>&nbsp;&nbsp;<Input type='text' size= "15" name="contact"  value='' size="15">
+		</TR>
+
+		<TR><TH align="left"><font size="" color="white">Email ID
+		<TD>&nbsp;&nbsp;<Input type='text' size="25" name="email"  size="35">
+		</TR>
+
+		<TR><TH align="left"><font size="" color="white">Company&nbsp;Name
+		<TD>&nbsp;&nbsp;<Input type='text' size="35" name="cname" size="40">
+		</TR>
+
+		<TR><TH align="left"><font size="" color="white">Company&nbsp;Address
+		<TD>&nbsp;&nbsp;<Input type='text' size="50" name="address"  size="40">
+		</TR>
+
+		  <TR>
+				 <TD></TD>
+			<TD>	
+		  <input type="submit" value="Register">
+		 
+		  </TABLE>
+		
+</form>
+</div>
+
+</body>
+</html>
