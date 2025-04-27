@@ -46,8 +46,9 @@ contract TenderManager {
     mapping(uint256 => Tender) private tenders;
     mapping(uint256 => Bid[]) private tenderBids;
     mapping(uint256 => uint256) private tenderBidCount;
-    mapping(address => bool) private verifiedVendors;  // For tracking verified vendors
-    mapping(uint256 => mapping(address => bool)) private hasBid;  // Track if address has bid on tender
+    mapping(address => bool) private verifiedVendors;
+    mapping(uint256 => mapping(address => bool)) private hasBid;
+    mapping(address => bool) private isAdmin;  // Multiple admin support
 
     // Events
     event TenderCreated(
@@ -79,12 +80,44 @@ contract TenderManager {
         address indexed owner
     );
 
+    event TenderDeleted(
+        uint256 indexed tenderId,
+        address indexed admin
+    );
+
+    event AdminAdded(
+        address indexed admin,
+        address indexed addedBy
+    );
+
+    event AdminRemoved(
+        address indexed admin,
+        address indexed removedBy
+    );
+
     event VendorVerified(
         address indexed vendor,
         uint256 timestamp
     );
 
+    event VendorApproved(
+        uint256 indexed tenderId,
+        address indexed vendor,
+        address indexed approvedBy
+    );
+
+    event VendorRevoked(
+        uint256 indexed tenderId,
+        address indexed vendor,
+        address indexed revokedBy
+    );
+
     // Modifiers
+    modifier onlyAdmin() {
+        require(isAdmin[msg.sender], "Only admin can perform this action");
+        _;
+    }
+
     modifier onlyTenderOwner(uint256 _tenderId) {
         require(
             msg.sender == tenders[_tenderId].ownerAddress,
@@ -127,9 +160,45 @@ contract TenderManager {
     constructor() {
         tenderCount = 0;
         bidCount = 0;
+        isAdmin[msg.sender] = true;  // Deployer is initial admin
     }
 
-    // External Functions
+    // Admin Functions
+    function addAdmin(
+        address _admin
+    ) external onlyAdmin {
+        require(_admin != address(0), "Invalid admin address");
+        require(!isAdmin[_admin], "Address is already an admin");
+        
+        isAdmin[_admin] = true;
+        emit AdminAdded(_admin, msg.sender);
+    }
+
+    function removeAdmin(
+        address _admin
+    ) external onlyAdmin {
+        require(_admin != msg.sender, "Cannot remove self");
+        require(isAdmin[_admin], "Address is not an admin");
+        
+        isAdmin[_admin] = false;
+        emit AdminRemoved(_admin, msg.sender);
+    }
+
+    function deleteTender(
+        uint256 _tenderId
+    ) external onlyAdmin tenderExists(_tenderId) {
+        require(
+            tenders[_tenderId].status == TenderStatus.ACTIVE,
+            "Can only delete active tenders"
+        );
+        
+        // Mark tender as deleted (we don't actually delete to maintain history)
+        tenders[_tenderId].status = TenderStatus.CANCELLED;
+        
+        emit TenderDeleted(_tenderId, msg.sender);
+    }
+
+    // Enhanced Tender Functions
     function createTender(
         string memory _title,
         string memory _description,
@@ -149,8 +218,21 @@ contract TenderManager {
         
         // Additional validation for private tenders
         if (_isPrivate) {
-            require(_allowedBidders.length > 0, "Private tender must have allowed bidders");
-            require(_allowedBidders.length <= 20, "Too many allowed bidders");
+            require(
+                _allowedBidders.length > 0,
+                "Private tender must have allowed bidders"
+            );
+            require(
+                _allowedBidders.length <= 20,
+                "Too many allowed bidders"
+            );
+            // Verify all allowed bidders are verified vendors
+            for (uint256 i = 0; i < _allowedBidders.length; i++) {
+                require(
+                    verifiedVendors[_allowedBidders[i]],
+                    "All allowed bidders must be verified vendors"
+                );
+            }
         }
 
         uint256 tenderId = tenderCount++;
@@ -274,6 +356,129 @@ contract TenderManager {
 
         tenders[_tenderId].status = TenderStatus.CANCELLED;
         emit TenderCancelled(_tenderId, msg.sender);
+    }
+
+    function verifyVendor(
+        address _vendor
+    ) external onlyAdmin {
+        require(_vendor != address(0), "Invalid vendor address");
+        require(!verifiedVendors[_vendor], "Vendor already verified");
+        
+        verifiedVendors[_vendor] = true;
+        emit VendorVerified(_vendor, block.timestamp);
+    }
+
+    function revokeVendor(
+        address _vendor
+    ) external onlyAdmin {
+        require(verifiedVendors[_vendor], "Vendor not verified");
+        
+        verifiedVendors[_vendor] = false;
+        emit VendorVerified(_vendor, 0);  // Using 0 timestamp to indicate revocation
+    }
+
+    // Private Tender Functions
+    function approveVendor(
+        uint256 _tenderId,
+        address _vendor
+    ) external tenderExists(_tenderId) {
+        require(
+            msg.sender == tenders[_tenderId].ownerAddress || isAdmin[msg.sender],
+            "Only owner or admin can approve vendors"
+        );
+        require(
+            tenders[_tenderId].isPrivate,
+            "Tender is not private"
+        );
+        require(
+            verifiedVendors[_vendor],
+            "Vendor must be verified first"
+        );
+        require(
+            !isAddressInArray(_vendor, tenders[_tenderId].allowedBidders),
+            "Vendor already approved"
+        );
+
+        tenders[_tenderId].allowedBidders.push(_vendor);
+        emit VendorApproved(_tenderId, _vendor, msg.sender);
+    }
+
+    function bulkApproveVendors(
+        uint256 _tenderId,
+        address[] memory _vendors
+    ) external tenderExists(_tenderId) {
+        require(
+            msg.sender == tenders[_tenderId].ownerAddress || isAdmin[msg.sender],
+            "Only owner or admin can approve vendors"
+        );
+        require(
+            tenders[_tenderId].isPrivate,
+            "Tender is not private"
+        );
+        require(
+            _vendors.length > 0,
+            "No vendors to approve"
+        );
+        require(
+            _vendors.length <= 20,
+            "Too many vendors to approve at once"
+        );
+
+        for (uint256 i = 0; i < _vendors.length; i++) {
+            address vendor = _vendors[i];
+            require(
+                verifiedVendors[vendor],
+                "All vendors must be verified first"
+            );
+            require(
+                !isAddressInArray(vendor, tenders[_tenderId].allowedBidders),
+                "Vendor already approved"
+            );
+
+            tenders[_tenderId].allowedBidders.push(vendor);
+            emit VendorApproved(_tenderId, vendor, msg.sender);
+        }
+    }
+
+    function revokeVendor(
+        uint256 _tenderId,
+        address _vendor
+    ) external tenderExists(_tenderId) {
+        require(
+            msg.sender == tenders[_tenderId].ownerAddress || isAdmin[msg.sender],
+            "Only owner or admin can revoke vendors"
+        );
+        require(
+            tenders[_tenderId].isPrivate,
+            "Tender is not private"
+        );
+
+        address[] storage allowedBidders = tenders[_tenderId].allowedBidders;
+        bool found = false;
+        
+        for (uint256 i = 0; i < allowedBidders.length; i++) {
+            if (allowedBidders[i] == _vendor) {
+                // Move last element to current position
+                allowedBidders[i] = allowedBidders[allowedBidders.length - 1];
+                // Remove last element
+                allowedBidders.pop();
+                found = true;
+                break;
+            }
+        }
+
+        require(found, "Vendor not approved for this tender");
+        emit VendorRevoked(_tenderId, _vendor, msg.sender);
+    }
+
+    function getApprovedVendors(
+        uint256 _tenderId
+    ) external view tenderExists(_tenderId) returns (address[] memory) {
+        require(
+            tenders[_tenderId].isPrivate,
+            "Tender is not private"
+        );
+        return tenders[_tenderId].allowedBidders;
     }
 
     // View Functions
