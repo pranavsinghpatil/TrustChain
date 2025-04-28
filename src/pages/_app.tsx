@@ -1,15 +1,14 @@
 import type { AppProps } from 'next/app';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from '../theme';
+import { Web3Provider } from '../contexts/Web3Context';
+import { AuthProvider } from '../contexts/AuthContext';
+import '../styles/globals.css';
 
-function MyApp({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }: AppProps) {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Component {...pageProps} />
-    </ThemeProvider>
+    <Web3Provider>
+      <AuthProvider>
+        <Component {...pageProps} />
+      </AuthProvider>
+    </Web3Provider>
   );
-}
-
-export default MyApp; 
+} 

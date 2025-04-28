@@ -1,56 +1,108 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
+import { useWeb3 } from '../contexts/Web3Context';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
-const Login = () => {
-  const [email, setEmail] = useState('');
+export default function Login() {
+  const router = useRouter();
+  const { login } = useAuth();
+  const { connectWallet, isConnected } = useWeb3();
+  
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication: accept any email/password
-    if (email && password) {
-      // Save user role as 'user' in localStorage for this demo
-      localStorage.setItem('role', 'user');
+    setError('');
+    setLoading(true);
+
+    try {
+      // First connect wallet if not connected
+      if (!isConnected) {
+        await connectWallet();
+      }
+      
+      // Then attempt login
+      await login(username, password);
       router.push('/dashboard');
-    } else {
-      setError('Please enter email and password');
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
-        {error && <div className="mb-4 text-red-600">{error}</div>}
-        <div className="mb-4">
-          <label className="block mb-1 font-semibold">Email</label>
-          <input
-            type="email"
-            className="w-full border rounded px-3 py-2"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold">Password</label>
-          <input
-            type="password"
-            className="w-full border rounded px-3 py-2"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold mb-3">Login</button>
-        <div className="text-center">
-          <a href="/register" className="text-blue-600 hover:underline">Don't have an account? Register</a>
-        </div>
-      </form>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Card className="w-full max-w-md mx-4">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+          <CardDescription className="text-center">
+            Please sign in to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Don't have an account?{' '}
+            <Button
+              variant="link"
+              className="p-0"
+              onClick={() => router.push('/register')}
+            >
+              Sign up
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default Login;
+}
