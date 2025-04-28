@@ -38,7 +38,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         const account = await signer.getAddress();
         
         const contract = new ethers.Contract(
-          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '',
+          import.meta.env.VITE_CONTRACT_ADDRESS || '',
           TenderContract.abi,
           signer
         );

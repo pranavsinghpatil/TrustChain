@@ -28,6 +28,8 @@ contract Tender {
     event BidPlaced(uint256 indexed tenderId, address indexed bidder, uint256 amount);
     event TenderAwarded(uint256 indexed tenderId, address indexed winner);
     event TenderCompleted(uint256 indexed tenderId);
+    event TenderUpdated(uint256 indexed tenderId, string title, string description, uint256 budget, uint256 deadline);
+    event TenderCancelled(uint256 indexed tenderId, address indexed cancelledBy);
 
     modifier onlyTenderCreator(uint256 _tenderId) {
         require(msg.sender == tenders[_tenderId].creator, "Only tender creator can perform this action");
@@ -111,6 +113,29 @@ contract Tender {
         tenders[_tenderId].completed = true;
         
         emit TenderCompleted(_tenderId);
+    }
+
+    function updateTender(
+        uint256 _tenderId,
+        string memory _title,
+        string memory _description,
+        uint256 _budget,
+        uint256 _deadline
+    ) public tenderExists(_tenderId) onlyTenderCreator(_tenderId) tenderActive(_tenderId) {
+        require(_deadline > block.timestamp, "Deadline must be in the future");
+        TenderInfo storage tender = tenders[_tenderId];
+        tender.title = _title;
+        tender.description = _description;
+        tender.budget = _budget;
+        tender.deadline = _deadline;
+        emit TenderUpdated(_tenderId, _title, _description, _budget, _deadline);
+    }
+
+    function cancelTender(uint256 _tenderId)
+        public tenderExists(_tenderId) onlyTenderCreator(_tenderId) tenderActive(_tenderId)
+    {
+        tenders[_tenderId].isActive = false;
+        emit TenderCancelled(_tenderId, msg.sender);
     }
 
     function getTender(uint256 _tenderId) 
