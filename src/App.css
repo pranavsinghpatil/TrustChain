@@ -40,3 +40,39 @@
 .read-the-docs {
   color: #888;
 }
+
+.glow-bg {
+  min-height: 100vh;
+  width: 100vw;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(0, 196, 255, 0.3) 0%,
+    rgba(0, 0, 0, 0.95) 60%
+  );
+  pointer-events: none;
+}
+
+/* Glassy/gradient card style for main UI components */
+.glass-card {
+  background: linear-gradient(120deg, rgba(40,45,55,0.75) 0%, rgba(60,65,80,0.65) 100%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-radius: 1.5rem;
+  border: 1.5px solid rgba(255,255,255,0.16);
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.25);
+  color: #fff;
+}
+
+/* Glassy/gradient nav style */
+.glass-navbar {
+  background: linear-gradient(120deg, rgba(40,45,55,0.92) 0%, rgba(60,65,80,0.82) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-radius: 1.5rem;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+  color: #fff;
+}

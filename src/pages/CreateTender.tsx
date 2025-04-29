@@ -1,11 +1,10 @@
-
 import NavBar from "@/components/layout/NavBar";
 import TenderForm from "@/components/tender/TenderForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const CreateTender = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/0">
       <NavBar />
       
       <main className="container pt-20 pb-10">

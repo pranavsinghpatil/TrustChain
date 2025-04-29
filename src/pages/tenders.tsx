@@ -72,7 +72,7 @@ const Tenders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/0">
       <NavBar />
       
       <main className="container pt-20 pb-10">

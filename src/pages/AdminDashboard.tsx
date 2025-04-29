@@ -79,7 +79,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen">
       <NavBar />
       <main className="flex-grow p-8 max-w-6xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>

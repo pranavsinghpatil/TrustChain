@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 const Footer: React.FC = () => (
-  <footer className="bg-gray-900 text-gray-300 py-8 px-4">
+  <footer className="w-full bg-[#15181e] bg-opacity-95 text-center py-5 text-xs text-gray-400 border-t border-gray-800">
     <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
       <div>
         <h3 className="text-xl font-semibold text-white mb-2">TrustChain</h3>
@@ -27,7 +27,7 @@ const Footer: React.FC = () => (
       </div>
     </div>
     <div className="text-center text-xs text-gray-500 mt-8">
-      © {new Date().getFullYear()} Government of India - TrustChain Initiative.
+      {new Date().getFullYear()} Government of India - TrustChain Initiative.
     </div>
   </footer>
 );

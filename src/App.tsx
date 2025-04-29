@@ -19,7 +19,10 @@ import SubmitBid from "./pages/SubmitBid";
 import MyBids from "./pages/MyBids";
 import ManageOfficers from "./pages/ManageOfficers";
 import Reports from "./pages/Reports";
+import Approvals from "./pages/Approvals";
 import NotFound from "./pages/NotFound";
+
+import "./App.css";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +30,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        {/* Background Glow */}
+        <div className="glow-bg" />
         <CustomCursor />
         <Toaster />
         <Sonner />
@@ -69,12 +74,17 @@ const App = () => (
                 
                 {/* Admin and Officer routes */}
                 <Route path="/create-tender" element={
-                  <ProtectedRoute allowedRoles={["admin", "officer"]}>
+                  <ProtectedRoute allowedRoles={["officer"]}>
                     <CreateTender />
                   </ProtectedRoute>
                 } />
+                <Route path="/approvals" element={
+                  <ProtectedRoute allowedRoles={["officer"]}>
+                    <Approvals />
+                  </ProtectedRoute>
+                } />
                 <Route path="/reports" element={
-                  <ProtectedRoute allowedRoles={["admin", "officer"]}>
+                  <ProtectedRoute allowedRoles={["admin"]}>
                     <Reports />
                   </ProtectedRoute>
                 } />

@@ -2,24 +2,22 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, LogOut, Menu, User, Users, Wallet, Shield, Gavel, Briefcase } from "lucide-react";
+import { Bell, LogOut, Menu, User, Users, Wallet, Shield, Gavel, Briefcase, Check } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWeb3 } from "@/contexts/Web3Context";
 
 const NavBar = () => {
   const { toast } = useToast();
-  const { authState, logout } = useAuth();
+  const { authState, logout, notifications, markNotificationRead } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const { connectWallet, account, isConnected } = useWeb3();
 
-  const handleNotificationClick = () => {
-    toast({
-      title: "No new notifications",
-      description: "You're all caught up!"
-    });
-  };
+  // Notification filtering
+  const userNotifs = notifications.filter(n => n.recipientId === authState.user?.id);
+  const unreadCount = userNotifs.filter(n => !n.isRead).length;
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -60,7 +58,7 @@ const NavBar = () => {
       {
         title: "Create Tender",
         path: "/create-tender",
-        allowedRoles: ["admin", "officer"],
+        allowedRoles: [ "officer"],
       },
       {
         title: "My Bids",
@@ -73,9 +71,14 @@ const NavBar = () => {
         allowedRoles: ["admin"],
       },
       {
+        title: "Approvals",
+        path: "/approvals",
+        allowedRoles: ["officer"],
+      },
+      {
         title: "Reports",
         path: "/reports",
-        allowedRoles: ["admin", "officer"],
+        allowedRoles: ["admin"],
       }
     ];
 
@@ -92,7 +95,7 @@ const NavBar = () => {
   // If not logged in, show minimal navbar with login link
   if (!authState.user) {
     return (
-      <nav className="bg-white border-b border-gray-200 fixed w-full z-30 top-0 left-0 shadow-sm">
+      <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[99vw] max-w-7xl z-50 glass-navbar py-1.5 px-4 flex items-center justify-between min-h-[52px]">
         <div className="px-3 py-3 lg:px-6">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center">
@@ -119,7 +122,7 @@ const NavBar = () => {
 
   // Full navbar for logged-in users
   return (
-    <nav className="bg-white border-b border-gray-200 fixed w-full z-30 top-0 left-0 shadow-sm">
+    <nav className="fixed top-3 left-1/2 -translate-x-1/2 w-[99vw] max-w-7xl z-50 glass-navbar py-1.5 px-4 flex items-center justify-between min-h-[52px]">
       <div className="px-3 py-3 lg:px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -185,15 +188,49 @@ const NavBar = () => {
               </span>
             )}
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNotificationClick}
-              className="relative bg-gray-100 hover:bg-gray-200"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 h-2 w-2 bg-blockchain-red rounded-full"></span>
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative bg-gray-100 hover:bg-gray-200"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs bg-red-500 text-white rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden z-50">
+                  <div className="p-2 border-b bg-gray-50">
+                    <span className="text-sm font-medium">Notifications</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {userNotifs.length === 0 ? (
+                      <p className="p-2 text-sm text-gray-500">No notifications</p>
+                    ) : (
+                      userNotifs.map(n => (
+                        <div key={n.id} className="p-2 border-b flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm">{n.message}</p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(n.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          {!n.isRead && (
+                            <Button size="icon" variant="ghost" onClick={() => markNotificationRead(n.id)}>
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-3">
               <div className="hidden md:block text-right">

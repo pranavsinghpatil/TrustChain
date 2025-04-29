@@ -1,17 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { User, UserRole, AuthState } from "@/types/auth";
+import { User, UserRole, AuthState, Notification, RegisterData } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   authState: AuthState;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (username: string, password: string, role: UserRole, name: string, walletAddress: string, email?: string) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<boolean>;
   users: User[];
   createOfficer: (name: string, username: string, password: string) => void;
   updateOfficer: (id: string, name: string) => void;
   removeOfficer: (id: string) => void;
   approveUser: (id: string) => void;
+  rejectUser: (id: string, remark: string) => void;
+  updateUser: (id: string, fields: { name?: string; email?: string; password?: string }) => void;
+  notifications: Notification[];
+  notifyUser: (recipientId: string, message: string, relatedUserId?: string) => void;
+  notifyOfficers: (message: string, relatedUserId?: string) => void;
+  markNotificationRead: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,13 +56,29 @@ const PASSWORD_MAP: Record<string, string> = {
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { toast } = useToast();
-  const initialUsers: User[] = DEMO_USERS.map(u => ({ ...u, isApproved: u.role === 'bidder' ? false : true }));
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const initialUsers: User[] = DEMO_USERS.map(u => ({
+    ...u,
+    isApproved: u.username === 'sam' ? true : (u.role === 'bidder' ? false : true),
+  }));
+  const [users, setUsers] = useState<User[]>(initialUsers.map(u => ({ ...u, approvalRemark: '' })));
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isLoading: true,
     error: null,
   });
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Notification utilities
+  const notifyUser = (recipientId: string, message: string, relatedUserId?: string) => {
+    const newNotif: Notification = { id: `notif-${Date.now()}-${recipientId}`, recipientId, message, relatedUserId, isRead: false, createdAt: new Date() };
+    setNotifications(prev => [...prev, newNotif]);
+  };
+  const notifyOfficers = (message: string, relatedUserId?: string) => {
+    const officers = users.filter(u => u.role === 'officer');
+    const newNotifs = officers.map(off => ({ id: `notif-${Date.now()}-${off.id}`, recipientId: off.id, message, relatedUserId, isRead: false, createdAt: new Date() }));
+    setNotifications(prev => [...prev, ...newNotifs]);
+  };
+  const markNotificationRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
 
   useEffect(() => {
     // Check if user is stored in local storage
@@ -137,14 +159,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
-  const register = async (
-    username: string,
-    password: string,
-    role: UserRole,
-    name: string,
-    walletAddress: string,
-    email?: string
-  ): Promise<boolean> => {
+  const register = async (data: RegisterData): Promise<boolean> => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
     
     try {
@@ -152,7 +167,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       await new Promise((resolve) => setTimeout(resolve, 500));
       
       // Check if username already exists
-      if (users.some(u => u.username === username)) {
+      if (users.some(u => u.username === data.username)) {
         setAuthState((prev) => ({ 
           ...prev, 
           isLoading: false, 
@@ -170,18 +185,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       // In a real app, this would make an API call to create the user
       const newUser: User = {
         id: `user-${Date.now()}`,
-        name,
-        username,
-        walletAddress,
-        email,
-        role,
-        isApproved: role === 'bidder' ? false : true,
+        name: data.name,
+        username: data.username,
+        walletAddress: data.walletAddress,
+        email: data.email,
+        role: data.role,
+        isApproved: data.role === 'bidder' ? false : true,
         createdAt: new Date(),
+        profileData: data,
       };
       
       // Add user to demo users array (in a real app, this would be saved to a database)
-      setUsers(prev => [...prev, newUser]);
-      PASSWORD_MAP[username] = password;
+      setUsers(prev => [...prev, { ...newUser, approvalRemark: '' }]);
+      PASSWORD_MAP[data.username] = data.password;
       
       // Log the user in
       localStorage.setItem("user", JSON.stringify(newUser));
@@ -195,7 +211,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         title: "Registration successful",
         description: `Welcome, ${newUser.name}!`,
       });
-      
+      notifyOfficers(`User ${newUser.name} has registered and awaits approval.`, newUser.id);
       return true;
     } catch (error) {
       setAuthState((prev) => ({ 
@@ -222,7 +238,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const createOfficer = (name: string, username: string, password: string) => {
     const newOfficer: User = { id: `officer-${Date.now()}`, name, username, role: 'officer', createdAt: new Date(), isApproved: true };
-    setUsers(prev => [...prev, newOfficer]);
+    setUsers(prev => [...prev, { ...newOfficer, approvalRemark: '' }]);
     PASSWORD_MAP[username] = password;
     toast({ title: 'Officer created', description: `${name} has been appointed` });
   };
@@ -240,12 +256,41 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   const approveUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, isApproved: true } : u));
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isApproved: true, approvalRemark: '' } : u));
+    notifyUser(id, 'Your account has been approved.', id);
     toast({ title: 'User approved', description: 'User access granted' });
   };
 
+  const rejectUser = (id: string, remark: string) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isApproved: false, approvalRemark: remark } : u));
+    notifyUser(id, `Approval reverted: ${remark}`, id);
+    const user = users.find(u => u.id === id);
+    if (user) notifyOfficers(`User ${user.name} has updated details and awaits re-approval.`, id);
+    toast({ title: 'Approval reverted', description: `User remark: ${remark}` });
+  };
+
+  const updateUser = (id: string, fields: { name?: string; email?: string; password?: string }) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, name: fields.name ?? u.name, email: fields.email ?? u.email, isApproved: false, approvalRemark: '' } : u));
+    const user = users.find(u => u.id === id)!;
+    if (fields.password) PASSWORD_MAP[user.username] = fields.password;
+    if (authState.user?.id === id) {
+      setAuthState(prev => ({
+        ...prev,
+        user: {
+          ...prev.user!,
+          name: fields.name ?? prev.user!.name,
+          email: fields.email ?? prev.user!.email,
+          isApproved: false,
+          approvalRemark: ''
+        }
+      }));
+    }
+    toast({ title: 'Profile updated', description: 'Details updated and resubmitted for approval' });
+    notifyOfficers(`User ${fields.name ?? authState.user?.name} resubmitted profile for approval.`, id);
+  };
+
   return (
-    <AuthContext.Provider value={{ authState, login, logout, register, users, createOfficer, updateOfficer, removeOfficer, approveUser }}>
+    <AuthContext.Provider value={{ authState, login, logout, register, users, createOfficer, updateOfficer, removeOfficer, approveUser, rejectUser, updateUser, notifications, notifyUser, notifyOfficers, markNotificationRead }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge, BadgeDollarSign, BadgeIndianRupee, Key, User } from "lucide-react";
+import RegistrationForm from "@/components/auth/RegistrationForm";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, register, authState } = useAuth();
+  const { login, authState } = useAuth();
   const { connectWallet, account, isConnected } = useWeb3();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
@@ -21,44 +22,10 @@ const Login = () => {
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
-  // Register form state
-  const [registerUsername, setRegisterUsername] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-  const [registerName, setRegisterName] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [registerRole, setRegisterRole] = useState<UserRole>("bidder");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const success = await login(loginUsername, loginPassword);
-    if (success) {
-      navigate("/");
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isConnected) {
-      try {
-        await connectWallet();
-      } catch (err) {
-        toast({ title: "Wallet connection failed", description: (err as Error).message, variant: "destructive" });
-        return;
-      }
-    }
-    if (!account) {
-      toast({ title: "Wallet not connected", description: "Please connect your wallet", variant: "destructive" });
-      return;
-    }
-    const success = await register(
-      registerUsername,
-      registerPassword,
-      registerRole,
-      registerName,
-      account,
-      registerEmail
-    );
     if (success) {
       navigate("/");
     }
@@ -156,94 +123,7 @@ const Login = () => {
             </TabsContent>
             
             <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-name">Full Name</Label>
-                  <Input
-                    id="register-name"
-                    placeholder="Enter your full name"
-                    value={registerName}
-                    onChange={(e) => setRegisterName(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-username">Username</Label>
-                  <Input
-                    id="register-username"
-                    placeholder="Choose a username"
-                    value={registerUsername}
-                    onChange={(e) => setRegisterUsername(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email (optional)</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={registerEmail}
-                    onChange={(e) => setRegisterEmail(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="Choose a password"
-                    value={registerPassword}
-                    onChange={(e) => setRegisterPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Account Type</Label>
-                  <div className="grid grid-cols-1 gap-2">
-                    <Button 
-                      type="button" 
-                      variant={registerRole === "bidder" ? "default" : "outline"}
-                      className="justify-start"
-                      onClick={() => setRegisterRole("bidder")}
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Bidder
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Wallet connect for registration */}
-                <div className="flex justify-center mb-4">
-                  {!isConnected ? (
-                    <Button type="button" onClick={connectWallet} className="w-full bg-blockchain-blue hover:bg-blockchain-purple">
-                      Connect Wallet
-                    </Button>
-                  ) : (
-                    <span className="text-sm font-mono border border-gray-300 rounded px-2 py-1">
-                      {account?.slice(0,6)}...{account?.slice(-4)}
-                    </span>
-                  )}
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full bg-blockchain-blue hover:bg-blockchain-purple" 
-                  disabled={authState.isLoading || !isConnected}
-                >
-                  {authState.isLoading ? "Creating Account..." : "Create Account"}
-                </Button>
-                
-                <div className="text-xs text-center text-muted-foreground mt-2">
-                  Only bidder accounts can be created through registration.
-                  <br />
-                  Officer and admin accounts are created by administrators.
-                </div>
-              </form>
+              <RegistrationForm />
             </TabsContent>
           </Tabs>
         </CardContent>

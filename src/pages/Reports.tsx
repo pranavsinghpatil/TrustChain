@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import NavBar from "@/components/layout/NavBar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +55,7 @@ const Reports = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50/0">
       <NavBar />
       
       <main className="flex-1 pt-20 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto w-full">

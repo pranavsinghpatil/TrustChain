@@ -1,4 +1,3 @@
-
 import NavBar from "@/components/layout/NavBar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -81,7 +80,7 @@ const MyBids = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/0">
       <NavBar />
       
       <main className="container pt-20 pb-10">
