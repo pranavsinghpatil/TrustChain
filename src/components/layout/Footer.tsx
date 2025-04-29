@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 const Footer: React.FC = () => (
-  <footer className="w-full bg-[#15181e] bg-opacity-95 text-center py-5 text-xs text-gray-400 border-t border-gray-800">
+  <footer className="w-full glass-footer text-center pt-8 pb-0 text-xs text-gray-400" style={{margin:0, borderRadius:0, boxShadow:'none'}}>
     <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
       <div>
         <h3 className="text-xl font-semibold text-white mb-2">TrustChain</h3>

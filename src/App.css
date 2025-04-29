@@ -66,13 +66,66 @@
   color: #fff;
 }
 
-/* Glassy/gradient nav style */
+/* Premium glassy navbar style */
 .glass-navbar {
-  background: linear-gradient(120deg, rgba(40,45,55,0.92) 0%, rgba(60,65,80,0.82) 100%);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: 1.5rem;
-  border: 1.5px solid rgba(255,255,255,0.18);
-  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+  background: linear-gradient(120deg, rgba(40,45,55,0.68) 0%, rgba(60,65,80,0.55) 100%);
+  backdrop-filter: blur(32px) saturate(220%);
+  -webkit-backdrop-filter: blur(32px) saturate(220%);
+  border-radius: 2.5rem;
+  border: 2px solid rgba(255,255,255,0.14);
+  box-shadow: 0 8px 40px 0 rgba(0,0,0,0.25);
   color: #fff;
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+/* Login page card transparency override */
+.login-card-bg {
+  background: rgba(30,32,38,0.65) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-radius: 2rem;
+  border: 1.5px solid rgba(255,255,255,0.10);
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+}
+
+/* Footer full width, stick to bottom, no side gaps */
+.site-footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  background: #15181e;
+  background: linear-gradient(120deg, rgba(21,24,30,0.98) 0%, rgba(30,32,38,0.98) 100%);
+  color: #b0b4c1;
+  border-top: 1.5px solid #23262e;
+  z-index: 40;
+  margin: 0;
+  padding: 1.4rem 0 1.2rem 0;
+  text-align: center;
+}
+
+.glass-footer {
+  /* background: linear-gradient(120deg, rgba(21, 24, 30, 0.98) 0%, rgba(30, 32, 38, 0.98) 100%); */
+  backdrop-filter: blur(38px) saturate(90%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: 0 -4px 32px 0 rgba(0, 0, 0, 0.22);
+}
+
+html, body, #root {
+  min-height: 100vh;
+  height: 100%;
+}
+
+body, #root {
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1 0 auto;
+}
+
+footer {
+  flex-shrink: 0;
 }

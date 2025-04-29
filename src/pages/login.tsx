@@ -34,7 +34,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4">
       <div className="absolute inset-0 bg-cover bg-center opacity-10" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=1500&q=80')" }}></div>
-      <Card className="w-full max-w-md relative z-10 border-0 shadow-xl">
+      <Card className="w-full max-w-md relative z-10 border-0 shadow-xl login-card-bg">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-gradient-to-r from-blockchain-blue to-blockchain-purple p-3 rounded-lg">

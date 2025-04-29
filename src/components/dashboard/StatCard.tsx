@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -15,7 +14,7 @@ interface StatCardProps {
 const StatCard = ({ title, value, icon, trend, className }: StatCardProps) => {
   return (
     <div className={cn(
-      "bg-white rounded-lg p-6 shadow-sm border border-gray-100",
+      "glass-card rounded-lg p-6 shadow-sm border border-gray-100",
       className
     )}>
       <div className="flex justify-between items-start">

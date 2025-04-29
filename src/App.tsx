@@ -38,68 +38,70 @@ const App = () => (
         <BrowserRouter>
           <div className="flex flex-col min-h-screen">
             <NavBar />
-            <main className="flex-grow mt-16">
-              <Routes>
-                {/* Public route */}
-                <Route path="/login" element={<Login />} />
-                
-                {/* Protected routes for all authenticated users */}
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } />
-                <Route path="/tenders" element={
-                  <ProtectedRoute>
-                    <Tenders />
-                  </ProtectedRoute>
-                } />
-                <Route path="/tenders/:id" element={
-                  <ProtectedRoute>
-                    <TenderDetails />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Bidder-specific routes */}
-                <Route path="/tenders/:id/bid" element={
-                  <ProtectedRoute allowedRoles={["bidder"]}>
-                    <SubmitBid />
-                  </ProtectedRoute>
-                } />
-                <Route path="/my-bids" element={
-                  <ProtectedRoute allowedRoles={["bidder"]}>
-                    <MyBids />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Admin and Officer routes */}
-                <Route path="/create-tender" element={
-                  <ProtectedRoute allowedRoles={["officer"]}>
-                    <CreateTender />
-                  </ProtectedRoute>
-                } />
-                <Route path="/approvals" element={
-                  <ProtectedRoute allowedRoles={["officer"]}>
-                    <Approvals />
-                  </ProtectedRoute>
-                } />
-                <Route path="/reports" element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <Reports />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Admin-only routes */}
-                <Route path="/manage-officers" element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <ManageOfficers />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Not found route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
+            <div className="main-content">
+              <main className="flex-grow mt-16">
+                <Routes>
+                  {/* Public route */}
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected routes for all authenticated users */}
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/tenders" element={
+                    <ProtectedRoute>
+                      <Tenders />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/tenders/:id" element={
+                    <ProtectedRoute>
+                      <TenderDetails />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Bidder-specific routes */}
+                  <Route path="/tenders/:id/bid" element={
+                    <ProtectedRoute allowedRoles={["bidder"]}>
+                      <SubmitBid />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-bids" element={
+                    <ProtectedRoute allowedRoles={["bidder"]}>
+                      <MyBids />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Admin and Officer routes */}
+                  <Route path="/create-tender" element={
+                    <ProtectedRoute allowedRoles={["officer"]}>
+                      <CreateTender />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/approvals" element={
+                    <ProtectedRoute allowedRoles={["officer"]}>
+                      <Approvals />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reports" element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <Reports />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Admin-only routes */}
+                  <Route path="/manage-officers" element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <ManageOfficers />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Not found route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </div>
             <Footer />
           </div>
         </BrowserRouter>

@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,7 @@ const RecentTendersTable = ({ tenders }: RecentTendersTableProps) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+    <div className="glass-card rounded-lg shadow-sm border border-gray-100">
       <div className="p-6">
         <h3 className="text-lg font-medium mb-4">Recent Tenders</h3>
       </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +55,7 @@ const BlockchainVisualizer = ({ blocks, className }: BlockchainVisualizerProps) 
   };
 
   return (
-    <div className={cn("bg-white rounded-lg shadow-sm border border-gray-100 p-6", className)}>
+    <div className={cn("glass-card rounded-lg shadow-sm border border-gray-100 p-6", className)}>
       <h3 className="text-lg font-medium mb-4">Blockchain Ledger</h3>
       <p className="text-sm text-gray-500 mb-4">
         Immutable record of all tender activities secured by blockchain technology
