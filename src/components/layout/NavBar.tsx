@@ -165,13 +165,13 @@ const NavBar = () => {
         <div className="flex items-center gap-2 md:gap-4">
           {/* Wallet connect */}
           {!isConnected ? (
-            <Button onClick={connectWallet} className="bg-blockchain-blue text-white hover:bg-blockchain-purple h-8 px-3 py-1">
-              Connect Wallet
-            </Button>
-          ) : (
-            <span className="text-sm font-mono border border-gray-300 rounded px-2 py-1">
-              {account?.slice(0, 6)}...{account?.slice(-4)}
-            </span>
+              <Button onClick={connectWallet} className="bg-blockchain-blue text-white hover:bg-blockchain-purple h-8 px-3 py-1">
+                Connect Wallet
+              </Button>
+            ) : (
+              <span className="text-sm font-mono border border-gray-300 rounded px-2 py-1">
+                {account?.slice(0, 6)}...{account?.slice(-4)}
+              </span>
           )}
 
           <div className="relative">

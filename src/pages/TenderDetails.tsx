@@ -91,7 +91,7 @@ const TenderDetails = () => {
     <div className="min-h-screen bg-gray-50/0">
       {/* <NavBar /> */}
       
-      <main className="container pt-20 pb-10">
+      <main className="container pt-20 pb-[7.5rem]">
         <div className="glass-component p-6">
           <div className="my-8">
             <TenderDetailsHeader 

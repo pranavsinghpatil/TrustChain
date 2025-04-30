@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const CreateTender = () => {
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
-      <main className="container pt-20 pb-10">
+      <main className="container pt-20 pb-[7.5rem]">
         <div className="my-8">
           <h1 className="text-3xl font-bold">Create New Tender</h1>
           <p className="text-gray-600 mt-1">

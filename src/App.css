@@ -1,6 +1,6 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
+  max-width: 1400px;
+  /* margin: 0 auto; */
   padding: 2rem;
   text-align: center;
 }
@@ -38,106 +38,10 @@
 }
 
 .read-the-docs {
-  color: #888;
-}
-
-.glow-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  width: 100vw;
-  height: 100vh;
-  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,255,144,0.12) 0%, rgba(9,10,15,0.98) 70%);
-  pointer-events: none;
-}
-
-.bg-god-rays {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.bg-god-rays::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #060709;
-  z-index: 1;
-}
-
-.bg-god-rays::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  mask-image: radial-gradient(ellipse at 100% 0%, black 35%, transparent 90%);
-  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 35%, transparent 90%);
-  background:
-    repeating-linear-gradient(
-      110deg,
-      rgba(96,165,250,0.35) 0%,
-      rgba(96,165,250,0.35) 7%,
-      transparent 10%,
-      transparent 12%,
-      rgba(96,165,250,0.35) 16%
-    ),
-    repeating-linear-gradient(
-      110deg,
-      #60a5fa 10%,
-      #e879f9 15%,
-      #60a5fa 20%,
-      #5eead4 25%,
-      #60a5fa 30%
-    );
-  background-size: 120%, 200%;
-  background-position: 60% 40%, 60% 40%;
-  filter: blur(28px) saturate(180%);
-  opacity: 0.42;
-  transition: opacity 0.3s;
-  animation: god-rays-move 36s linear infinite alternate;
-}
-
-.bg-darken-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  background: rgba(8, 10, 12, 0.78); /* very dark, mostly opaque */
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-}
-
-@keyframes god-rays-move {
-  0% {
-    background-position: 58% 38%, 60% 42%;
-  }
-  100% {
-    background-position: 62% 44%, 58% 38%;
-  }
-}
-
-body {
-  background: #090a0f;
-  color: #e3e6eb;
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-  letter-spacing: 0.01em;
+  color: #827f7f;
 }
 
 .glass-card {
-  /* background: rgba(18, 22, 28, 0.92);
-  border-radius: 2.2rem;
-  box-shadow: 0 8px 48px 0 rgba(0,0,0,0.32);
-  backdrop-filter: blur(32px) saturate(120%);
-  -webkit-backdrop-filter: blur(32px) saturate(120%);
-  border: 2px solid rgba(255,255,255,0.07);
-  padding: 2.5rem 2rem;
-  margin-bottom: 2.5rem; */
   transition: box-shadow 0.2s, border 0.2s;
 }
 
@@ -150,9 +54,10 @@ body {
   background: linear-gradient(120deg, rgba(40, 45, 55, 0.3) 100%, rgba(60, 65, 80, 0.2) 0%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0,255,144,0.32);
   box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.1);
   border-radius: 1rem;
+  animation: neon-border-fade 2.5s alternate infinite;
 }
 
 .btn-accent {
@@ -178,7 +83,7 @@ body {
   backdrop-filter: blur(10px) ;
   -webkit-backdrop-filter: blur(10px) ;
   border-radius: 2.5rem;
-  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border: 1.5px solid rgba(0,255,144,0.32);
   box-shadow: 0 2px 16px 0 rgba(0,0,0,0.18);
   color: #fff;
   padding: 0.5rem 2.5rem;
@@ -249,7 +154,7 @@ body {
   -webkit-backdrop-filter: blur(38px) saturate(110%);
   box-shadow: 0 -8px 32px 0 rgba(0, 0, 0, 0.18);
   border-radius: 2.2rem 2.2rem 0 0 !important;
-  margin: 0 1.5rem !important;
+  margin: 0 .2500rem !important;
   padding-bottom: 0 !important;
   padding-top: 2.5rem;
   border: 2px solid rgba(0,255,144,0.32);
@@ -269,14 +174,31 @@ body {
   }
 }
 
-html, body, #root {
+html, body {
+  margin: 0;
+  padding: 0;
   min-height: 100vh;
-  height: 100%;
 }
 
-body, #root {
-  display: flex;
-  flex-direction: column;
+body {
+  background: url('/static/1155029.jpg') no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+  color: #e3e6eb;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+body::before {
+  display: none;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .main-content {
@@ -285,4 +207,9 @@ body, #root {
 
 footer {
   flex-shrink: 0;
+}
+
+body, #root {
+  display: flex;
+  flex-direction: column;
 }
