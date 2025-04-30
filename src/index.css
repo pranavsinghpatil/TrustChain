@@ -101,6 +101,30 @@
   }
 }
 
+/* Footer border style for all components */
+.component-border {
+  border: 1px solid #e5e7eb; /* tailwind border-gray-200 */
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Remove neon border on hover for all components */
+[class*="hover:border-"] {
+  border-color: inherit !important;
+  box-shadow: none !important;
+}
+
+[class*="hover:ring-"] {
+  box-shadow: none !important;
+  --tw-ring-shadow: none !important;
+}
+
+/* Optionally override any neon border utility */
+.neon-border, .neon-border:hover, .neon-border:focus, .neon-border:active {
+  border: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
+}
+
 @keyframes trail-fade {
   from {
     opacity: 0.6;

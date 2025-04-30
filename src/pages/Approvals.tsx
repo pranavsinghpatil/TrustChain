@@ -13,7 +13,7 @@ const Approvals = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       <main className="container pt-20 mx-auto px-4">
         <h1 className="text-2xl font-bold mb-4">User Approvals</h1>
         {pendingUsers.length === 0 ? (

@@ -37,6 +37,10 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <div className="flex flex-col min-h-screen">
+            {/* Premium god-rays background effect */}
+            <div className="bg-god-rays" aria-hidden="true"></div>
+            {/* Extra dark overlay for more contrast */}
+            <div className="bg-darken-overlay" aria-hidden="true"></div>
             <NavBar />
             <div className="main-content">
               <main className="flex-grow mt-16">

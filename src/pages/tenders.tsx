@@ -73,7 +73,7 @@ const Tenders = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="container pt-20 pb-10">
         <div className="flex justify-between items-center my-8">

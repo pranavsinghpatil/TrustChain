@@ -111,7 +111,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="container pt-20 pb-10">
         <div className="flex justify-between items-center my-8">
@@ -137,24 +137,28 @@ const Index = () => {
             value="28" 
             icon={<FileText className="h-5 w-5 text-blockchain-purple" />}
             trend={{ value: 12, isPositive: true }}
+            className="glass-component p-6 rounded-lg"
           />
           <StatCard 
             title="Total Value" 
             value="$3.8M" 
             icon={<TrendingUp className="h-5 w-5 text-blockchain-blue" />}
             trend={{ value: 8, isPositive: true }}
+            className="glass-component p-6 rounded-lg"
           />
           <StatCard 
             title="Registered Vendors" 
             value="96" 
             icon={<Users className="h-5 w-5 text-blockchain-blue" />}
             trend={{ value: 5, isPositive: true }}
+            className="glass-component p-6 rounded-lg"
           />
           <StatCard 
             title="Disputes" 
             value="2" 
             icon={<AlertTriangle className="h-5 w-5 text-blockchain-red" />}
             trend={{ value: 1, isPositive: false }}
+            className="glass-component p-6 rounded-lg"
           />
         </div>
         

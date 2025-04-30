@@ -19,11 +19,11 @@ const SubmitBid = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
-      <main className="container pt-20 pb-10">
+      <main className="container pt-20 pb-10 glass-component p-6">
         <div className="my-8">
-          <h1 className="text-3xl font-bold">Submit Bid</h1>
+          <h1 className="text-2xl font-bold mb-4">Submit Bid</h1>
           <p className="text-gray-600 mt-1">
             For Tender: {tender.title} (ID: {tender.id})
           </p>

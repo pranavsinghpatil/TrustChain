@@ -56,7 +56,7 @@ const Reports = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="flex-1 pt-20 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         <div className="mt-8">
@@ -82,7 +82,7 @@ const Reports = () => {
           
           <TabsContent value="overview">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="glass-component">
                 <CardHeader>
                   <CardTitle>Tender Status Distribution</CardTitle>
                   <CardDescription>Current status of all tenders</CardDescription>
@@ -111,7 +111,7 @@ const Reports = () => {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="glass-component">
                 <CardHeader>
                   <CardTitle>Bid Amounts by Tender</CardTitle>
                   <CardDescription>Average and range of bid amounts (₹)</CardDescription>
@@ -142,7 +142,7 @@ const Reports = () => {
                 </CardContent>
               </Card>
               
-              <Card className="md:col-span-2">
+              <Card className="glass-component md:col-span-2">
                 <CardHeader>
                   <CardTitle>Monthly Tender Activity</CardTitle>
                   <CardDescription>Tenders published and awarded by month</CardDescription>
@@ -159,7 +159,7 @@ const Reports = () => {
           </TabsContent>
           
           <TabsContent value="tenders">
-            <Card>
+            <Card className="glass-component">
               <CardHeader>
                 <CardTitle>Tender Analytics</CardTitle>
                 <CardDescription>Detailed breakdown of tender data</CardDescription>
@@ -175,7 +175,7 @@ const Reports = () => {
           </TabsContent>
           
           <TabsContent value="bids">
-            <Card>
+            <Card className="glass-component">
               <CardHeader>
                 <CardTitle>Bid Analytics</CardTitle>
                 <CardDescription>Detailed breakdown of bid data</CardDescription>

@@ -81,7 +81,7 @@ const MyBids = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="container pt-20 pb-10">
         <div className="my-8">
@@ -92,7 +92,7 @@ const MyBids = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="glass-component">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Active Bids</CardTitle>
             </CardHeader>
@@ -101,7 +101,7 @@ const MyBids = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="glass-component">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Won Contracts</CardTitle>
             </CardHeader>
@@ -112,7 +112,7 @@ const MyBids = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="glass-component">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Success Rate</CardTitle>
             </CardHeader>
@@ -123,7 +123,7 @@ const MyBids = () => {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="glass-component">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Total Value</CardTitle>
             </CardHeader>
@@ -142,7 +142,7 @@ const MyBids = () => {
           <TabsContent value="active" className="mt-6">
             <div className="space-y-6">
               {activeBids.map((bid) => (
-                <Card key={bid.id} className="overflow-hidden">
+                <Card key={bid.id} className="glass-component overflow-hidden">
                   <div className="border-l-4 border-blockchain-blue h-full">
                     <div className="p-6">
                       <div className="flex justify-between items-start flex-wrap gap-4">
@@ -220,7 +220,7 @@ const MyBids = () => {
           <TabsContent value="completed" className="mt-6">
             <div className="space-y-6">
               {completedBids.map((bid) => (
-                <Card key={bid.id} className="overflow-hidden">
+                <Card key={bid.id} className="glass-component overflow-hidden">
                   <div className={`border-l-4 ${bid.status === 'won' ? 'border-blockchain-green' : 'border-blockchain-gray'} h-full`}>
                     <div className="p-6">
                       <div className="flex justify-between items-start flex-wrap gap-4">

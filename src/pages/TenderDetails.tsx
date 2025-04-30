@@ -89,202 +89,204 @@ const TenderDetails = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="container pt-20 pb-10">
-        <div className="my-8">
-          <TenderDetailsHeader 
-            id={tender.id} 
-            title={tender.title} 
-            department={tender.department} 
-            budget={tender.budget}
-            deadline={tender.deadline}
-            status={tender.status}
-            createdAt={tender.createdAt}
-            documentUrl="#"
-          />
-          <div className="mt-4 ml-6">
-            <Button
-              onClick={handleCancel}
-              disabled={isCancelling}
-            >
-              {isCancelling ? "Cancelling..." : "Cancel Tender"}
-            </Button>
+        <div className="glass-component p-6">
+          <div className="my-8">
+            <TenderDetailsHeader 
+              id={tender.id} 
+              title={tender.title} 
+              department={tender.department} 
+              budget={tender.budget}
+              deadline={tender.deadline}
+              status={tender.status}
+              createdAt={tender.createdAt}
+              documentUrl="#"
+            />
+            <div className="mt-4 ml-6">
+              <Button
+                onClick={handleCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? "Cancelling..." : "Cancel Tender"}
+              </Button>
+            </div>
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="details">
-              <TabsList className="mb-6">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="blockchain">Blockchain</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details">
-                <div className="space-y-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Tabs defaultValue="details">
+                <TabsList className="mb-6">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsTrigger value="blockchain">Blockchain</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details">
+                  <div className="space-y-8">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Tender Description</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p>{tender.description}</p>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Selection Criteria</CardTitle>
+                        <CardDescription>Bids will be evaluated based on the following criteria</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="list-disc pl-6 space-y-2">
+                          {tender.criteria.map((criterion, index) => (
+                            <li key={index}>{criterion}</li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Timeline</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="relative">
+                          <div className="absolute top-0 bottom-0 left-6 w-0.5 bg-gray-200"></div>
+                          <ul className="space-y-6 relative">
+                            {tender.timeline.map((event, index) => (
+                              <li key={index} className="ml-12 relative">
+                                <span className={`absolute -left-12 flex h-6 w-6 items-center justify-center rounded-full ${
+                                  event.status === 'completed' ? 'bg-blockchain-green text-white' : 'bg-gray-200'
+                                }`}>
+                                  {event.status === 'completed' ? (
+                                    <CheckCircle className="h-4 w-4" />
+                                  ) : (
+                                    <Clock className="h-4 w-4 text-gray-500" />
+                                  )}
+                                </span>
+                                <div>
+                                  <div className="font-medium">{event.event}</div>
+                                  <div className="text-sm text-gray-500">{event.date}</div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="documents">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Tender Description</CardTitle>
+                      <CardTitle>Tender Documents</CardTitle>
+                      <CardDescription>All documents are cryptographically secured and stored on IPFS</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p>{tender.description}</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Selection Criteria</CardTitle>
-                      <CardDescription>Bids will be evaluated based on the following criteria</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="list-disc pl-6 space-y-2">
-                        {tender.criteria.map((criterion, index) => (
-                          <li key={index}>{criterion}</li>
+                      <ul className="divide-y">
+                        {tender.documents.map((doc, index) => (
+                          <li key={index} className="py-4 flex items-center justify-between">
+                            <div className="flex items-center">
+                              <FileText className="h-5 w-5 mr-3 text-blockchain-blue" />
+                              <div>
+                                <p className="font-medium">{doc.name}</p>
+                                <p className="text-sm text-gray-500">{doc.size}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline">View</Badge>
+                          </li>
                         ))}
                       </ul>
                     </CardContent>
                   </Card>
-                  
+                </TabsContent>
+                
+                <TabsContent value="blockchain">
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle>Timeline</CardTitle>
+                    <CardHeader>
+                      <CardTitle>Blockchain Transactions</CardTitle>
+                      <CardDescription>Immutable record of all activities related to this tender</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="relative">
-                        <div className="absolute top-0 bottom-0 left-6 w-0.5 bg-gray-200"></div>
-                        <ul className="space-y-6 relative">
-                          {tender.timeline.map((event, index) => (
-                            <li key={index} className="ml-12 relative">
-                              <span className={`absolute -left-12 flex h-6 w-6 items-center justify-center rounded-full ${
-                                event.status === 'completed' ? 'bg-blockchain-green text-white' : 'bg-gray-200'
-                              }`}>
-                                {event.status === 'completed' ? (
-                                  <CheckCircle className="h-4 w-4" />
-                                ) : (
-                                  <Clock className="h-4 w-4 text-gray-500" />
-                                )}
-                              </span>
-                              <div>
-                                <div className="font-medium">{event.event}</div>
-                                <div className="text-sm text-gray-500">{event.date}</div>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                      <div className="space-y-4">
+                        {tender.blockchain.map((item, index) => (
+                          <div key={index} className="border border-gray-100 rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <p className="text-sm text-gray-500">{item.date}</p>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {item.hash.substring(0, 6)}...{item.hash.substring(item.hash.length - 6)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm">{item.action}</p>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="documents">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tender Documents</CardTitle>
-                    <CardDescription>All documents are cryptographically secured and stored on IPFS</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="divide-y">
-                      {tender.documents.map((doc, index) => (
-                        <li key={index} className="py-4 flex items-center justify-between">
-                          <div className="flex items-center">
-                            <FileText className="h-5 w-5 mr-3 text-blockchain-blue" />
-                            <div>
-                              <p className="font-medium">{doc.name}</p>
-                              <p className="text-sm text-gray-500">{doc.size}</p>
-                            </div>
-                          </div>
-                          <Badge variant="outline">View</Badge>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="blockchain">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Blockchain Transactions</CardTitle>
-                    <CardDescription>Immutable record of all activities related to this tender</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {tender.blockchain.map((item, index) => (
-                        <div key={index} className="border border-gray-100 rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="text-sm text-gray-500">{item.date}</p>
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {item.hash.substring(0, 6)}...{item.hash.substring(item.hash.length - 6)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm">{item.action}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-          
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tender Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center">
-                  <CalendarDays className="h-5 w-5 mr-3 text-blockchain-blue" />
-                  <div>
-                    <p className="text-sm text-gray-500">Published On</p>
-                    <p>{tender.createdAt}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-3 text-blockchain-blue" />
-                  <div>
-                    <p className="text-sm text-gray-500">Bids Received</p>
-                    <p>{tender.bidCount} bids</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <Database className="h-5 w-5 mr-3 text-blockchain-blue" />
-                  <div>
-                    <p className="text-sm text-gray-500">Blockchain Status</p>
-                    <p>Verified ✓</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <ShieldAlert className="h-5 w-5 mr-3 text-blockchain-blue" />
-                  <div>
-                    <p className="text-sm text-gray-500">Security</p>
-                    <p>IPFS + Smart Contract</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Transparency</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">
-                  This tender is secured by blockchain technology, ensuring complete transparency and tamper-proof records of all activities.
-                </p>
-                <div className="bg-blockchain-lightPurple p-4 rounded-lg">
-                  <p className="text-xs font-mono break-all">
-                    Contract Address: 0x3a42e8d7f9e9c9b43d5e24a3136f5d6a9e1b2c3d
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tender Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center">
+                    <CalendarDays className="h-5 w-5 mr-3 text-blockchain-blue" />
+                    <div>
+                      <p className="text-sm text-gray-500">Published On</p>
+                      <p>{tender.createdAt}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 mr-3 text-blockchain-blue" />
+                    <div>
+                      <p className="text-sm text-gray-500">Bids Received</p>
+                      <p>{tender.bidCount} bids</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <Database className="h-5 w-5 mr-3 text-blockchain-blue" />
+                    <div>
+                      <p className="text-sm text-gray-500">Blockchain Status</p>
+                      <p>Verified ✓</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <ShieldAlert className="h-5 w-5 mr-3 text-blockchain-blue" />
+                    <div>
+                      <p className="text-sm text-gray-500">Security</p>
+                      <p>IPFS + Smart Contract</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transparency</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">
+                    This tender is secured by blockchain technology, ensuring complete transparency and tamper-proof records of all activities.
                   </p>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="bg-blockchain-lightPurple p-4 rounded-lg">
+                    <p className="text-xs font-mono break-all">
+                      Contract Address: 0x3a42e8d7f9e9c9b43d5e24a3136f5d6a9e1b2c3d
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>
