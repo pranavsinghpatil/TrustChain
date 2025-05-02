@@ -56,12 +56,12 @@ const Footer: React.FC = () => (
               </Link>
             </li>
             <li>
-              <Link to="/help" className="text-gray-400 hover:text-green-400 transition-colors">
-                Help Center
-              </Link>
+              <a href="https://github.com/pranavsinghpatil/tender/issues/new/choose" target="_blank" className="text-gray-400 hover:text-green-400 transition-colors">
+                Help Center [Raise a New Issue]
+              </a>
             </li>
             <li>
-              <Link to="/faqs" className="text-gray-400 hover:text-green-400 transition-colors">
+              <Link to="/FAQ" className="text-gray-400 hover:text-green-400 transition-colors">
                 FAQs
               </Link>
             </li>

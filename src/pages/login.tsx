@@ -285,7 +285,7 @@ const Login = () => {
                     </Button>
                     
                     {/* Default accounts for testing */}
-                    <div className="mt-6 space-y-2">
+                    <div className="mt-12 pt-6 space-y-2">
                       <div className="text-sm text-center text-gray-400">Default accounts for testing:</div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="border border-gray-700 bg-[#1B1B1B]/80 p-2 rounded-md">
@@ -312,9 +312,9 @@ const Login = () => {
                       </div>
                     </div>
                     
-                    <div className="text-center text-xs text-gray-500 mt-4">
+                    {/* <div className="text-center text-xs text-gray-500 mt-4">
                       All transactions in Indian Rupees (₹)
-                    </div>
+                    </div> */}
                   </div>
                 </form>
               </TabsContent>
