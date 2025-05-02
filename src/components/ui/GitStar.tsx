@@ -1,34 +1,29 @@
-import { useState } from 'react';
-import { Star, GitFork } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star } from 'lucide-react';
 
 export default function GitHubStarButton({ 
   username = "pranavsinghpatil", 
-  repo = "tender-main", 
-  showCount = true,
-  showForks = false,
-  size = "medium" // "small", "medium", or "large"
+  repo = "tender", 
+  size = "medium", // "small", "medium", or "large"
+  darkMode = false
 }) {
   const [stars, setStars] = useState(0);
-  const [forks, setForks] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   
   // Size mappings
   const sizeClasses = {
-    small: "text-xs py-1 px-2",
-    medium: "text-sm py-1.5 px-3",
-    large: "text-base py-2 px-4"
+    small: "text-xs py-1.5 px-3",
+    medium: "text-sm py-2 px-4",
+    large: "text-base py-2.5 px-5"
   };
   
   // Fetch repository stats from GitHub API
-  useState(() => {
+  useEffect(() => {
     fetch(`https://api.github.com/repos/${username}/${repo}`)
       .then(response => response.json())
       .then(data => {
         if (data.stargazers_count !== undefined) {
           setStars(data.stargazers_count);
-        }
-        if (data.forks_count !== undefined) {
-          setForks(data.forks_count);
         }
       })
       .catch(error => {
@@ -43,61 +38,34 @@ export default function GitHubStarButton({
     return count;
   };
 
+  // Background and text colors based on dark mode
+  const bgColor = darkMode ? "bg-[rgba(80, 252, 149, 0.8)]" : "bg-white";
+  const textColor = darkMode ? "text-white" : "text-gray-800";
+  const hoverBgColor = darkMode ? "hover:bg-[#6dcc84]" : "hover:bg-gray-50";
+  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+
   return (
-    <div className="flex flex-col space-y-2">
-      <a 
-        href={`https://github.com/${username}/${repo}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex"
+    <a 
+      href={`https://github.com/${username}/${repo}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex"
+    >
+      <button
+        className={`flex items-center justify-center ${bgColor} ${hoverBgColor} ${textColor} font-medium border ${borderColor} rounded-full ${sizeClasses[size]} shadow-sm transition-colors duration-200`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={(e) => {
+          e.preventDefault();
+          window.open(`https://github.com/${username}/${repo}`, '_blank');
+        }}
       >
-        <div className="flex">
-          <button
-            className={`flex items-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold border border-gray-300 rounded-l ${sizeClasses[size]} transition-colors duration-200`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={(e) => {
-              e.preventDefault();
-              window.open(`https://github.com/${username}/${repo}`, '_blank');
-            }}
-          >
-            <Star className={`mr-1 ${size === "small" ? "w-3 h-3" : size === "medium" ? "w-4 h-4" : "w-5 h-5"}`} />
-            Star
-          </button>
-          
-          {showCount && (
-            <span 
-              className={`flex items-center justify-center bg-white border border-gray-300 border-l-0 rounded-r ${sizeClasses[size]}`}
-            >
-              {formatCount(stars)}
-            </span>
-          )}
-        </div>
-      </a>
-      
-      {showForks && (
-        <a 
-          href={`https://github.com/${username}/${repo}/fork`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex"
-        >
-          <div className="flex">
-            <button
-              className={`flex items-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold border border-gray-300 rounded-l ${sizeClasses[size]} transition-colors duration-200`}
-            >
-              <GitFork className={`mr-1 ${size === "small" ? "w-3 h-3" : size === "medium" ? "w-4 h-4" : "w-5 h-5"}`} />
-              Fork
-            </button>
-            
-            <span 
-              className={`flex items-center justify-center bg-white border border-gray-300 border-l-0 rounded-r ${sizeClasses[size]}`}
-            >
-              {formatCount(forks)}
-            </span>
-          </div>
-        </a>
-      )}
-    </div>
+        <span className="flex items-center">
+          <span className="mr-1">Star on GitHub</span>
+          <Star className={`mx-1 ${size === "small" ? "w-3 h-3" : size === "medium" ? "w-4 h-4" : "w-5 h-5"} fill-current`} />
+          <span className="font-bold ml-1">{formatCount(stars)}</span>
+        </span>
+      </button>
+    </a>
   );
 }

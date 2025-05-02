@@ -1,28 +1,90 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import NavBar from "@/components/layout/NavBar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { FileText } from "lucide-react";
-
-// Mock data for charts
-const tenderStatusData = [
-  { name: 'Active', value: 12, color: '#8B5CF6' },
-  { name: 'Closed', value: 8, color: '#6B7280' },
-  { name: 'Draft', value: 5, color: '#10B981' },
-  { name: 'Under Review', value: 3, color: '#F59E0B' },
-];
-
-const bidAmountsData = [
-  { title: 'Road Construction', avgBid: 4500000, highestBid: 6200000, lowestBid: 3800000 },
-  { title: 'Hospital Equipment', avgBid: 3500000, highestBid: 4800000, lowestBid: 2900000 },
-  { title: 'IT Infrastructure', avgBid: 2800000, highestBid: 3500000, lowestBid: 1900000 },
-  { title: 'School Supplies', avgBid: 1200000, highestBid: 1800000, lowestBid: 900000 },
-  { title: 'Police Vehicles', avgBid: 5200000, highestBid: 7100000, lowestBid: 4500000 },
-];
+import { useWeb3 } from "@/contexts/Web3Context";
+import type { Tender, Bid } from "@/contexts/Web3Context";
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [tenders, setTenders] = useState<Tender[]>([]);
+  const [tenderStatusData, setTenderStatusData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [bidAmountsData, setBidAmountsData] = useState<{ title: string; avgBid: number; highestBid: number; lowestBid: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const { fetchTenders, fetchBidsForTender, isConnected, connectWallet } = useWeb3();
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        if (!isConnected) {
+          await connectWallet();
+        }
+        
+        // Fetch all tenders
+        const allTenders = await fetchTenders();
+        setTenders(allTenders);
+        
+        // Generate tender status data
+        const statusCounts = {
+          'open': 0,
+          'closed': 0,
+          'awarded': 0,
+          'disputed': 0
+        };
+        
+        allTenders.forEach(tender => {
+          statusCounts[tender.status]++;
+        });
+        
+        setTenderStatusData([
+          { name: 'Open', value: statusCounts.open, color: '#10B981' },
+          { name: 'Closed', value: statusCounts.closed, color: '#6B7280' },
+          { name: 'Awarded', value: statusCounts.awarded, color: '#8B5CF6' },
+          { name: 'Disputed', value: statusCounts.disputed, color: '#F59E0B' },
+        ]);
+        
+        // Generate bid amounts data
+        const bidDataPromises = allTenders
+          .filter(tender => tender.bidCount > 0)
+          .slice(0, 5)
+          .map(async tender => {
+            const bids = await fetchBidsForTender(tender.id);
+            
+            if (bids.length === 0) return null;
+            
+            const bidAmounts = bids.map(bid => parseFloat(bid.amount));
+            const avgBid = bidAmounts.reduce((a, b) => a + b, 0) / bidAmounts.length;
+            const highestBid = Math.max(...bidAmounts);
+            const lowestBid = Math.min(...bidAmounts);
+            
+            return {
+              title: tender.title,
+              avgBid,
+              highestBid,
+              lowestBid
+            };
+          });
+        
+        const bidData = (await Promise.all(bidDataPromises)).filter(Boolean) as { 
+          title: string; 
+          avgBid: number; 
+          highestBid: number; 
+          lowestBid: number 
+        }[];
+        
+        setBidAmountsData(bidData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading report data:", error);
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [fetchTenders, fetchBidsForTender, isConnected, connectWallet]);
 
   // Format currency in Indian Rupees
   const formatCurrency = (value: number) => {

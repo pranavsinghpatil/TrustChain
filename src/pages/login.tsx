@@ -1,138 +1,331 @@
-import React, { useState } from "react";
-import { useWeb3 } from "@/contexts/Web3Context";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types/auth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useWeb3 } from "@/contexts/Web3Context";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge, BadgeDollarSign, BadgeIndianRupee, Key, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, Badge, BadgeDollarSign, BadgeIndianRupee, User, Lock, Wallet } from "lucide-react";
 import RegistrationForm from "@/components/auth/RegistrationForm";
+import ContractIllustration from "@/components/ui/ContractIllustration";
+import TenderPulseAnimation from "@/components/ui/TenderPulseAnimation";
+import BlockchainNetwork from "@/components/ui/BlockchainNetwork";
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, authState } = useAuth();
   const { connectWallet, account, isConnected } = useWeb3();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  
-  // Login form state
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const success = await login(loginUsername, loginPassword);
-    if (success) {
-      navigate("/");
+    const formData = new FormData(e.target as HTMLFormElement);
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
+
+    // Test credentials validation
+    const testCredentials = {
+      admin: { username: "admin", password: "admin00", role: "admin" },
+      teno: { username: "teno", password: "tender00", role: "officer" },
+      sam: { username: "sam", password: "sam00", role: "bidder" }
+    };
+
+    // Check test credentials first
+    const matchedUser = Object.values(testCredentials).find(
+      cred => cred.username === username && cred.password === password
+    );
+
+    if (matchedUser) {
+      // Skip CAPTCHA for test accounts
+      const success = await login(username, password);
+      if (success) navigate("/");
+      return;
     }
+
+    const success = await login(username, password);
+    if (success) navigate("/");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 px-4">
-      <div className="absolute inset-0 bg-cover bg-center opacity-5" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=1500&q=80')" }}></div>
-      <Card className="w-full max-w-md relative z-10">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-[rgba(80,252,149,0.1)] border border-[rgba(80,252,149,0.2)] p-3 rounded-lg">
-              <BadgeIndianRupee className="h-6 w-6 text-[rgba(80,252,149,0.8)]" />
-            </div>
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-auto pb-20 relative">
+      <style jsx global>{`
+        html, body {
+          overflow-x: hidden;
+          overflow-y: auto;
+          width: 100%;
+          position: relative;
+          margin: 0;
+          padding: 0;
+          background-color: #000;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(80, 252, 149, 0.3) #111;
+        }
+        
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: #111;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: rgba(80, 252, 149, 0.3);
+          border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(80, 252, 149, 0.5);
+        }
+
+        /* Animation classes */
+        @keyframes float {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -10px, 0); }
+        }
+        
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+          backface-visibility: hidden;
+          transform-style: preserve-3d;
+          perspective: 1000;
+          will-change: transform;
+        }
+        
+        /* Fix for shaking */
+        .hover-stable {
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          perspective: 1000;
+          will-change: transform;
+        }
+        
+        .hover-stable:hover {
+          transform: translateZ(0) scale(1.02);
+          transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Prevent layout shifts */
+        .content-container {
+          min-height: 100vh;
+          width: 100%;
+          position: relative;
+        }
+        
+        /* Prevent illustration shifts */
+        .illustration-container {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          contain: layout size paint;
+        }
+      `}</style>
+      
+      {/* Background elements - these stay fixed */}
+      <div className="fixed-container">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        {/* <BlockchainNetwork /> */}
+        
+        {/* Floating particles */}
+        {Array(20).fill(0).map((_, index) => (
+          <div 
+            key={`particle-${index}`}
+            className="absolute w-1 h-1 rounded-full bg-green-400 opacity-30 animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${5 + Math.random() * 10}s`,
+            }}
+          />
+        ))}
+        
+        {/* Floating blocks */}
+        {Array(6).fill(0).map((_, index) => (
+          <div 
+            key={`block-${index}`}
+            className="absolute bg-black/40 border border-green-400/20 rounded-md w-16 h-16 rotate-45 opacity-20 animate-float"
+            style={{
+              left: `${10 + Math.random() * 80}%`,
+              top: `${10 + Math.random() * 80}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${8 + Math.random() * 7}s`,
+              transform: `rotate(${Math.random() * 45}deg) scale(${0.5 + Math.random()})`,
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-blue-500/5"></div>
           </div>
-          <CardTitle>TrustChain</CardTitle>
-          <CardDescription>
-            Blockchain-based tender management system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
+        ))}
+      </div>
+
+      {/* Content container - this scrolls */}
+      <div className="content-container flex flex-col items-center w-full max-w-7xl mx-auto">
+        <div className="illustration-container">
+          {/* Contract Illustration */}
+          <div className={`absolute top-[5.25rem] left-5 w-[300px] opacity-70 hidden md:block ${activeTab === 'login' ? '' : 'opacity-0 invisible'}`}>
+            <ContractIllustration />
+          </div>
+          
+          {/* Tender Pulse Animation - fixed position regardless of tab */}
+          <div className={`absolute top-[25rem] right-20 w-[300px] opacity-70 hidden md:block ${activeTab === 'login' ? '' : 'opacity-0 invisible'}`}>
+            <TenderPulseAnimation />
+          </div>
+        </div>
+
+        {/* Login/Register Card */}
+        <Card className={`w-full relative z-10 transition-all duration-300 ease-in-out shadow-lg border-0 ${activeTab === 'register' ? 'max-w-[1000px]' : 'max-w-md'} bg-[#1B1B1B]/40 backdrop-blur-xl border border-white/10 hover-stable`}>
+          <CardHeader className=" space-y-1 text-center relative">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-400/50 to-transparent opacity-95"></div>
             
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="username"
-                      placeholder="Enter your username"
-                      className="pl-10"
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      className="pl-10"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <Button type="submit" className="w-full bg-blockchain-blue hover:bg-blockchain-purple" disabled={authState.isLoading}>
-                  {authState.isLoading ? "Logging in..." : "Login"}
-                </Button>
-              </form>
-              
-              <div className="mt-6 space-y-2">
-                <div className="text-sm text-center text-gray-500">Default accounts for testing:</div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="border p-2 rounded-md">
-                    <div className="font-semibold mb-1 flex items-center gap-1">
-                      <Badge className="h-3 w-3" />
-                      Admin
-                    </div>
-                    <div>admin</div>
-                    <div>admin00</div>
-                  </div>
-                  <div className="border p-2 rounded-md">
-                    <div className="font-semibold mb-1 flex items-center gap-1">
-                      <BadgeDollarSign className="h-3 w-3" />
-                      Officer
-                    </div>
-                    <div>teno</div>
-                    <div>tender00</div>
-                  </div>
-                  <div className="border p-2 rounded-md">
-                    <div className="font-semibold mb-1 flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      Bidder
-                    </div>
-                    <div>sam</div>
-                    <div>sam00</div>
-                  </div>
-                </div>
+            <div className="flex justify-center mb-4 relative">
+              <div className="bg-gradient-to-r from-blue-500 to-green-400 p-3 rounded-lg relative overflow-hidden">
+                <BadgeIndianRupee className="h-6 w-6 text-white relative z-10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-blue-500/20"></div>
               </div>
-            </TabsContent>
+              
+              {/* Animated rings */}
+              {/* <div className="absolute inset-0 border-2 border-green-400/30 rounded-full animate-ping opacity-20"></div>
+              <div className="absolute inset-[-5px] border border-green-400/20 rounded-full animate-ping opacity-15" style={{ animationDelay: '0.5s' }}></div> */}
+            </div>
             
-            <TabsContent value="register">
-              <RegistrationForm />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-500">
-            All transactions in Indian Rupees (₹)
-          </p>
-        </CardFooter>
-      </Card>
+            <div className="text-2xl font-bold text-white">
+              TrustChain
+              <div className="h-px w-20 bg-green-400 mx-auto mt-1"></div>
+            </div>
+            
+            <CardDescription className="text-gray-400">
+              Blockchain-based tender management system
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
+              <TabsList className="grid w-full grid-cols-2 bg-[#1B1B1B]/80 border-b border-green-400/20">
+                <TabsTrigger 
+                  value="login"
+                  className="data-[state=active]:bg-[#1B1B1B] data-[state=active]:text-green-400 data-[state=active]:border-t data-[state=active]:border-x border-green-400/30 rounded-b-none"
+                >
+                  Login
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="register"
+                  className="data-[state=active]:bg-[#1B1B1B] data-[state=active]:text-green-400 data-[state=active]:border-t data-[state=active]:border-x border-green-400/30 rounded-b-none"
+                >
+                  Register
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="username" className="text-gray-400">Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                        <Input
+                          id="username"
+                          name="username"
+                          placeholder="Enter your username"
+                          className="pl-10 bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="password" className="text-gray-400">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          className="pl-10 pr-10 bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                        {showPassword ? (
+                          <EyeOff className="absolute right-3 top-3 h-4 w-4 text-gray-500 cursor-pointer" onClick={() => setShowPassword(false)} />
+                        ) : (
+                          <Eye className="absolute right-3 top-3 h-4 w-4 text-gray-500 cursor-pointer" onClick={() => setShowPassword(true)} />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Connect Wallet Button */}
+                    {!isConnected ? (
+                      <Button
+                        onClick={connectWallet}
+                        variant="outline"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-2 border-none text-green-400 bg-transparent hover:bg-gray-700"
+                      >
+                        <Wallet className="h-4 w-4" />
+                        Connect Wallet
+                      </Button>
+                    ) : (
+                      <span className="w-full text-center text-xs font-mono border border-[rgba(80,252,149,0.4)] text-[rgba(80,252,149,0.8)] rounded-full px-3 py-1">
+                        {account?.slice(0, 6)}...{account?.slice(-4)}
+                      </span>
+                    )}
+                    
+                    <Button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white hover:from-green-500 hover:to-blue-600"
+                      disabled={authState.isLoading}
+                    >
+                      {authState.isLoading ? "Signing in..." : "Sign in"}
+                    </Button>
+                    
+                    {/* Default accounts for testing */}
+                    <div className="mt-6 space-y-2">
+                      <div className="text-sm text-center text-gray-400">Default accounts for testing:</div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="border border-gray-700 bg-[#1B1B1B]/80 p-2 rounded-md">
+                          <div className="font-semibold mb-1 flex items-center gap-1">
+                            <Badge className="h-3 w-3 text-green-400" /> Admin
+                          </div>
+                          <div>Username: admin</div>
+                          <div>Password: admin00</div>
+                        </div>
+                        <div className="border border-gray-700 bg-[#1B1B1B]/80 p-2 rounded-md">
+                          <div className="font-semibold mb-1 flex items-center gap-1">
+                            <BadgeDollarSign className="h-3 w-3 text-green-400" /> Officer
+                          </div>
+                          <div>Username: teno</div>
+                          <div>Password: tender00</div>
+                        </div>
+                        <div className="border border-gray-700 bg-[#1B1B1B]/80 p-2 rounded-md">
+                          <div className="font-semibold mb-1 flex items-center gap-1">
+                            <User className="h-3 w-3 text-green-400" /> Bidder
+                          </div>
+                          <div>Username: sam</div>
+                          <div>Password: sam00</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center text-xs text-gray-500 mt-4">
+                      All transactions in Indian Rupees (₹)
+                    </div>
+                  </div>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="register">
+                <RegistrationForm />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React from "react";
 import { Globe, Instagram, Linkedin, Mail, MapPin, Phone, Twitter, Github, HeartHandshake } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GitHub } from "@mui/icons-material";
+import GitHubStarButton from '@/components/ui/GitStar';
 
 
 const Footer: React.FC = () => (
@@ -68,21 +69,12 @@ const Footer: React.FC = () => (
         </div>
 
         {/* Contact Us */}
-        {/* <div className="text-left">
-          <h4 className="text-xl font-semibold text-white mb-4">Contact Us</h4>
-          <ul className="space-y-3 text-base">
-            <li>Block 3, CGO Complex, New Delhi</li>
-            <li>1800-123-4567</li>
-            <li>support@trustchain.gov.in</li>
-            <li>www.trustchain.gov.in</li>
-          </ul>
-        </div> */}
         <div>
           <h4 className="font-semibold mb-4 text-white">Contact Us</h4>
           <ul className="space-y-3 text-sm">
             <li className="flex items-center gap-2 text-gray-400">
               <MapPin className="w-4 h-4 text-green-400" />
-              Block 3, CGO Complex, New Delhi
+              Block 3, CGO Complex, Wagholi, Pune
             </li>
             <li className="flex items-center gap-2 text-gray-400">
               <Phone className="w-4 h-4 text-green-400" />
@@ -110,60 +102,44 @@ const Footer: React.FC = () => (
         </div>
 
         {/* Connect With Us */}
-        {/* <div className="text-left">
-          <h4 className="text-xl font-semibold text-white mb-4">Connect With Us</h4>
-          <div className="flex space-x-6 text-base">
-            <a href="#" className="text-gray-400 hover:text-white">Twitter</a>
-            <a href="#" className="text-gray-400 hover:text-white">Facebook</a>
-            <a href="#" className="text-gray-400 hover:text-white">LinkedIn</a>
-            <a href="#" className="text-gray-400 hover:text-white">Instagram</a>
-          </div>
-        </div>
-      </div> */}
         <div>
           <h4 className="font-semibold mb-4 text-white">Connect With Us</h4>
           <div className="flex gap-4">
-            <a href="#" className="p-2 rounded-full bg-gray-800 hover:bg-blue-400 text-gray-400 hover:text-white transition-colors">
+            <a href="#" className="p-2 rounded-full bg-[#1B1B1B]/80 border border-gray-700/50 hover:bg-blue-400 text-gray-400 hover:text-white transition-colors">
               <Twitter className="w-4 h-4" />
             </a>
-            <a href="#" className="p-2 rounded-full bg-gray-800 hover:bg-green-400 text-gray-400 hover:text-black transition-colors">
-              <GitHub className="w-4 h-4" />
+            <a href="#" className="p-2 rounded-full bg-[#1B1B1B]/80 border border-gray-700/50 hover:bg-[rgba(80,252,149,0.8)] text-gray-400 hover:text-black transition-colors">
+              <Github className="w-4 h-4" />
             </a>
-            <a href="#" className="p-2 rounded-full bg-gray-800 hover:bg-blue-900 text-gray-400 hover:text-white transition-colors">
+            <a href="#" className="p-2 rounded-full bg-[#1B1B1B]/80 border border-gray-700/50 hover:bg-blue-900 text-gray-400 hover:text-white transition-colors">
               <Linkedin className="w-4 h-4" />
             </a>
-            <a href="#" className="p-2 rounded-full bg-gray-800 hover:bg-green-400 text-gray-400 hover:text-black transition-colors">
+            <a href="#" className="p-2 rounded-full bg-[#1B1B1B]/80 border border-gray-700/50 hover:bg-gradient-to-br from-purple-600 to-pink-500 text-gray-400 hover:text-white transition-colors">
               <Instagram className="w-4 h-4" />
             </a>
           </div>
+          <span className="flex items-center gap-2 mt-10">
+          <GitHubStarButton 
+            username="pranavsinghpatil" 
+            repo="tender" 
+            size="large"
+            darkMode={true} // Set to true for dark background like your example
+          />
+          </span>
         </div>
       </div>
 
-      {/* <div className="mt-12 pt-8 border-t border-gray-800">
-        <div className="flex flex-col md:flex-row justify-between items-center text-base">
-          <p> 2025 TrustChain. All rights reserved.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link to="/privacy" className="text-gray-400 hover:text-white">Privacy Policy</Link>
-            <Link to="/terms" className="text-gray-400 hover:text-white">Terms of Use</Link>
-            <Link to="/sitemap" className="text-gray-400 hover:text-white">Sitemap</Link>
-          </div>
-        </div>
-      </div> */}
       <div className="mt-12 pt-4 pb-4 border-t border-gray-800">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} TrustChain. All rights reserved.
+            {new Date().getFullYear()} TrustChain. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm">
-            <Link to="/privacy" className="text-gray-400 hover:text-green-400 transition-colors">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="text-gray-400 hover:text-green-400 transition-colors">
-              Terms of Use
-            </Link>
-            <Link to="/sitemap" className="text-gray-400 hover:text-green-400 transition-colors">
-              Sitemap
-            </Link>
+            <Link to="/about" className="text-gray-400 hover:text-white">About Us</Link>
+            <Link to="/faq" className="text-gray-400 hover:text-white">FAQs</Link>
+            <Link to="/terms" className="text-gray-400 hover:text-white">Terms</Link>
+            <Link to="/privacy" className="text-gray-400 hover:text-white">Privacy</Link>
+            <Link to="/sitemap" className="text-gray-400 hover:text-white">Sitemap</Link>
           </div>
         </div>
       </div>

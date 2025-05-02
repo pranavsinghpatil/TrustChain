@@ -9,6 +9,8 @@ import StatCard from "@/components/dashboard/StatCard";
 import TenderStatusChart from "@/components/dashboard/TenderStatusChart";
 import RecentTendersTable from "@/components/dashboard/RecentTendersTable";
 import BlockchainVisualizer from "@/components/blockchain/BlockchainVisualizer";
+import { useWeb3 } from "@/contexts/Web3Context";
+import type { Tender } from "@/contexts/Web3Context";
 
 const Index = () => {
   const [showHero, setShowHero] = useState(false);
@@ -16,111 +18,67 @@ const Index = () => {
   const [showCharts, setShowCharts] = useState(false);
   const [showTenders, setShowTenders] = useState(false);
   const [fadeInClass] = useState('transition-all duration-1000 ease-out');
+  const [tenders, setTenders] = useState<Tender[]>([]);
+  const [chartData, setChartData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const { fetchTenders, isConnected, connectWallet } = useWeb3();
 
   useEffect(() => {
     setShowHero(true);
   }, []);
 
-  // Mock data for demo purposes
-  const chartData = [
-    { name: 'Open', value: 12, color: '#10B981' },
-    { name: 'Closed', value: 8, color: '#8E9196' },
-    { name: 'Awarded', value: 6, color: '#8B5CF6' },
-    { name: 'Disputed', value: 2, color: '#EF4444' },
-  ];
-  
-  const recentTenders = [
-    { 
-      id: 'T-2025-001', 
-      title: 'Hospital Management System', 
-      department: 'Healthcare', 
-      budget: '₹250,000', 
-      deadline: '2025-05-15', 
-      status: 'open' as const
-    },
-    { 
-      id: 'T-2025-002', 
-      title: 'Smart Traffic Control System', 
-      department: 'Infrastructure', 
-      budget: '₹500,000', 
-      deadline: '2025-05-05', 
-      status: 'open' as const
-    },
-    { 
-      id: 'T-2025-003', 
-      title: 'E-Learning Platform', 
-      department: 'Education', 
-      budget: '₹175,000', 
-      deadline: '2025-04-28', 
-      status: 'closed' as const
-    },
-    { 
-      id: 'T-2025-004', 
-      title: 'City Waste Management', 
-      department: 'Municipal', 
-      budget: '₹380,000', 
-      deadline: '2025-04-20', 
-      status: 'awarded' as const
-    },
-  ];
-  
-  const blockchainBlocks = [
-    {
-      id: 5,
-      hash: '0x6a95f3e8770e2cc32f8df65f35dcacf2bd3d8b87c5c29ea8a3c39006b782a3fd',
-      previousHash: '0x3a42e8d7f9e9c9b43d5e24a3136f5d6a9e1b2c3d4e5f6a7b8c9d0e1f2a3b4c5',
-      timestamp: Date.now() - 1000 * 60 * 5,
-      data: {
-        type: 'bid',
-        title: 'Bid for Hospital System',
-        action: 'Vendor ABC submitted a bid'
+  useEffect(() => {
+    const loadTenderData = async () => {
+      try {
+        if (!isConnected) {
+          await connectWallet();
+        }
+        
+        const allTenders = await fetchTenders();
+        setTenders(allTenders);
+        
+        // Generate chart data from real tenders
+        const statusCounts = {
+          open: 0,
+          closed: 0,
+          awarded: 0,
+          disputed: 0
+        };
+        
+        allTenders.forEach(tender => {
+          statusCounts[tender.status]++;
+        });
+        
+        setChartData([
+          { name: 'Open', value: statusCounts.open, color: '#10B981' },
+          { name: 'Closed', value: statusCounts.closed, color: '#8E9196' },
+          { name: 'Awarded', value: statusCounts.awarded, color: '#8B5CF6' },
+          { name: 'Disputed', value: statusCounts.disputed, color: '#EF4444' },
+        ]);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading tender data:", error);
+        setLoading(false);
       }
-    },
-    {
-      id: 4,
-      hash: '0x3a42e8d7f9e9c9b43d5e24a3136f5d6a9e1b2c3d4e5f6a7b8c9d0e1f2a3b4c5',
-      previousHash: '0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3',
-      timestamp: Date.now() - 1000 * 60 * 30,
-      data: {
-        type: 'tender',
-        title: 'Hospital Management System',
-        action: 'New tender created'
-      }
-    },
-    {
-      id: 3,
-      hash: '0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3',
-      previousHash: '0x1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
-      timestamp: Date.now() - 1000 * 60 * 60 * 2,
-      data: {
-        type: 'award',
-        title: 'City Park Renovation',
-        action: 'Tender awarded to vendor XYZ'
-      }
-    },
-    {
-      id: 2,
-      hash: '0x1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
-      previousHash: '0x0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1',
-      timestamp: Date.now() - 1000 * 60 * 60 * 5,
-      data: {
-        type: 'dispute',
-        title: 'School Renovation Project',
-        action: 'Dispute raised by vendor ABC'
-      }
-    },
-    {
-      id: 1,
-      hash: '0x0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1',
-      previousHash: '',
-      timestamp: Date.now() - 1000 * 60 * 60 * 24,
-      data: {
-        type: 'tender',
-        title: 'School Renovation Project',
-        action: 'New tender created'
-      }
-    }
-  ];
+    };
+    
+    loadTenderData();
+  }, [fetchTenders, isConnected, connectWallet]);
+
+  // Map tenders to the format expected by RecentTendersTable
+  const recentTenders = tenders
+    .slice(0, 5) // Get only the 5 most recent tenders
+    .map(tender => ({
+      id: `T-${tender.id}`,
+      title: tender.title,
+      department: tender.department,
+      budget: `₹${tender.budget}`,
+      deadline: new Date(tender.deadline * 1000).toISOString().split('T')[0],
+      status: tender.status
+    }));
+
   useEffect(() => {
     const timers = [
       setTimeout(() => setShowHero(true), 100),
@@ -266,7 +224,7 @@ const Index = () => {
             <TenderStatusChart data={chartData} />
           </div>
           <div className="lg:col-span-2">
-            <BlockchainVisualizer blocks={blockchainBlocks} />
+            <BlockchainVisualizer tenders={tenders} />
           </div>
         </div>
         

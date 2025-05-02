@@ -153,14 +153,22 @@
   color: #e0e0e0;
 }
 
-@keyframes neon-border-fade {
-  from {
-    border-color: rgba(0, 255, 144, 0.32);
+@keyframes shine {
+  0% {
+    background-position: 200% center;
   }
+  50% {
+    background-position: 50% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
 
-  to {
-    border-color: rgba(0, 255, 255, 0.6);
-  }
+.animate-shiny {
+  animation: shine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  background-image: linear-gradient(90deg, transparent, rgba(80, 252, 149, 0.8), transparent);
+  background-size: 400% 100%;
 }
 
 .bg-grid-pattern {
@@ -287,6 +295,31 @@ body,
 #root {
   display: flex;
   flex-direction: column;
+}
+
+/* Custom Scrollbar Styles */
+body {
+  scrollbar-width: thin; /* For Firefox */
+  scrollbar-color: #3d744b #080f14; /* Thumb and track color with green accent */
+}
+
+::-webkit-scrollbar {
+  width: 8px; /* Scrollbar width */
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080f14; /* Track background */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d744b; /* Thumb color with green accent */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff91b2; /* Darker green on hover */
 }
 
 /* Dark Theme Component Styling */

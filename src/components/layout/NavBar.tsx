@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Bell, LogOut, Menu, User, Users, Wallet, Shield, Gavel, Briefcase, Check, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWeb3 } from "@/contexts/Web3Context";
+import ShinyText from '@/components/ui/ShinyText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,11 +122,21 @@ const NavBar = () => {
               <ShieldCheck className="w-5 h-5 text-green-400" />
               <span className="font-bold text-base bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text">TrustChain</span>
             </div>
+            <div className="flex items-center gap-2">
+              <Link to="/login" className="text-sm font-medium text-white/90 hover:text-white transition-colors">
+                <ShinyText 
+                  text="Please Login/Register first" 
+                  disabled={false} 
+                  speed={2} 
+                  className='cursor-pointer'
+                />
+              </Link>
+            </div>
 
-            <Link to="/login">
-              <Button variant="outline" size="sm" className="flex items-center gap-2 border border-[rgba(80, 252, 149, 0.5)] text-[rgba(80, 252, 149, 0.8)] hover:bg-[rgba(80, 252, 149, 0.1)]">
+            <Link to="/about" className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="border-none text-green-400 bg-transparent hover:bg-gray-700">
                 <User className="h-4 w-4" />
-                <span>Login</span>
+                <span>About Us</span>
               </Button>
             </Link>
           </nav>

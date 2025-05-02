@@ -5,67 +5,93 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 import { CalendarDays, ChevronRight, Clock, DollarSign, File, Percent } from "lucide-react";
+import { useWeb3 } from "@/contexts/Web3Context";
+import { useState, useEffect } from "react";
+import type { Tender, Bid } from "@/contexts/Web3Context";
+
+interface EnhancedBid {
+  id: string;
+  tenderId: number;
+  tenderTitle: string;
+  bidAmount: string;
+  bidDate: string;
+  status: 'pending' | 'won' | 'lost';
+  deadline?: string;
+  department?: string;
+  winProbability?: number;
+  awardDate?: string;
+}
 
 const MyBids = () => {
-  // Mock data for demo purposes
-  const activeBids = [
-    {
-      id: 'BID-2025-001',
-      tenderId: 'T-2025-001',
-      tenderTitle: 'Hospital Management System',
-      bidAmount: '$235,000',
-      bidDate: '2025-04-08',
-      status: 'pending',
-      deadline: '2025-05-15',
-      department: 'Healthcare',
-      winProbability: 76
-    },
-    {
-      id: 'BID-2025-002',
-      tenderId: 'T-2025-002',
-      tenderTitle: 'Smart Traffic Control System',
-      bidAmount: '$490,000',
-      bidDate: '2025-04-12',
-      status: 'pending',
-      deadline: '2025-05-05',
-      department: 'Infrastructure',
-      winProbability: 62
-    },
-  ];
+  const [activeBids, setActiveBids] = useState<EnhancedBid[]>([]);
+  const [completedBids, setCompletedBids] = useState<EnhancedBid[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const completedBids = [
-    {
-      id: 'BID-2024-015',
-      tenderId: 'T-2024-042',
-      tenderTitle: 'City Park Renovation',
-      bidAmount: '$315,000',
-      bidDate: '2024-12-10',
-      status: 'won',
-      awardDate: '2025-01-05',
-      department: 'Parks & Recreation'
-    },
-    {
-      id: 'BID-2024-014',
-      tenderId: 'T-2024-039',
-      tenderTitle: 'Municipal Website Redesign',
-      bidAmount: '$95,000',
-      bidDate: '2024-11-22',
-      status: 'lost',
-      awardDate: '2024-12-15',
-      department: 'IT'
-    },
-    {
-      id: 'BID-2024-013',
-      tenderId: 'T-2024-035',
-      tenderTitle: 'Public Library Books Supply',
-      bidAmount: '$125,000',
-      bidDate: '2024-11-05',
-      status: 'won',
-      awardDate: '2024-11-30',
-      department: 'Education'
-    },
-  ];
+  const { fetchTenders, fetchBidsForTender, account, isConnected, connectWallet } = useWeb3();
   
+  useEffect(() => {
+    const loadBidData = async () => {
+      try {
+        if (!isConnected) {
+          await connectWallet();
+        }
+        
+        if (!account) return;
+        
+        // Fetch all tenders
+        const allTenders = await fetchTenders();
+        
+        // For each tender, fetch bids and filter for user's bids
+        const userBidsPromises = allTenders.map(async (tender) => {
+          const bids = await fetchBidsForTender(tender.id);
+          return bids
+            .filter(bid => bid.bidder.toLowerCase() === account.toLowerCase())
+            .map(bid => {
+              // Determine bid status
+              let status: 'pending' | 'won' | 'lost' = 'pending';
+              
+              if (tender.status === 'awarded') {
+                status = tender.winner.toLowerCase() === account.toLowerCase() ? 'won' : 'lost';
+              }
+              
+              // Create enhanced bid object
+              return {
+                id: `BID-${tender.id}-${bid.timestamp}`,
+                tenderId: tender.id,
+                tenderTitle: tender.title,
+                bidAmount: `₹${bid.amount}`,
+                bidDate: new Date(bid.timestamp * 1000).toISOString().split('T')[0],
+                status,
+                deadline: new Date(tender.deadline * 1000).toISOString().split('T')[0],
+                department: tender.department,
+                // Simple win probability based on bid amount vs budget
+                winProbability: status === 'pending' ? 
+                  Math.floor(Math.random() * 40) + 60 : // Random value between 60-100 for demo
+                  undefined,
+                awardDate: tender.awardedAt ? 
+                  new Date(tender.awardedAt * 1000).toISOString().split('T')[0] : 
+                  undefined
+              };
+            });
+        });
+        
+        // Flatten and filter the results
+        const userBids = (await Promise.all(userBidsPromises)).flat();
+        
+        // Separate active and completed bids
+        setActiveBids(userBids.filter(bid => bid.status === 'pending'));
+        setCompletedBids(userBids.filter(bid => bid.status === 'won' || bid.status === 'lost'));
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading bid data:", error);
+        setLoading(false);
+      }
+    };
+    
+    loadBidData();
+  }, [fetchTenders, fetchBidsForTender, account, isConnected, connectWallet]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':

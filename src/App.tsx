@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NavBar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
+import ScrollToTop from "@/components/layout/ScrollToTop";
 
 // Pages
 import Index from "./pages/Index";
@@ -22,6 +23,11 @@ import Reports from "./pages/Reports";
 import Approvals from "./pages/Approvals";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
+import About from './pages/About';
+import FAQ from './pages/FAQ';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import Sitemap from './pages/Sitemap';
 
 import "./App.css";
 
@@ -37,14 +43,15 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
         <div className="glow-bg" />
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col min-h-screen ">
             {/* Premium god-rays background effect */}
             <div className="bg-god-rays" aria-hidden="true"></div>
             {/* Extra dark overlay for more contrast */}
-            <div className="bg-darken-overlay" aria-hidden="true"></div>
+            <div className="bg-darken-overlay fixed inset-0 w-full h-full" aria-hidden="true"></div>
             <NavBar />
             <div className="main-content">
               <main className="flex-grow mt-16">
+                <ScrollToTop />
                 <Routes>
                   {/* Public route */}
                   <Route path="/login" element={<Login />} />
@@ -106,6 +113,13 @@ const App = () => (
                       <ManageOfficers />
                     </ProtectedRoute>
                   } />
+                  
+                  {/* Public information routes */}
+                  <Route path="/about" element={<About />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/sitemap" element={<Sitemap />} />
                   
                   {/* Not found route */}
                   <Route path="*" element={<NotFound />} />

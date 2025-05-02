@@ -4,31 +4,31 @@ export type UserRole = "admin" | "officer" | "bidder";
 export interface RegisterData {
   username: string;
   password: string;
+  confirmPassword?: string;
   role: UserRole;
-  name: string;
-  walletAddress: string;
   email: string;
   mobileNumber: string;
+  
+  // Company Details
+  bidderType: "Indian" | "Foreign";
   companyName: string;
   registrationNumber: string;
+  gstNumber?: string;
+  panNumber?: string;
+  establishmentYear: string;
+  
+  // Address Details
   registeredAddress: string;
-  partnersDirectors: string;
-  bidderType: string;
   city: string;
   state: string;
-  country: string;
-  postalCode: string;
-  panNumber: string;
-  establishmentYear: string;
-  natureOfBusiness: string;
-  legalStatus: string;
-  companyCategory: string;
-  contactPersonName: string;
-  contactPersonTitle: string;
-  contactDesignation: string;
-  phoneNumber: string;
-  dateOfBirth: string;
-  dscCertificate: string;
+  pinCode: string;
+  
+  // Additional Information
+  additionalInfo?: string;
+  
+  // Captcha and Terms
+  terms1: boolean;
+  terms2: boolean;
 }
 
 export interface User {
