@@ -83,7 +83,7 @@ const MyBids = () => {
     <div className="min-h-screen bg-gray-50/0">
       {/* <NavBar /> */}
       
-      <main className="container pt-20 pb-[7.5rem]">
+      <main className="container pt-20 pb-20">
         <div className="my-8">
           <h1 className="text-3xl font-bold">My Bids</h1>
           <p className="text-gray-600 mt-1">

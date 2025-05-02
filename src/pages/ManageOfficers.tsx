@@ -29,7 +29,7 @@ const ManageOfficers = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50/0">
-      <NavBar />
+      {/* <NavBar /> */}
       
       <main className="flex-1 pt-20 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         <div className="mt-8">

@@ -32,16 +32,16 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4">
-      <div className="absolute inset-0 bg-cover bg-center opacity-10" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=1500&q=80')" }}></div>
-      <Card className="w-full max-w-md relative z-10 border-0 shadow-xl login-card-bg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 px-4">
+      <div className="absolute inset-0 bg-cover bg-center opacity-5" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=1500&q=80')" }}></div>
+      <Card className="w-full max-w-md relative z-10">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-gradient-to-r from-blockchain-blue to-blockchain-purple p-3 rounded-lg">
-              <BadgeIndianRupee className="h-6 w-6 text-white" />
+            <div className="bg-[rgba(80,252,149,0.1)] border border-[rgba(80,252,149,0.2)] p-3 rounded-lg">
+              <BadgeIndianRupee className="h-6 w-6 text-[rgba(80,252,149,0.8)]" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">TrustChain</CardTitle>
+          <CardTitle>TrustChain</CardTitle>
           <CardDescription>
             Blockchain-based tender management system
           </CardDescription>

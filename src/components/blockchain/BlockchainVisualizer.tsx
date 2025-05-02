@@ -35,18 +35,18 @@ const BlockchainVisualizer = ({ blocks, className }: BlockchainVisualizerProps) 
     return () => clearInterval(interval);
   }, [blocks.length]);
 
-  const getBlockTypeColor = (type: string) => {
+  const getBlockTypeClass = (type: string) => {
     switch (type) {
       case 'tender':
-        return 'bg-blockchain-purple text-white';
+        return 'dark-block-type-tender';
       case 'bid':
-        return 'bg-blockchain-blue text-white';
+        return 'dark-block-type-bid';
       case 'award':
-        return 'bg-blockchain-green text-white';
+        return 'dark-block-type-award';
       case 'dispute':
-        return 'bg-blockchain-red text-white';
+        return 'dark-block-type-dispute';
       default:
-        return 'bg-blockchain-gray text-white';
+        return 'dark-block-type-tender';
     }
   };
   
@@ -55,51 +55,55 @@ const BlockchainVisualizer = ({ blocks, className }: BlockchainVisualizerProps) 
   };
 
   return (
-    <div className={cn("glass-card rounded-lg shadow-sm border border-gray-100 p-6", className)}>
-      <h3 className="text-lg font-medium mb-4">Blockchain Ledger</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        Immutable record of all tender activities secured by blockchain technology
-      </p>
+    <div className={cn("dark-card bg-gray-900/40 backdrop-blur-md rounded-xl shadow-xl overflow-hidden", className)}>
+      <div className="blockchain-ledger-header">
+        <div>
+          <h3 className="blockchain-ledger-title">Blockchain Ledger</h3>
+          <p className="blockchain-ledger-subtitle">
+            Immutable record of tender activities secured by blockchain
+          </p>
+        </div>
+      </div>
       
-      <div className="space-y-4">
+      <div className="blockchain-ledger">
         {blocks.map((block, index) => (
           <div
             key={block.id}
             className={cn(
-              "border rounded-lg p-4 transition-all",
-              activeBlock === index ? "border-blockchain-purple shadow-md" : "border-gray-200"
+              "dark-block",
+              activeBlock === index ? "border-[rgba(80,252,149,0.4)] bg-[rgba(17,25,40,0.8)]" : ""
             )}
             onClick={() => setActiveBlock(index)}
           >
-            <div className="flex justify-between items-center mb-2">
-              <div className={cn("px-3 py-1 rounded-full text-xs", getBlockTypeColor(block.data.type))}>
+            <div className="dark-block-header">
+              <div className={cn("dark-block-type", getBlockTypeClass(block.data.type))}>
                 {block.data.type.toUpperCase()}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="dark-timestamp">
                 {new Date(block.timestamp).toLocaleString()}
               </span>
             </div>
             
             <div className="mb-3">
-              <h4 className="font-medium text-sm">{block.data.title}</h4>
-              {block.data.action && <p className="text-xs text-gray-600">{block.data.action}</p>}
+              <h4 className="text-white font-medium text-sm">{block.data.title}</h4>
+              {block.data.action && <p className="text-gray-400 text-xs">{block.data.action}</p>}
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-gray-500">Hash: </span>
-                <code className="bg-gray-100 px-1 py-0.5 rounded">{formatHash(block.hash)}</code>
+                <span className="text-gray-400">Hash: </span>
+                <code className="dark-hash">{formatHash(block.hash)}</code>
               </div>
               <div>
-                <span className="text-gray-500">Previous: </span>
-                <code className="bg-gray-100 px-1 py-0.5 rounded">
+                <span className="text-gray-400">Previous: </span>
+                <code className="dark-hash">
                   {block.previousHash ? formatHash(block.previousHash) : "Genesis"}
                 </code>
               </div>
             </div>
             
             {activeBlock === index && (
-              <div className="w-full h-1 bg-blockchain-purple mt-3 animate-pulse-opacity"></div>
+              <div className="w-full h-1 bg-[rgba(80,252,149,0.6)] mt-3 animate-pulse-opacity"></div>
             )}
           </div>
         ))}

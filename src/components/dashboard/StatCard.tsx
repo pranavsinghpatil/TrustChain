@@ -14,17 +14,17 @@ interface StatCardProps {
 const StatCard = ({ title, value, icon, trend, className }: StatCardProps) => {
   return (
     <div className={cn(
-      "glass-card rounded-lg p-6 shadow-sm border border-gray-100",
+      "dark-card bg-gray-900/40 backdrop-blur-md rounded-xl border-none shadow-xl overflow-hidden",
       className
     )}>
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm text-gray-500 mb-1">{title}</p>
-          <h3 className="text-2xl font-semibold">{value}</h3>
+          <p className="text-sm text-gray-400 mb-1">{title}</p>
+          <h3 className="text-2xl font-semibold text-white">{value}</h3>
           
           {trend && (
             <div className="flex items-center mt-2">
-              <span className={`text-xs ${trend.isPositive ? 'text-blockchain-green' : 'text-blockchain-red'}`}>
+              <span className={`text-xs ${trend.isPositive ? 'text-[rgba(80,252,149,0.9)]' : 'text-red-400'}`}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </span>
               <span className="text-xs text-gray-500 ml-1">vs. last month</span>
@@ -32,7 +32,7 @@ const StatCard = ({ title, value, icon, trend, className }: StatCardProps) => {
           )}
         </div>
         
-        <div className="p-3 rounded-full bg-blockchain-lightPurple">
+        <div className="p-3 rounded-full bg-[rgba(80,252,149,0.1)] border border-[rgba(80,252,149,0.2)]">
           {icon}
         </div>
       </div>

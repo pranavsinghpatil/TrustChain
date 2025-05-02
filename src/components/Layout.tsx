@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
-import { useAuth } from '../context/AuthContext';
-import { useWeb3 } from '../context/Web3Context';
+import { useAuth } from '../contexts/AuthContext';
+import { useWeb3 } from '../contexts/Web3Context';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GavelIcon from '@mui/icons-material/Gavel';

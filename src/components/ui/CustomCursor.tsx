@@ -1,88 +1,120 @@
-
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { cn } from "@/lib/utils";
 
 const CustomCursor = () => {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isPointer, setIsPointer] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
+  const [position, setPosition] = useState({ x: -100, y: -100 });
+  const [clicked, setClicked] = useState(false);
+  const [linkHovered, setLinkHovered] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [trail, setTrail] = useState<{ x: number, y: number, id: number }[]>([]);
 
   useEffect(() => {
-    const updateCursor = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
-      const target = e.target as HTMLElement;
-      setIsPointer(window.getComputedStyle(target).cursor === 'pointer');
+    const addPoint = ({ x, y }: { x: number, y: number }) => {
+      const newTrail = [...trail, { x, y, id: Date.now() }];
+      if (newTrail.length > 20) {
+        newTrail.shift();
+      }
+      setTrail(newTrail);
     };
 
-    const handleMouseDown = () => setIsClicking(true);
-    const handleMouseUp = () => setIsClicking(false);
+    const updatePosition = (e: MouseEvent) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+      addPoint({ x: e.clientX, y: e.clientY });
+    };
 
-    window.addEventListener('mousemove', updateCursor);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
+    const handleLinkHoverIn = () => setLinkHovered(true);
+    const handleLinkHoverOut = () => setLinkHovered(false);
+    
+    const handleMouseDown = () => setClicked(true);
+    const handleMouseUp = () => setClicked(false);
+
+    const handleMouseLeave = () => setHidden(true);
+    const handleMouseEnter = () => setHidden(false);
+
+    document.addEventListener('mousemove', updatePosition);
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('mouseenter', handleMouseEnter);
+
+    const linkElements = document.querySelectorAll('a, button, [role="button"], input, select, textarea');
+    linkElements.forEach(el => {
+      el.addEventListener('mouseenter', handleLinkHoverIn);
+      el.addEventListener('mouseleave', handleLinkHoverOut);
+    });
 
     return () => {
-      window.removeEventListener('mousemove', updateCursor);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', updatePosition);
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('mouseenter', handleMouseEnter);
+
+      linkElements.forEach(el => {
+        el.removeEventListener('mouseenter', handleLinkHoverIn);
+        el.removeEventListener('mouseleave', handleLinkHoverOut);
+      });
     };
+  }, [trail]);
+
+  // Remove trail points that are older than 200ms
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrail(prevTrail => prevTrail.slice(Math.max(prevTrail.length - 5, 0)));
+    }, 50);
+    
+    return () => clearInterval(interval);
   }, []);
 
+  if (typeof window === 'undefined') return null;
+  
   return (
     <>
       <div 
-        className="custom-cursor fixed pointer-events-none z-50"
-        style={{
-          left: `${position.x}px`,
+        className={cn(
+          "cursor-dot", 
+          clicked && "scale-150 opacity-80",
+          hidden && "opacity-0",
+          linkHovered && "scale-150 opacity-100"
+        )}
+        style={{ 
+          left: `${position.x}px`, 
           top: `${position.y}px`,
-          transform: 'translate(-50%, -50%)'
+          backgroundColor: linkHovered ? '#4ADE80' : clicked ? '#3B82F6' : '#4ADE80'
         }}
-      >
-        {/* Main cursor */}
-        <div className={`
-          relative rounded-full
-          ${isPointer ? 'w-8 h-8' : 'w-6 h-6'}
-          transition-all duration-200 ease-out
-          bg-gradient-to-r from-blockchain-purple/30 to-blockchain-blue/30
-          backdrop-blur-md
-          border border-blockchain-purple/40
-          ${isClicking ? 'scale-90' : 'scale-100'}
-        `}>
-          {/* Inner pulsing circle */}
-          <div className="absolute inset-1 rounded-full bg-gradient-to-r from-blockchain-purple/20 to-blockchain-blue/20 animate-pulse-opacity" />
-          
-          {/* Outer rotating hexagon */}
-          <div className={`
-            absolute -inset-2
-            ${isPointer ? 'opacity-100' : 'opacity-0'}
-            transition-opacity duration-200
-          `}>
-            <div className="w-full h-full animate-spin-slow">
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute w-1 h-1 bg-blockchain-purple/30"
-                  style={{
-                    transform: `rotate(${i * 60}deg) translateY(-8px)`,
-                    transformOrigin: '50% 50%'
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+      />
+      
+      <div 
+        className={cn(
+          "cursor-outline",
+          clicked && "w-6 h-6 border-blue-500",
+          hidden && "opacity-0",
+          linkHovered && "w-7 h-7 border-green-500 opacity-70"
+        )}
+        style={{ 
+          left: `${position.x}px`, 
+          top: `${position.y}px` 
+        }}
+      />
 
-          {/* Trailing dots */}
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 rounded-full bg-blockchain-purple/30"
-              style={{
-                transform: `translate(${Math.cos(i * Math.PI / 1.5) * 12}px, ${Math.sin(i * Math.PI / 1.5) * 12}px)`,
-                animation: `trail-fade ${0.5 + i * 0.2}s infinite alternate`
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {trail.map((point, index) => (
+        <div
+          key={point.id}
+          style={{
+            left: `${point.x}px`,
+            top: `${point.y}px`,
+            opacity: 0.2 - index * 0.01,
+            transform: `scale(${0.5 - index * 0.02})`,
+            backgroundColor: '#4ADE80',
+            position: 'fixed',
+            borderRadius: '50%',
+            width: '4px',
+            height: '4px',
+            zIndex: 9990,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
     </>
   );
 };

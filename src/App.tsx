@@ -21,6 +21,7 @@ import ManageOfficers from "./pages/ManageOfficers";
 import Reports from "./pages/Reports";
 import Approvals from "./pages/Approvals";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 
 import "./App.css";
 
@@ -31,11 +32,11 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         {/* Background Glow */}
-        <div className="glow-bg" />
         <CustomCursor />
         <Toaster />
         <Sonner />
         <BrowserRouter>
+        <div className="glow-bg" />
           <div className="flex flex-col min-h-screen">
             {/* Premium god-rays background effect */}
             <div className="bg-god-rays" aria-hidden="true"></div>
@@ -62,6 +63,11 @@ const App = () => (
                   <Route path="/tenders/:id" element={
                     <ProtectedRoute>
                       <TenderDetails />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
                     </ProtectedRoute>
                   } />
                   

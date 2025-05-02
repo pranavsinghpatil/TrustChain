@@ -1,7 +1,5 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Calendar, Coins, Clock } from "lucide-react";
 
@@ -19,13 +17,13 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
   const getStatusBadge = (status: 'open' | 'closed' | 'awarded' | 'disputed') => {
     switch (status) {
       case 'open':
-        return <Badge className="bg-blockchain-green text-white">Open</Badge>;
+        return <Badge className="bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.9)] text-black">Open</Badge>;
       case 'closed':
-        return <Badge className="bg-blockchain-gray text-white">Closed</Badge>;
+        return <Badge className="bg-[rgba(156,163,175,0.8)] hover:bg-[rgba(156,163,175,0.9)] text-white">Closed</Badge>;
       case 'awarded':
-        return <Badge className="bg-blockchain-purple text-white">Awarded</Badge>;
+        return <Badge className="bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white">Awarded</Badge>;
       case 'disputed':
-        return <Badge className="bg-blockchain-red text-white">Disputed</Badge>;
+        return <Badge className="bg-[rgba(239,68,68,0.8)] hover:bg-[rgba(239,68,68,0.9)] text-white">Disputed</Badge>;
     }
   };
   
@@ -48,28 +46,29 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
   };
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="pb-3">
+    <div className="bg-gray-900/40 backdrop-blur-md rounded-xl border border-green-800 shadow-xl overflow-hidden h-full flex flex-col hover:shadow-lg transition-shadow duration-200">
+      <div className="px-6 py-4 border-b border-green-800">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-medium">{title}</CardTitle>
+          <h3 className="text-lg font-medium text-white">{title}</h3>
           {getStatusBadge(status)}
         </div>
-        <p className="text-sm text-gray-500">{department}</p>
-      </CardHeader>
-      <CardContent className="pb-4 flex-grow">
-        <div className="space-y-3">
+        <p className="text-sm text-gray-400 mt-1">{department}</p>
+      </div>
+      
+      <div className="px-6 py-5 flex-grow">
+        <div className="space-y-4">
           <div className="flex items-center">
-            <Coins className="h-4 w-4 mr-2 text-blockchain-blue" />
-            <span className="text-sm">Budget: <span className="font-medium">{formatBudget(budget)}</span></span>
+            <Coins className="h-4 w-4 mr-2 text-[rgba(80,252,149,0.8)]" />
+            <span className="text-sm text-gray-300">Budget: <span className="font-medium text-white">{formatBudget(budget)}</span></span>
           </div>
           
           <div className="flex items-center">
-            <Calendar className="h-4 w-4 mr-2 text-blockchain-blue" />
-            <span className="text-sm">Deadline: <span className="font-medium">{deadline}</span></span>
+            <Calendar className="h-4 w-4 mr-2 text-[rgba(80,252,149,0.8)]" />
+            <span className="text-sm text-gray-300">Deadline: <span className="font-medium text-white">{deadline}</span></span>
           </div>
           
           {isDeadlineSoon() && (
-            <div className="flex items-center text-blockchain-red">
+            <div className="flex items-center text-[rgba(239,68,68,0.8)]">
               <Clock className="h-4 w-4 mr-2" />
               <span className="text-sm font-medium">Closing soon!</span>
             </div>
@@ -77,22 +76,30 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
         </div>
         
         <div className="mt-4 text-sm">
-          <span className="text-gray-500">{bidCount} bid{bidCount !== 1 ? 's' : ''} submitted</span>
+          <span className="text-gray-400">{bidCount} bid{bidCount !== 1 ? 's' : ''} submitted</span>
         </div>
-      </CardContent>
-      <CardFooter>
+      </div>
+      
+      <div className="px-6 py-4 border-t border-green-800/30">
         <div className="flex justify-between w-full">
-          <Button variant="outline" asChild>
+          <Button 
+            variant="outline" 
+            asChild
+            className="border-green-800 text-black bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.8)] transition-colors"
+          >
             <Link to={`/tenders/${id}`}>View Details</Link>
           </Button>
           {status === 'open' && (
-            <Button className="ml-2 bg-blockchain-blue hover:bg-blockchain-purple" asChild>
+            <Button 
+              className="ml-2 bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white" 
+              asChild
+            >
               <Link to={`/tenders/${id}/bid`}>Submit Bid</Link>
             </Button>
           )}
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 };
 
