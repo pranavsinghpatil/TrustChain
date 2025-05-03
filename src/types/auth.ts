@@ -5,9 +5,11 @@ export interface RegisterData {
   username: string;
   password: string;
   confirmPassword?: string;
+  name: string;
   role: UserRole;
   email: string;
   mobileNumber: string;
+  walletAddress?: string;
   
   // Company Details
   bidderType: "Indian" | "Foreign";

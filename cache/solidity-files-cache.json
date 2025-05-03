@@ -1,12 +1,12 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "D:\\public\\tender-main\\contracts\\Tender.sol": {
-      "lastModificationDate": 1745725681654,
-      "contentHash": "5d8fe417a1f97a2aacb5072380653be3",
-      "sourceName": "contracts/Tender.sol",
+    "D:\\public\\tender-main\\src\\contracts\\OfficerManagement.sol": {
+      "lastModificationDate": 1746272632895,
+      "contentHash": "7a253aaaed07e47873dc98d42be62d79",
+      "sourceName": "src/contracts/OfficerManagement.sol",
       "solcConfig": {
-        "version": "0.8.17",
+        "version": "0.8.19",
         "settings": {
           "viaIR": true,
           "optimizer": {
@@ -34,15 +34,15 @@
         "^0.8.0"
       ],
       "artifacts": [
-        "Tender"
+        "OfficerManagement"
       ]
     },
-    "D:\\public\\tender-main\\contracts\\TenderManager.sol": {
-      "lastModificationDate": 1745729407980,
-      "contentHash": "45ea9bb144a0d85d363bcac80fae2464",
-      "sourceName": "contracts/TenderManager.sol",
+    "D:\\public\\tender-main\\src\\contracts\\TenderManagement.sol": {
+      "lastModificationDate": 1746272657524,
+      "contentHash": "61ad51393cd3631b1ce4bace9c2d68a7",
+      "sourceName": "src/contracts/TenderManagement.sol",
       "solcConfig": {
-        "version": "0.8.17",
+        "version": "0.8.19",
         "settings": {
           "viaIR": true,
           "optimizer": {
@@ -70,7 +70,43 @@
         "^0.8.0"
       ],
       "artifacts": [
-        "TenderManager"
+        "TenderManagement"
+      ]
+    },
+    "D:\\public\\tender-main\\src\\contracts\\UserAuthentication.sol": {
+      "lastModificationDate": 1746272683054,
+      "contentHash": "c831b3b717802faa6645aed5bd1967d9",
+      "sourceName": "src/contracts/UserAuthentication.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "UserAuthentication"
       ]
     }
   }

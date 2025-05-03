@@ -1,0 +1,11 @@
+{
+  "chainId": "0x7a69",
+  "chainName": "Laitlum Network",
+  "nativeCurrency": {
+    "name": "Laitlum",
+    "symbol": "LTM",
+    "decimals": 18
+  },
+  "rpcUrls": ["http://127.0.0.1:8545"],
+  "blockExplorerUrls": []
+}

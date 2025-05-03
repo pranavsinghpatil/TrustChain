@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWeb3 } from "@/contexts/Web3Context";
 import { RegisterData } from "@/types/auth";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Wallet } from "lucide-react";
+import { Eye, EyeOff, Wallet, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const RegistrationForm: React.FC = () => {
   const { register: ctxRegister, authState } = useAuth();
+  const { connectWallet, account, isConnected } = useWeb3();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -32,9 +36,47 @@ const RegistrationForm: React.FC = () => {
     }
   }, [bidderType, setValue]);
 
+  // Set wallet address when connected
+  useEffect(() => {
+    if (isConnected && account) {
+      setValue('walletAddress', account);
+    }
+  }, [isConnected, account, setValue]);
+
   const onSubmit: SubmitHandler<RegisterData> = async data => {
     const success = await ctxRegister(data);
     if (success) navigate("/");
+  };
+
+  const handleConnectWallet = async () => {
+    try {
+      setIsConnecting(true);
+      console.log("Connect wallet button clicked in Registration");
+      const success = await connectWallet();
+      
+      if (success) {
+        toast({
+          title: "Wallet Connected",
+          description: "Your wallet has been connected successfully",
+        });
+        setValue('walletAddress', account);
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Failed to connect wallet. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      toast({
+        title: "Connection Error",
+        description: "An error occurred while connecting your wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   return (
@@ -185,22 +227,17 @@ const RegistrationForm: React.FC = () => {
                     id="gstNumber"
                     placeholder="Enter GST number"
                     className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
-                    {...register("gstNumber", {
-                      pattern: { value: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, message: "Invalid GST format" }
-                    })}
+                    {...register("gstNumber")}
                   />
                   {errors.gstNumber && <p className="text-xs text-red-500">{errors.gstNumber.message}</p>}
                 </div>
                 <div>
-                  <Label htmlFor="panNumber">PAN Number*</Label>
+                  <Label htmlFor="panNumber">PAN Number</Label>
                   <Input
                     id="panNumber"
                     placeholder="Enter PAN number"
                     className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
-                    {...register("panNumber", {
-                      required: "PAN number is required",
-                      pattern: { value: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: "Invalid PAN format" }
-                    })}
+                    {...register("panNumber")}
                   />
                   {errors.panNumber && <p className="text-xs text-red-500">{errors.panNumber.message}</p>}
                 </div>
@@ -282,27 +319,37 @@ const RegistrationForm: React.FC = () => {
             </div>
           </div>
           {/* Connect Wallet Button */}
-          <div className="mt-6">
-            <Button
-              type="button"
-              onClick={() => setIsConnecting(!isConnecting)}
-              disabled={isConnecting}
-              className="w-full relative overflow-hidden bg-blue-500 hover:bg-blue-600"
-            >
-              {isConnecting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Connecting Wallet...
-                </>
-              ) : (
-                <>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Connect Wallet
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 -z-10 bg-[length:200%_100%] animate-pulse"></div>
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-gray-500 mt-2 text-center">Connect your wallet for blockchain verification</p>
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-6">
+            {isConnected ? (
+              <div className="flex items-center gap-4 p-4 border border-green-500/20 bg-green-500/5 rounded-md">
+                <Check className="h-6 w-6 text-green-500" />
+                <div>
+                  <h4 className="font-medium text-green-500">Wallet Connected</h4>
+                  <p className="text-sm text-gray-400 flex items-center">
+                    <span className="font-mono">{account?.slice(0, 10)}...{account?.slice(-8)}</span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleConnectWallet}
+                disabled={isConnecting}
+                className="w-full relative overflow-hidden bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
+              >
+                {isConnecting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Connecting Wallet...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Connect Wallet
+                  </>
+                )}
+              </Button>
+            )}
           </div>
           <div className="col-span-full mt-6">
             <div className="flex flex-col items-start mb-4">

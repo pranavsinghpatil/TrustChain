@@ -1,478 +1,499 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import TenderContract from '../contracts/Tender.json';
-
-// Define more comprehensive types for blockchain data
-export interface Tender {
-  id: number;
-  title: string;
-  description: string;
-  budget: string;
-  deadline: number;
-  creator: string;
-  department: string;
-  isActive: boolean;
-  winner: string;
-  bidCount: number;
-  status: 'open' | 'closed' | 'awarded' | 'disputed';
-  createdAt: number;
-  awardedAt?: number;
-  closedAt?: number;
-  disputedAt?: number;
-  disputed: boolean;
-  criteria: string[];
-  documents?: { name: string; size: string }[];
-}
-
-export interface Bid {
-  bidder: string;
-  amount: string;
-  timestamp: number;
-  description: string;
-}
-
-// Interface for creating a new tender
-export interface NewTenderData {
-  title: string;
-  description: string;
-  budget: string;
-  deadline: number;
-  department: string;
-  criteria: string[];
-  documents?: { name: string; size: string }[];
-}
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { ethers } from "ethers";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  getOfficerManagementContract, 
+  IOfficerManagement,
+  CONTRACT_ADDRESSES
+} from "@/contracts/interfaces/contracts";
 
 interface Web3ContextType {
+  account: string | null;
+  isConnected: boolean;
+  connectWallet: () => Promise<boolean>;
+  disconnectWallet: () => void;
   provider: ethers.providers.Web3Provider | null;
   signer: ethers.Signer | null;
-  contract: ethers.Contract | null;
-  account: string | null;
-  connectWallet: () => Promise<boolean>;
-  isConnected: boolean;
-  fetchTenders: () => Promise<Tender[]>;
-  fetchTenderById: (id: number) => Promise<Tender | null>;
-  fetchBidsForTender: (tenderId: number) => Promise<Bid[]>;
-  createNewTender: (tenderData: NewTenderData) => Promise<number>;
-  submitBid: (tenderId: number, amount: string, description: string) => Promise<boolean>;
-  awardTender: (tenderId: number, winnerAddress: string) => Promise<boolean>;
-  closeTender: (tenderId: number) => Promise<boolean>;
-  disputeTender: (tenderId: number, reason?: string) => Promise<boolean>;
-  networkName: string;
-  contractAddress: string;
+  chainId: number | null;
+  isCorrectNetwork: boolean;
+  switchNetwork: () => Promise<boolean>;
+  officerContract: IOfficerManagement | null;
+  addOfficer: (id: string, name: string, username: string, email: string) => Promise<boolean>;
+  updateOfficer: (walletAddress: string, name: string, username: string, email: string) => Promise<boolean>;
+  removeOfficer: (walletAddress: string) => Promise<boolean>;
+  getOfficer: (walletAddress: string) => Promise<any>;
+  getAllOfficers: () => Promise<any[]>;
+  isLoading: boolean;
+  error: string | null;
 }
 
-const Web3Context = createContext<Web3ContextType>({
-  provider: null,
-  signer: null,
-  contract: null,
-  account: null,
-  connectWallet: async () => false,
-  isConnected: false,
-  fetchTenders: async () => [],
-  fetchTenderById: async () => null,
-  fetchBidsForTender: async () => [],
-  createNewTender: async () => 0,
-  submitBid: async () => false,
-  awardTender: async () => false,
-  closeTender: async () => false,
-  disputeTender: async () => false,
-  networkName: '',
-  contractAddress: '',
-});
+const Web3Context = createContext<Web3ContextType | undefined>(undefined);
 
-export const useWeb3 = () => useContext(Web3Context);
+export const useWeb3 = () => {
+  const context = useContext(Web3Context);
+  if (context === undefined) {
+    throw new Error("useWeb3 must be used within a Web3Provider");
+  }
+  return context;
+};
 
-export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface Web3ProviderProps {
+  children: ReactNode;
+}
+
+// Target network configuration
+const TARGET_NETWORK = {
+  chainId: 11155111, // Sepolia testnet
+  name: "Sepolia",
+  rpcUrl: "https://sepolia.infura.io/v3/your-infura-key", // Replace with your Infura key
+};
+
+export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
+  const [account, setAccount] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [contract, setContract] = useState<ethers.Contract | null>(null);
-  const [account, setAccount] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [networkName, setNetworkName] = useState('');
-  const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || '';
+  const [chainId, setChainId] = useState<number | null>(null);
+  const [isCorrectNetwork, setIsCorrectNetwork] = useState<boolean>(false);
+  const [officerContract, setOfficerContract] = useState<IOfficerManagement | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { toast } = useToast();
 
-  const connectWallet = async (): Promise<boolean> => {
-    try {
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Request accounts access
-        const accounts = await provider.send("eth_requestAccounts", []);
-        
-        const signer = provider.getSigner();
-        const account = await signer.getAddress();
-        
-        // Get network information
-        const network = await provider.getNetwork();
-        setNetworkName(network.name === 'unknown' ? 'Local Hardhat' : network.name);
-        
-        const contract = new ethers.Contract(
-          contractAddress,
-          TenderContract.abi,
-          signer
-        );
-
-        setProvider(provider);
-        setSigner(signer);
-        setContract(contract);
-        setAccount(account);
-        setIsConnected(true);
-        
-        return true;
-      } else {
-        console.error('Please install MetaMask!');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error connecting to wallet:', error);
-      return false;
-    }
-  };
-
-  // Fetch all tenders from the blockchain
-  const fetchTenders = async (): Promise<Tender[]> => {
-    if (!contract) {
-      if (!await connectWallet()) return [];
-    }
-    
-    try {
-      const tenderCount = await contract!.tenderCount();
-      const tenders: Tender[] = [];
-      
-      for (let i = 0; i < tenderCount.toNumber(); i++) {
-        const [id, creator, title, description, department, budget, deadline, isActive, winner] = await contract!.getTender(i);
-        const bidCount = await contract!.getBidsCount(i);
-        
-        let status: 'open' | 'closed' | 'awarded' | 'disputed' = 'closed';
-        
-        if (isActive) {
-          status = 'open';
-        } else if (winner !== ethers.constants.AddressZero) {
-          status = 'awarded';
-        }
-        
-        // Check if disputed (in a real contract, this would be a property of the tender)
-        const disputed = false; // Placeholder, would come from contract
-        if (disputed) {
-          status = 'disputed';
-        }
-        
-        // Mock creation timestamp (in a real contract, this would be stored)
-        const now = Math.floor(Date.now() / 1000);
-        const createdAt = now - 86400 * 7; // 7 days ago
-        
-        // Mock criteria (in a real contract, this would be stored)
-        const criteria = [
-          'Technical expertise',
-          'Cost-effectiveness',
-          'Timeline',
-          'Previous experience'
-        ];
-        
-        tenders.push({
-          id: id.toNumber(),
-          creator,
-          title,
-          description,
-          department,
-          budget: ethers.utils.formatEther(budget),
-          deadline: deadline.toNumber(),
-          isActive,
-          winner,
-          bidCount: bidCount.toNumber(),
-          status,
-          createdAt,
-          disputed,
-          criteria,
-          // Optional fields that would be set based on status
-          ...(status === 'awarded' && { awardedAt: now - 86400 }),
-          ...(status === 'closed' && { closedAt: now - 86400 * 2 }),
-          ...(status === 'disputed' && { disputedAt: now - 86400 * 3 })
-        });
-      }
-      
-      return tenders;
-    } catch (error) {
-      console.error('Error fetching tenders:', error);
-      return [];
-    }
-  };
-
-  // Fetch a specific tender by ID
-  const fetchTenderById = async (id: number): Promise<Tender | null> => {
-    if (!contract) {
-      if (!await connectWallet()) return null;
-    }
-    
-    try {
-      const [tenderId, creator, title, description, department, budget, deadline, isActive, winner] = await contract!.getTender(id);
-      const bidCount = await contract!.getBidsCount(id);
-      
-      let status: 'open' | 'closed' | 'awarded' | 'disputed' = 'closed';
-      
-      if (isActive) {
-        status = 'open';
-      } else if (winner !== ethers.constants.AddressZero) {
-        status = 'awarded';
-      }
-      
-      // Check if disputed (in a real contract, this would be a property of the tender)
-      const disputed = false; // Placeholder, would come from contract
-      if (disputed) {
-        status = 'disputed';
-      }
-      
-      // Mock creation timestamp (in a real contract, this would be stored)
-      const now = Math.floor(Date.now() / 1000);
-      const createdAt = now - 86400 * 7; // 7 days ago
-      
-      // Mock criteria (in a real contract, this would be stored)
-      const criteria = [
-        'Technical expertise',
-        'Cost-effectiveness',
-        'Timeline',
-        'Previous experience'
-      ];
-      
-      // Mock documents (in a real contract, these would be IPFS hashes)
-      const documents = [
-        { name: 'Technical_Requirements.pdf', size: '2.4 MB' },
-        { name: 'Legal_Terms.pdf', size: '1.1 MB' }
-      ];
-      
-      return {
-        id: tenderId.toNumber(),
-        creator,
-        title,
-        description,
-        department,
-        budget: ethers.utils.formatEther(budget),
-        deadline: deadline.toNumber(),
-        isActive,
-        winner,
-        bidCount: bidCount.toNumber(),
-        status,
-        createdAt,
-        disputed,
-        criteria,
-        documents,
-        // Optional fields that would be set based on status
-        ...(status === 'awarded' && { awardedAt: now - 86400 }),
-        ...(status === 'closed' && { closedAt: now - 86400 * 2 }),
-        ...(status === 'disputed' && { disputedAt: now - 86400 * 3 })
-      };
-    } catch (error) {
-      console.error(`Error fetching tender ID ${id}:`, error);
-      return null;
-    }
-  };
-
-  // Fetch all bids for a specific tender
-  const fetchBidsForTender = async (tenderId: number): Promise<Bid[]> => {
-    if (!contract) {
-      if (!await connectWallet()) return [];
-    }
-    
-    try {
-      const bidCount = await contract!.getBidsCount(tenderId);
-      const bids: Bid[] = [];
-      
-      for (let i = 0; i < bidCount.toNumber(); i++) {
-        const [bidder, amount, timestamp, description] = await contract!.getBid(tenderId, i);
-        
-        bids.push({
-          bidder,
-          amount: ethers.utils.formatEther(amount),
-          timestamp: timestamp.toNumber(),
-          description
-        });
-      }
-      
-      return bids;
-    } catch (error) {
-      console.error(`Error fetching bids for tender ID ${tenderId}:`, error);
-      return [];
-    }
-  };
-
-  // Create a new tender
-  const createNewTender = async (tenderData: NewTenderData): Promise<number> => {
-    if (!contract) {
-      if (!await connectWallet()) return 0;
-    }
-    
-    try {
-      const budgetInWei = ethers.utils.parseEther(tenderData.budget);
-      const tx = await contract!.createTender(
-        tenderData.title,
-        tenderData.description,
-        tenderData.department,
-        budgetInWei,
-        tenderData.deadline
-      );
-      
-      const receipt = await tx.wait();
-      
-      // In a real implementation, we would extract the tender ID from the event
-      // For now, we'll just return the current tender count as the new ID
-      const tenderCount = await contract!.tenderCount();
-      return tenderCount.toNumber() - 1;
-    } catch (error) {
-      console.error('Error creating tender:', error);
-      return 0;
-    }
-  };
-
-  // Submit a bid for a tender
-  const submitBid = async (
-    tenderId: number, 
-    amount: string,
-    description: string
-  ): Promise<boolean> => {
-    if (!contract) {
-      if (!await connectWallet()) return false;
-    }
-    
-    try {
-      const amountInWei = ethers.utils.parseEther(amount);
-      const tx = await contract!.placeBid(
-        tenderId,
-        amountInWei,
-        description
-      );
-      
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error(`Error submitting bid for tender ID ${tenderId}:`, error);
-      return false;
-    }
-  };
-
-  // Award a tender to a specific bidder
-  const awardTender = async (
-    tenderId: number,
-    winnerAddress: string
-  ): Promise<boolean> => {
-    if (!contract) {
-      if (!await connectWallet()) return false;
-    }
-    
-    try {
-      const tx = await contract!.awardTender(
-        tenderId,
-        winnerAddress
-      );
-      
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error(`Error awarding tender ID ${tenderId}:`, error);
-      return false;
-    }
-  };
-
-  // Close a tender without awarding
-  const closeTender = async (tenderId: number): Promise<boolean> => {
-    if (!contract) {
-      if (!await connectWallet()) return false;
-    }
-    
-    try {
-      const tx = await contract!.closeTender(tenderId);
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error(`Error closing tender ID ${tenderId}:`, error);
-      return false;
-    }
-  };
-
-  // Raise a dispute for a tender
-  const disputeTender = async (
-    tenderId: number,
-    reason: string = "Dispute raised"
-  ): Promise<boolean> => {
-    if (!contract) {
-      if (!await connectWallet()) return false;
-    }
-    
-    try {
-      const tx = await contract!.disputeTender(
-        tenderId,
-        reason
-      );
-      
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error(`Error disputing tender ID ${tenderId}:`, error);
-      return false;
-    }
-  };
-
+  // Initialize provider and check connection on mount
   useEffect(() => {
-    // Try to connect automatically if previously connected
-    const autoConnect = async () => {
-      if (window.ethereum) {
-        try {
-          // Check if there are already connected accounts
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (accounts && accounts.length > 0) {
-            await connectWallet();
+    const init = async () => {
+      try {
+        // Check if MetaMask is installed
+        if (typeof window.ethereum !== "undefined") {
+          // Create a Web3Provider from MetaMask
+          const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+          setProvider(web3Provider);
+          
+          // Check if already connected
+          const accounts = await web3Provider.listAccounts();
+          if (accounts.length > 0) {
+            const currentAccount = accounts[0];
+            setAccount(currentAccount);
+            setIsConnected(true);
+            
+            // Get signer
+            const web3Signer = web3Provider.getSigner();
+            setSigner(web3Signer);
+            
+            // Get network
+            const network = await web3Provider.getNetwork();
+            setChainId(network.chainId);
+            setIsCorrectNetwork(network.chainId === TARGET_NETWORK.chainId);
+            
+            // Initialize contracts
+            initializeContracts(web3Provider, web3Signer);
           }
-        } catch (error) {
-          console.error("Error auto-connecting:", error);
         }
+      } catch (error) {
+        console.error("Error initializing Web3:", error);
       }
     };
     
-    autoConnect();
+    init();
     
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts: string[]) => {
-        if (accounts.length === 0) {
-          // User disconnected
-          setIsConnected(false);
-          setAccount(null);
-        } else {
-          // Account changed, reconnect
-          connectWallet();
-        }
-      });
-
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+    // Setup event listeners for account and chain changes
+    if (typeof window.ethereum !== "undefined") {
+      const ethereum = window.ethereum as any;
+      ethereum.on("accountsChanged", handleAccountsChanged);
+      ethereum.on("chainChanged", handleChainChanged);
     }
     
     return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners('accountsChanged');
-        window.ethereum.removeAllListeners('chainChanged');
+      // Cleanup event listeners
+      if (typeof window.ethereum !== "undefined") {
+        const ethereum = window.ethereum as any;
+        ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        ethereum.removeListener("chainChanged", handleChainChanged);
       }
     };
   }, []);
+  
+  // Initialize contract instances
+  const initializeContracts = (
+    provider: ethers.providers.Web3Provider,
+    signer: ethers.Signer
+  ) => {
+    try {
+      // Initialize OfficerManagement contract
+      const officerMgmtContract = getOfficerManagementContract(provider, signer);
+      setOfficerContract(officerMgmtContract);
+      
+      // Initialize other contracts as needed
+    } catch (error) {
+      console.error("Error initializing contracts:", error);
+      setError("Failed to initialize blockchain contracts");
+    }
+  };
+  
+  // Handle account changes in MetaMask
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length === 0) {
+      // User disconnected their wallet
+      disconnectWallet();
+    } else {
+      // Account changed
+      setAccount(accounts[0]);
+      setIsConnected(true);
+      
+      // Re-initialize contracts with new signer if provider exists
+      if (provider) {
+        const newSigner = provider.getSigner();
+        setSigner(newSigner);
+        initializeContracts(provider, newSigner);
+      }
+    }
+  };
+  
+  // Handle chain/network changes in MetaMask
+  const handleChainChanged = (chainIdHex: string) => {
+    // MetaMask provides chainId as a hex string
+    const newChainId = parseInt(chainIdHex, 16);
+    setChainId(newChainId);
+    setIsCorrectNetwork(newChainId === TARGET_NETWORK.chainId);
+    
+    // Reload the page as recommended by MetaMask
+    window.location.reload();
+  };
+
+  // Connect wallet function
+  const connectWallet = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (typeof window.ethereum === "undefined") {
+        console.error("MetaMask is not installed");
+        setError("MetaMask is not installed. Please install MetaMask to connect your wallet.");
+        toast({
+          title: "MetaMask Required",
+          description: "Please install MetaMask to connect your wallet",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Request account access
+      const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      
+      if (accounts.length === 0) {
+        setError("No accounts found. Please create an account in MetaMask.");
+        return false;
+      }
+      
+      // Set account and connection status
+      setAccount(accounts[0]);
+      setIsConnected(true);
+      setProvider(web3Provider);
+      
+      // Get signer
+      const web3Signer = web3Provider.getSigner();
+      setSigner(web3Signer);
+      
+      // Get network
+      const network = await web3Provider.getNetwork();
+      setChainId(network.chainId);
+      setIsCorrectNetwork(network.chainId === TARGET_NETWORK.chainId);
+      
+      // Initialize contracts
+      initializeContracts(web3Provider, web3Signer);
+      
+      console.log("Wallet connected:", accounts[0]);
+      
+      // If not on the correct network, prompt to switch
+      if (network.chainId !== TARGET_NETWORK.chainId) {
+        toast({
+          title: "Network Mismatch",
+          description: `Please switch to ${TARGET_NETWORK.name} network`,
+          variant: "destructive",
+        });
+        await switchNetwork();
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error connecting wallet:", error);
+      setError(error.message || "Failed to connect wallet");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Disconnect wallet function
+  const disconnectWallet = () => {
+    setAccount(null);
+    setIsConnected(false);
+    setSigner(null);
+    setOfficerContract(null);
+  };
+
+  // Switch to the target network
+  const switchNetwork = async (): Promise<boolean> => {
+    try {
+      if (!window.ethereum) return false;
+      
+      try {
+        // Try to switch to the network
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${TARGET_NETWORK.chainId.toString(16)}` }],
+        });
+        return true;
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: `0x${TARGET_NETWORK.chainId.toString(16)}`,
+                  chainName: TARGET_NETWORK.name,
+                  rpcUrls: [TARGET_NETWORK.rpcUrl],
+                },
+              ],
+            });
+            return true;
+          } catch (addError) {
+            console.error("Error adding network:", addError);
+            return false;
+          }
+        }
+        console.error("Error switching network:", switchError);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error in switchNetwork:", error);
+      return false;
+    }
+  };
+
+  // Smart contract interaction functions
+  
+  // Add an officer to the blockchain
+  const addOfficer = async (
+    id: string,
+    name: string,
+    username: string,
+    email: string
+  ): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!officerContract || !account) {
+        setError("Wallet not connected or contract not initialized");
+        return false;
+      }
+      
+      // Get the wallet address to assign to the officer
+      // In a real implementation, this would be the officer's own wallet
+      // For now, we'll use the connected wallet address
+      const walletAddress = account;
+      
+      // Call the contract method
+      const tx = await officerContract.addOfficer(
+        walletAddress,
+        id,
+        name,
+        username,
+        email || ""
+      );
+      
+      // Wait for transaction to be mined
+      await tx.wait();
+      
+      toast({
+        title: "Officer Added",
+        description: `${name} has been added to the blockchain`,
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error adding officer to blockchain:", error);
+      setError(error.message || "Failed to add officer to blockchain");
+      
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to add officer to blockchain",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Update an officer on the blockchain
+  const updateOfficer = async (
+    walletAddress: string,
+    name: string,
+    username: string,
+    email: string
+  ): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!officerContract) {
+        setError("Contract not initialized");
+        return false;
+      }
+      
+      // Call the contract method
+      const tx = await officerContract.updateOfficer(
+        walletAddress,
+        name,
+        username,
+        email || ""
+      );
+      
+      // Wait for transaction to be mined
+      await tx.wait();
+      
+      toast({
+        title: "Officer Updated",
+        description: `${name}'s information has been updated on the blockchain`,
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error updating officer on blockchain:", error);
+      setError(error.message || "Failed to update officer on blockchain");
+      
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to update officer on blockchain",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Remove an officer from the blockchain
+  const removeOfficer = async (walletAddress: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!officerContract) {
+        setError("Contract not initialized");
+        return false;
+      }
+      
+      // Call the contract method
+      const tx = await officerContract.removeOfficer(walletAddress);
+      
+      // Wait for transaction to be mined
+      await tx.wait();
+      
+      toast({
+        title: "Officer Removed",
+        description: "Officer has been removed from the blockchain",
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error removing officer from blockchain:", error);
+      setError(error.message || "Failed to remove officer from blockchain");
+      
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to remove officer from blockchain",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Get officer details from the blockchain
+  const getOfficer = async (walletAddress: string) => {
+    try {
+      if (!officerContract) {
+        setError("Contract not initialized");
+        return null;
+      }
+      
+      const officerData = await officerContract.getOfficer(walletAddress);
+      
+      // Format the data
+      return {
+        id: officerData[0],
+        name: officerData[1],
+        username: officerData[2],
+        email: officerData[3],
+        isActive: officerData[4],
+        createdAt: new Date(officerData[5].toNumber() * 1000),
+        walletAddress: walletAddress,
+      };
+    } catch (error: any) {
+      console.error("Error getting officer from blockchain:", error);
+      setError(error.message || "Failed to get officer from blockchain");
+      return null;
+    }
+  };
+  
+  // Get all officers from the blockchain
+  const getAllOfficers = async () => {
+    try {
+      if (!officerContract) {
+        setError("Contract not initialized");
+        return [];
+      }
+      
+      // Get all officer addresses
+      const addresses = await officerContract.getAllOfficerAddresses();
+      
+      // Get details for each officer
+      const officers = await Promise.all(
+        addresses.map(async (address) => {
+          return await getOfficer(address);
+        })
+      );
+      
+      return officers.filter(Boolean); // Filter out any null values
+    } catch (error: any) {
+      console.error("Error getting all officers from blockchain:", error);
+      setError(error.message || "Failed to get officers from blockchain");
+      return [];
+    }
+  };
 
   return (
     <Web3Context.Provider
       value={{
+        account,
+        isConnected,
+        connectWallet,
+        disconnectWallet,
         provider,
         signer,
-        contract,
-        account,
-        connectWallet,
-        isConnected,
-        fetchTenders,
-        fetchTenderById,
-        fetchBidsForTender,
-        createNewTender,
-        submitBid,
-        awardTender,
-        closeTender,
-        disputeTender,
-        networkName,
-        contractAddress
+        chainId,
+        isCorrectNetwork,
+        switchNetwork,
+        officerContract,
+        addOfficer,
+        updateOfficer,
+        removeOfficer,
+        getOfficer,
+        getAllOfficers,
+        isLoading,
+        error,
       }}
     >
       {children}
