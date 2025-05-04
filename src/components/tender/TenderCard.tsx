@@ -85,13 +85,13 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
           <Button 
             variant="outline" 
             asChild
-            className="border-green-800 text-black bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.8)] transition-colors"
+            className="border-green-800 text-black bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.9)] transition-all duration-300 min-w-[120px] h-10"
           >
             <Link to={`/tenders/${id}`}>View Details</Link>
           </Button>
           {status === 'open' && (
             <Button 
-              className="ml-2 bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white" 
+              className="ml-2 bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white transition-all duration-300 min-w-[120px] h-10" 
               asChild
             >
               <Link to={`/tenders/${id}/bid`}>Submit Bid</Link>

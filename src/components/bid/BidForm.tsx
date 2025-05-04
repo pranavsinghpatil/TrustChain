@@ -214,13 +214,13 @@ const BidForm = ({ tenderId }: BidFormProps) => {
           type="button" 
           variant="outline"
           onClick={() => navigate(`/tender/${tenderId}`)}
-          className="border-green-800/50 text-white hover:bg-gray-800/50"
+          className="border-green-800/50 text-white hover:bg-gray-800/50 transition-all duration-300 min-w-[100px] h-10"
         >
           Cancel
         </Button>
         <Button 
           type="submit" 
-          className="bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.9)] text-black" 
+          className="bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.9)] text-black transition-all duration-300 min-w-[120px] h-10" 
           disabled={isSubmitting}
         >
           {isSubmitting ? (

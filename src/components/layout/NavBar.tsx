@@ -21,14 +21,18 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-const NavBar = () => {
+interface NavBarProps {
+  className?: string;
+}
+
+const NavBar: React.FC<NavBarProps> = ({ className = '' }) => {
   const { toast } = useToast();
   const { authState, logout, notifications, markNotificationRead } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { connectWallet, account, isConnected } = useWeb3();
+  const { connectWallet, disconnectWallet, account, isConnected } = useWeb3();
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Notification filtering
@@ -101,6 +105,44 @@ const NavBar = () => {
     return allItems.filter(item =>
       item.allowedRoles.includes(authState.user.role)
     );
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
+  const handleWalletAction = async () => {
+    if (isConnected) {
+      await disconnectWallet();
+      logout();
+      toast({
+        title: 'Wallet Disconnected',
+        description: 'Your wallet has been disconnected successfully.',
+      });
+    } else {
+      try {
+        const success = await connectWallet();
+        if (success) {
+          toast({
+            title: 'Wallet Connected',
+            description: 'Your wallet has been connected successfully.',
+          });
+        } else {
+          toast({
+            title: 'Connection Failed',
+            description: 'Failed to connect wallet. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error('Error connecting wallet:', error);
+        toast({
+          title: 'Connection Error',
+          description: 'An error occurred while connecting your wallet.',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   // If not logged in, show minimal navbar with login link
@@ -178,19 +220,12 @@ const NavBar = () => {
 
           <div className="flex items-center gap-4">
             {/* Wallet connect */}
-            {!isConnected ? (
-              <Button
-                onClick={connectWallet}
-                variant="default"
-                className="hidden md:flex bg-indigo-500 hover:opacity-90 h-8 px-3 py-1 text-white font-medium text-sm rounded-full"
-              >
-                Connect Wallet
-              </Button>
-            ) : (
-              <span className="hidden md:flex text-xs font-mono border border-[rgba(80,252,149,0.4)] text-[rgba(80,252,149,0.8)] rounded-full px-3 py-1">
-                {account?.slice(0, 6)}...{account?.slice(-4)}
-              </span>
-            )}
+            <button
+              onClick={handleWalletAction}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+            >
+              {isConnected ? formatAddress(account!) : "Connect Wallet"}
+            </button>
 
             {/* Notifications */}
             <div className="relative">
@@ -334,21 +369,12 @@ const NavBar = () => {
                       </Link>
                     ))}
 
-                    {!isConnected ? (
-                      <Button
-                        onClick={() => {
-                          connectWallet();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="bg-gradient-to-r from-[rgba(80,252,149,0.8)] to-[rgba(0,255,144,0.6)] hover:opacity-90 text-black mt-4"
-                      >
-                        Connect Wallet
-                      </Button>
-                    ) : (
-                      <div className="mt-4 text-sm font-mono border border-[rgba(80,252,149,0.4)] text-[rgba(80,252,149,0.8)] rounded-full px-3 py-2 text-center">
-                        {account?.slice(0, 6)}...{account?.slice(-4)}
-                      </div>
-                    )}
+                    <button
+                      onClick={handleWalletAction}
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+                    >
+                      {isConnected ? formatAddress(account!) : "Connect Wallet"}
+                    </button>
 
                     <Button
                       onClick={() => {

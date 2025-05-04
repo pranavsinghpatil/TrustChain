@@ -12,9 +12,9 @@ export default function GitHubStarButton({
   
   // Size mappings
   const sizeClasses = {
-    small: "text-xs py-1.5 px-3",
-    medium: "text-sm py-2 px-4",
-    large: "text-base py-2.5 px-5"
+    small: "text-xs py-1.5 px-3 h-8",
+    medium: "text-sm py-2 px-4 h-10",
+    large: "text-base py-2.5 px-5 h-12"
   };
   
   // Fetch repository stats from GitHub API
@@ -52,7 +52,7 @@ export default function GitHubStarButton({
       className="inline-flex"
     >
       <button
-        className={`flex items-center justify-center ${bgColor} ${hoverBgColor} ${textColor} font-medium border ${borderColor} rounded-full ${sizeClasses[size]} shadow-sm transition-colors duration-200`}
+        className={`flex items-center justify-center ${bgColor} ${hoverBgColor} ${textColor} font-medium border ${borderColor} rounded-full ${sizeClasses[size]} shadow-sm transition-all duration-300 transform-gpu`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => {

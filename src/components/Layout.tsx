@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Dialog, DialogContent } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { useWeb3 } from '../contexts/Web3Context';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -11,11 +11,13 @@ import AddIcon from '@mui/icons-material/Add';
 import ListIcon from '@mui/icons-material/List';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { WalletManager } from './WalletManager';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, userRole, logout } = useAuth();
   const { account, connectWallet, isConnected } = useWeb3();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [walletDialogOpen, setWalletDialogOpen] = useState(false);
   const router = useRouter();
 
   const adminMenuItems = [
@@ -77,13 +79,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             Tender Management System
           </Typography>
           {!isConnected ? (
-            <Button color="inherit" onClick={connectWallet}>
+            <Button color="inherit" onClick={() => setWalletDialogOpen(true)}>
               Connect Wallet
             </Button>
           ) : (
-            <Typography variant="body2" sx={{ mr: 2 }}>
+            <Button color="inherit" onClick={() => setWalletDialogOpen(true)}>
               {account?.slice(0, 6)}...{account?.slice(-4)}
-            </Typography>
+            </Button>
           )}
           {isAuthenticated && (
             <Button color="inherit" onClick={logout}>
@@ -130,6 +132,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {children}
         </Container>
       </Box>
+
+      {/* Wallet Manager Dialog */}
+      <Dialog 
+        open={walletDialogOpen} 
+        onClose={() => setWalletDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <WalletManager />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
