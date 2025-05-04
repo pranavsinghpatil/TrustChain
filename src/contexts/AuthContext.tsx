@@ -6,10 +6,11 @@ import { ethers } from "ethers";
 
 interface AuthContextType {
   authState: AuthState;
+  users: User[];
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  isAuthenticated: boolean;
   register: (data: RegisterData) => Promise<boolean>;
-  users: User[];
   createOfficer: (name: string, username: string, password: string, email?: string) => void;
   updateOfficer: (id: string, fields: { name?: string; username?: string; email?: string; walletAddress?: string }) => void;
   removeOfficer: (id: string) => void;
@@ -26,37 +27,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Predefined users for demonstration (in a real app, these would be in a database)
-const DEMO_USERS: User[] = [
-  {
-    id: "admin-1",
-    name: "Admin User",
-    username: "admin",
-    role: "admin",
-    createdAt: new Date(),
-  },
-  {
-    id: "officer-1",
-    name: "Tender Officer",
-    username: "teno",
-    role: "officer",
-    createdAt: new Date(),
-  },
-  {
-    id: "bidder-1",
-    name: "Sam Bidder",
-    username: "sam",
-    role: "bidder",
-    createdAt: new Date(),
-  }
-];
-
 // Password map for local authentication (will be replaced with blockchain in production)
-const PASSWORD_MAP: Record<string, string> = {
-  admin: 'admin123',
-  officer: 'officer123',
-  bidder: 'bidder123'
-};
+const PASSWORD_MAP: Record<string, string> = {};
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -161,6 +133,59 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   }, [isConnected, account]);
 
   useEffect(() => {
+    // Initialize users from localStorage or use demo users
+    const initializeUsers = () => {
+      try {
+        // Try to get users from localStorage
+        const storedUsers = localStorage.getItem("trustchain_users");
+        const storedPasswords = localStorage.getItem("trustchain_passwords");
+        
+        if (!storedUsers || !storedPasswords) {
+          // If no stored users, set up initial admin
+          const initialUsers = [{
+            id: "admin-1",
+            name: "Admin User",
+            username: "admin",
+            role: "admin" as UserRole,
+            isApproved: true,
+            walletAddress: "",
+            createdAt: new Date(),
+          }] as User[];
+          
+          const initialPasswords = {
+            admin: "admin00"
+          };
+          
+          // Store initial data
+          localStorage.setItem("trustchain_users", JSON.stringify(initialUsers));
+          localStorage.setItem("trustchain_passwords", JSON.stringify(initialPasswords));
+          
+          setUsers(initialUsers);
+          Object.assign(PASSWORD_MAP, initialPasswords);
+          console.log("Initialized with admin user");
+        } else {
+          // Use stored data
+          const parsedUsers = JSON.parse(storedUsers);
+          const parsedPasswords = JSON.parse(storedPasswords);
+          
+          setUsers(parsedUsers);
+          Object.assign(PASSWORD_MAP, parsedPasswords);
+          console.log("Loaded stored users:", parsedUsers.map((u: any) => u.username));
+        }
+      } catch (error) {
+        console.error("Error initializing users:", error);
+        toast({
+          title: "Error",
+          description: "Failed to initialize user data",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initializeUsers();
+  }, []);
+
+  useEffect(() => {
     // Check if user is stored in local storage
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -189,45 +214,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         error: null,
       });
     }
-
-    // Load persisted users and passwords on initialization
-    try {
-      const storedUsers = localStorage.getItem("trustchain_users");
-      const storedPasswords = localStorage.getItem("trustchain_passwords");
-      
-      if (storedUsers) {
-        const parsedUsers = JSON.parse(storedUsers);
-        // Convert date strings back to Date objects
-        const processedUsers = parsedUsers.map((u: any) => ({
-          ...u,
-          createdAt: new Date(u.createdAt)
-        }));
-        setUsers(processedUsers);
-        console.log("Loaded users from localStorage:", processedUsers.map((u: any) => u.username));
-      }
-      
-      if (storedPasswords) {
-        const parsedPasswords = JSON.parse(storedPasswords);
-        Object.assign(PASSWORD_MAP, parsedPasswords);
-        console.log("Loaded passwords from localStorage");
-      }
-    } catch (error) {
-      console.error("Error loading persisted data:", error);
-    }
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      // Debug login attempt
-      console.log(`Login attempt for username: ${username}`);
-      console.log('Available users:', users.map(u => u.username));
-      console.log('PASSWORD_MAP keys:', Object.keys(PASSWORD_MAP));
-      
       // Find user by username
       const user = users.find(u => u.username === username);
       
@@ -245,6 +237,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         });
         return false;
       }
+
+      // If wallet is not connected, try to connect
+      if (!isConnected) {
+        try {
+          await connectWallet();
+        } catch (error) {
+          console.error('Wallet connection error:', error);
+          toast({
+            title: "Wallet Connection Failed",
+            description: "Please ensure MetaMask is installed and try again",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
       
       // Success: set auth state and store in localStorage
       localStorage.setItem("user", JSON.stringify(user));
@@ -261,6 +268,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       
       return true;
     } catch (error) {
+      console.error('Login error:', error);
       setAuthState((prev) => ({ 
         ...prev, 
         isLoading: false, 
@@ -351,25 +359,18 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     try {
       const newOfficerId = `officer-${Date.now()}`;
       
-      // First create the officer in the blockchain if wallet is connected
       if (isConnected) {
         console.log("Creating officer on blockchain...");
-        const success = await addBlockchainOfficer(
-          newOfficerId,
-          name,
-          username,
-          email || ""
-        );
-        
+        // Only pass officer name; addOfficer uses connected wallet address
+        const success = await addBlockchainOfficer(name);
         if (!success) {
-          toast({ 
-            title: 'Blockchain Error', 
+          toast({
+            title: 'Blockchain Error',
             description: 'Failed to add officer to blockchain',
             variant: 'destructive'
           });
           return;
         }
-        
         // After successful blockchain creation, sync officers
         await syncOfficersFromBlockchain();
       }
@@ -588,6 +589,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     <AuthContext.Provider
       value={{
         authState,
+        users,
         login,
         logout,
         register,
@@ -595,7 +597,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         updateOfficer,
         removeOfficer,
         updateUsers,
-        users,
         notifications,
         markNotificationRead,
         approveUser,
@@ -603,7 +604,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         updateUser,
         notifyUser,
         notifyOfficers,
-        syncOfficersFromBlockchain
+        syncOfficersFromBlockchain,
+        isAuthenticated: !!authState.user,
       }}
     >
       {children}
