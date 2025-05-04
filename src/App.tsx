@@ -43,13 +43,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
         <div className="glow-bg" />
-          <div className="flex flex-col min-h-screen ">
+          <div className="flex flex-col min-h-screen relative z-0 overflow-y-auto overflow-x-hidden">
             {/* Premium god-rays background effect */}
             <div className="bg-god-rays" aria-hidden="true"></div>
             {/* Extra dark overlay for more contrast */}
             <div className="bg-darken-overlay fixed inset-0 w-full h-full" aria-hidden="true"></div>
-            <NavBar />
-            <div className="main-content">
+            <NavBar className="fixed top-0 left-0 right-0 z-50 bg-background border-b" />
+            <div className="main-content flex-grow mt-20 pt-20 w-full">
               <main className="flex-grow mt-16">
                 <ScrollToTop />
                 <Routes>

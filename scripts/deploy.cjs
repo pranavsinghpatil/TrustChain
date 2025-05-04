@@ -1,53 +1,111 @@
+// We require the Hardhat Runtime Environment explicitly here. This is optional
+// but useful for running the script in a standalone fashion through `node <script>`.
+//
+// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
+// will compile your contracts, add the Hardhat Runtime Environment's members to the
+// global scope, and execute the script.
 const hre = require("hardhat");
 const fs = require("fs");
 
 async function main() {
-  console.log("Starting deployment process...");
+  const [deployer] = await hre.ethers.getSigners();
+  console.log(`Deploying contracts with the account: ${deployer.address}`);
+
+  // Deploy AdminManagement contract
+  const AdminManagement = await hre.ethers.getContractFactory("AdminManagement");
+  const adminManagement = await AdminManagement.deploy(deployer.address);
+  await adminManagement.deployed();
+  console.log(`AdminManagement deployed to ${adminManagement.address}`);
   
-  // Deploy UserAuthentication contract first
-  console.log("Deploying UserAuthentication contract...");
-  const UserAuthentication = await hre.ethers.getContractFactory("UserAuthentication");
-  const userAuthentication = await UserAuthentication.deploy();
-  await userAuthentication.deployed();
-  console.log("UserAuthentication contract deployed to:", userAuthentication.address);
-  
-  // Deploy OfficerManagement contract
-  console.log("Deploying OfficerManagement contract...");
+  // Check OfficerManagement constructor requirements
   const OfficerManagement = await hre.ethers.getContractFactory("OfficerManagement");
-  const officerManagement = await OfficerManagement.deploy();
-  await officerManagement.deployed();
-  console.log("OfficerManagement contract deployed to:", officerManagement.address);
+  let officerManagement;
+  try {
+    officerManagement = await OfficerManagement.deploy();
+    await officerManagement.deployed();
+  } catch (error) {
+    console.log("Trying OfficerManagement with deployer address...");
+    officerManagement = await OfficerManagement.deploy(deployer.address);
+    await officerManagement.deployed();
+  }
+  console.log(`OfficerManagement deployed to ${officerManagement.address}`);
   
-  // Deploy TenderManagement contract
-  console.log("Deploying TenderManagement contract...");
+  // Check UserAuthentication constructor requirements
+  const UserAuthentication = await hre.ethers.getContractFactory("UserAuthentication");
+  let userAuthentication;
+  try {
+    userAuthentication = await UserAuthentication.deploy();
+    await userAuthentication.deployed();
+  } catch (error) {
+    console.log("Trying UserAuthentication with deployer address...");
+    userAuthentication = await UserAuthentication.deploy(deployer.address);
+    await userAuthentication.deployed();
+  }
+  console.log(`UserAuthentication deployed to ${userAuthentication.address}`);
+  
+  // Check TenderManagement constructor requirements
   const TenderManagement = await hre.ethers.getContractFactory("TenderManagement");
-  const tenderManagement = await TenderManagement.deploy();
-  await tenderManagement.deployed();
-  console.log("TenderManagement contract deployed to:", tenderManagement.address);
+  let tenderManagement;
+  try {
+    tenderManagement = await TenderManagement.deploy();
+    await tenderManagement.deployed();
+  } catch (error) {
+    console.log("Trying TenderManagement with officer management address...");
+    tenderManagement = await TenderManagement.deploy(officerManagement.address);
+    await tenderManagement.deployed();
+  }
+  console.log(`TenderManagement deployed to ${tenderManagement.address}`);
   
-  console.log("All contracts deployed successfully!");
-  console.log("Contract Addresses:");
-  console.log("UserAuthentication:", userAuthentication.address);
-  console.log("OfficerManagement:", officerManagement.address);
-  console.log("TenderManagement:", tenderManagement.address);
-  
-  // Save the contract addresses to a file for easy access
-  const contractAddresses = {
-    UserAuthentication: userAuthentication.address,
-    OfficerManagement: officerManagement.address,
-    TenderManagement: tenderManagement.address
+  // Save the contract addresses to a file for the frontend to use
+  const contractsConfig = {
+    OFFICER_MANAGEMENT: officerManagement.address,
+    USER_AUTHENTICATION: userAuthentication.address,
+    TENDER_MANAGEMENT: tenderManagement.address
   };
   
+  // Save to deployed-contracts.json
   fs.writeFileSync(
-    "src/contracts/addresses.json",
-    JSON.stringify(contractAddresses, null, 2)
+    './src/config/deployed-contracts.json', 
+    JSON.stringify(contractsConfig, null, 2)
   );
-  console.log("Contract addresses saved to src/contracts/addresses.json");
+  console.log('Contract addresses saved to src/config/deployed-contracts.json');
+  
+  // Also update the contracts.ts file
+  console.log('Updating contract addresses in src/config/contracts.ts...');
+  updateContractsTs(contractsConfig);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+function updateContractsTs(addresses) {
+  try {
+    const contractsPath = './src/config/contracts.ts';
+    let contractsContent = fs.readFileSync(contractsPath, 'utf8');
+    
+    // Update the addresses
+    contractsContent = contractsContent.replace(
+      /OFFICER_MANAGEMENT: '.*'/,
+      `OFFICER_MANAGEMENT: '${addresses.OFFICER_MANAGEMENT}'`
+    );
+    
+    contractsContent = contractsContent.replace(
+      /USER_AUTHENTICATION: '.*'/,
+      `USER_AUTHENTICATION: '${addresses.USER_AUTHENTICATION}'`
+    );
+    
+    contractsContent = contractsContent.replace(
+      /TENDER_MANAGEMENT: '.*'/,
+      `TENDER_MANAGEMENT: '${addresses.TENDER_MANAGEMENT}'`
+    );
+    
+    fs.writeFileSync(contractsPath, contractsContent);
+    console.log('Successfully updated src/config/contracts.ts');
+  } catch (error) {
+    console.error('Error updating contracts.ts:', error);
+  }
+}
+
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
