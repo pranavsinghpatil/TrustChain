@@ -2,7 +2,6 @@
   "name": "tender-dapp",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -58,7 +57,7 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
-    "@types/node": "^20.11.19",
+    "@types/node": "^20.17.32",
     "@types/react": "^18.2.57",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.4.1",
@@ -73,6 +72,7 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.3.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }
