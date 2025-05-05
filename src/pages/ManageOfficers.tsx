@@ -63,7 +63,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const ManageOfficers: React.FC = () => {
   const { users, createOfficer, removeOfficer, authState, updateUsers } = useAuth();
-  const { connectWallet, account, isConnected } = useWeb3();
+  const { connectWallet, account, isConnected, isLoading, isCorrectNetwork, officerContract, tenderContract, userAuthContract } = useWeb3();
   const { toast } = useToast();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -86,7 +86,31 @@ const ManageOfficers: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [targetOfficerId, setTargetOfficerId] = useState<string | null>(null);
   
+  const [contractsReady, setContractsReady] = useState(false);
+  const [contractError, setContractError] = useState<string | null>(null);
+  
   const officers = users.filter(user => user.role === "officer");
+  
+  useEffect(() => {
+    const ready = isConnected && isCorrectNetwork && !!account && officerContract && tenderContract && userAuthContract;
+    setContractsReady(ready);
+    if (ready) {
+      // Optionally, do a health check on contracts
+      (async () => {
+        try {
+          // Try a simple call to each contract
+          await officerContract.admin?.();
+          await tenderContract.getAllTenderIds?.();
+          await userAuthContract.isAdmin?.(account);
+          setContractError(null);
+        } catch (err: any) {
+          setContractError('Smart contract not found or not initialized. Please redeploy contracts and refresh.');
+        }
+      })();
+    } else {
+      setContractError(null);
+    }
+  }, [isConnected, isCorrectNetwork, account, officerContract, tenderContract, userAuthContract]);
   
   const handleAddOfficer = () => {
     if (!name || !username || !password) {
@@ -236,6 +260,28 @@ const ManageOfficers: React.FC = () => {
     setTargetOfficerId(officerId);
     setIsWalletDialogOpen(true);
   };
+  
+  if (!contractsReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-white mb-4">Please connect your wallet, select the correct network, and ensure contracts are deployed.</p>
+          <Button onClick={connectWallet} disabled={isLoading} className="mb-2">{isLoading ? 'Connecting...' : 'Connect Wallet'}</Button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (contractError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-red-400 mb-4">{contractError}</p>
+          <Button onClick={() => window.location.reload()} className="mb-2">Reload</Button>
+        </div>
+      </div>
+    );
+  }
   
   if (authState.user?.role !== "admin") {
     return (

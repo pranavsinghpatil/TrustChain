@@ -1,3 +1,4 @@
+// @refresh reset
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, UserRole, AuthState, Notification, RegisterData } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -42,13 +43,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const { 
     account, 
     isConnected, 
+    isCorrectNetwork,
     connectWallet, 
-    addOfficer: addBlockchainOfficer,
+    addOfficer,
     updateOfficer: updateBlockchainOfficer,
     removeOfficer: removeBlockchainOfficer,
     getAllOfficers,
-    isLoading: isWeb3Loading
+    signer,
+    isLoading: isWeb3Loading,
+    officerContract
   } = useWeb3();
+  const [isSyncingOfficers, setIsSyncingOfficers] = useState(false);
 
   // Notification utilities
   const notifyUser = (recipientId: string, message: string, relatedUserId?: string) => {
@@ -84,53 +89,61 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   // Add a new function to sync officers from blockchain
   const syncOfficersFromBlockchain = async () => {
+    if (!isConnected || !getAllOfficers || !officerContract) {
+      console.log("Not connected or contracts not available");
+      return;
+    }
+
+    setIsSyncingOfficers(true);
     try {
-      if (!isConnected) {
-        console.log("Wallet not connected, can't sync officers from blockchain");
-        return;
-      }
-      
       // Get all officers from blockchain
       const blockchainOfficers = await getAllOfficers();
-      if (!blockchainOfficers || blockchainOfficers.length === 0) {
-        console.log("No officers found on blockchain");
-        return;
-      }
-      
-      console.log("Officers from blockchain:", blockchainOfficers);
-      
-      // Convert blockchain officers to our User format
-      const officersFromBlockchain = blockchainOfficers.map(officer => ({
-        id: officer.id,
+      console.log("Fetched officers:", blockchainOfficers);
+
+      // Convert blockchain officers to User format
+      const officers: User[] = blockchainOfficers.map(officer => ({
+        id: `officer-${officer.walletAddress.slice(2, 8)}`,
         name: officer.name,
         username: officer.username,
-        email: officer.email,
-        role: 'officer' as UserRole, // Cast to UserRole type
-        createdAt: officer.createdAt,
+        email: officer.email || '',
+        role: 'officer' as UserRole,
+        createdAt: new Date(),
         isApproved: officer.isActive,
         approvalRemark: '',
         walletAddress: officer.walletAddress
       }));
-      
-      // Merge with existing users, replacing any officers with the same ID
-      const nonOfficerUsers = users.filter(user => user.role !== 'officer');
-      const mergedUsers = [...nonOfficerUsers, ...officersFromBlockchain];
-      
-      setUsers(mergedUsers);
-      persistUsers(mergedUsers);
-      
-      console.log("Synced officers from blockchain:", officersFromBlockchain);
+
+      // Update the users state, keeping non-officer users
+      setUsers(prevUsers => {
+        const nonOfficers = prevUsers.filter(user => user.role !== 'officer');
+        return [...nonOfficers, ...officers];
+      });
+
+      // Persist the updated users
+      persistUsers([...users.filter(user => user.role !== 'officer'), ...officers]);
+
+      toast({
+        title: "Success",
+        description: `Synced ${officers.length} officers from blockchain`,
+      });
     } catch (error) {
-      console.error("Error syncing officers from blockchain:", error);
+      console.error("Error syncing officers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sync officers from blockchain",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingOfficers(false);
     }
   };
-  
-  // Try to sync officers when wallet is connected
+
+  // Auto-fetch blockchain officers when wallet connects or network is correct
   useEffect(() => {
-    if (isConnected && account) {
+    if (isConnected && isCorrectNetwork) {
       syncOfficersFromBlockchain();
     }
-  }, [isConnected, account]);
+  }, [isConnected, isCorrectNetwork]);
 
   useEffect(() => {
     // Initialize users from localStorage or use demo users
@@ -148,7 +161,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             username: "admin",
             role: "admin" as UserRole,
             isApproved: true,
-            walletAddress: "",
+            walletAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
             createdAt: new Date(),
           }] as User[];
           
@@ -357,58 +370,46 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const createOfficer = async (name: string, username: string, password: string, email?: string) => {
     try {
-      const newOfficerId = `officer-${Date.now()}`;
-      
-      if (isConnected) {
-        console.log("Creating officer on blockchain...");
-        // Only pass officer name; addOfficer uses connected wallet address
-        const success = await addBlockchainOfficer(name);
-        if (!success) {
-          toast({
-            title: 'Blockchain Error',
-            description: 'Failed to add officer to blockchain',
-            variant: 'destructive'
-          });
-          return;
-        }
-        // After successful blockchain creation, sync officers
-        await syncOfficersFromBlockchain();
+      if (!isConnected) {
+        throw new Error("Wallet not connected");
+      }
+
+      if (!account) {
+        throw new Error("No wallet address available");
       }
       
-      // Also maintain local state for now (this will be removed in production)
-      const newOfficer: User = { 
-        id: newOfficerId, 
-        name, 
-        username, 
-        email,
-        role: 'officer', 
-        createdAt: new Date(), 
-        isApproved: true,
-        walletAddress: account || undefined
-      };
+      console.log("Creating officer on blockchain...");
       
-      const updatedUsers = [...users, { ...newOfficer, approvalRemark: '' }];
-      setUsers(updatedUsers);
+      // Call blockchain addOfficer with account (wallet address), id, name, username, email
+      const success = await addOfficer(
+        account,
+        `officer-${Date.now()}`,
+        name,
+        username,
+        email || ''
+      );
+
+      if (!success) {
+        throw new Error("Failed to add officer on blockchain");
+      }
+
+      // Sync the updated officer list from blockchain
+      await syncOfficersFromBlockchain();
       
-      // Update PASSWORD_MAP with the new officer's credentials
-      PASSWORD_MAP[username] = password;
-      
-      // Persist changes to localStorage
-      persistUsers(updatedUsers);
-      persistPasswordMap(PASSWORD_MAP);
-      
-      console.log(`Officer created: ${name}, username: ${username}, password: ${password}`);
-      console.log('Updated PASSWORD_MAP:', {...PASSWORD_MAP});
-      console.log('Updated users:', updatedUsers.map(u => u.username));
-      
-      toast({ title: 'Officer created', description: `${name} has been appointed` });
-    } catch (error) {
-      console.error("Error creating officer:", error);
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to create officer',
-        variant: 'destructive'
+      toast({
+        title: "Success",
+        description: "Officer created successfully",
       });
+
+      return true;
+    } catch (error: any) {
+      console.error("Error creating officer:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create officer",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -613,10 +614,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   );
 };
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
-};
+}

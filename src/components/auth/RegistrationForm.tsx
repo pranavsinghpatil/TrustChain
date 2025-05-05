@@ -15,12 +15,14 @@ import { useToast } from "@/hooks/use-toast";
 
 const RegistrationForm: React.FC = () => {
   const { register: ctxRegister, authState } = useAuth();
-  const { connectWallet, account, isConnected } = useWeb3();
+  const { connectWallet, account, isConnected, isLoading, isCorrectNetwork, officerContract, tenderContract, userAuthContract } = useWeb3();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [contractsReady, setContractsReady] = useState(false);
+  const [contractError, setContractError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<RegisterData>({
     defaultValues: {
@@ -42,6 +44,25 @@ const RegistrationForm: React.FC = () => {
       setValue('walletAddress', account);
     }
   }, [isConnected, account, setValue]);
+
+  useEffect(() => {
+    const ready = isConnected && isCorrectNetwork && !!account && officerContract && tenderContract && userAuthContract;
+    setContractsReady(ready);
+    if (ready) {
+      (async () => {
+        try {
+          await officerContract.admin?.();
+          await tenderContract.getAllTenderIds?.();
+          await userAuthContract.isAdmin?.(account);
+          setContractError(null);
+        } catch (err: any) {
+          setContractError('Smart contract not found or not initialized. Please redeploy contracts and refresh.');
+        }
+      })();
+    } else {
+      setContractError(null);
+    }
+  }, [isConnected, isCorrectNetwork, account, officerContract, tenderContract, userAuthContract]);
 
   const onSubmit: SubmitHandler<RegisterData> = async data => {
     const success = await ctxRegister(data);
@@ -78,6 +99,32 @@ const RegistrationForm: React.FC = () => {
       setIsConnecting(false);
     }
   };
+
+  if (!contractsReady) {
+    return (
+      <Card className="w-full max-w-[1000px] mx-auto border-0 shadow-lg overflow-hidden bg-[#1B1B1B]/40 backdrop-blur-xl border border-white/10">
+        <CardContent>
+          <div className="text-center py-12">
+            <p className="text-lg text-white mb-4">Please connect your wallet, select the correct network, and ensure contracts are deployed.</p>
+            <Button onClick={connectWallet} disabled={isLoading} className="mb-2">{isLoading ? 'Connecting...' : 'Connect Wallet'}</Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (contractError) {
+    return (
+      <Card className="w-full max-w-[1000px] mx-auto border-0 shadow-lg overflow-hidden bg-[#1B1B1B]/40 backdrop-blur-xl border border-white/10">
+        <CardContent>
+          <div className="text-center py-12">
+            <p className="text-lg text-red-400 mb-4">{contractError}</p>
+            <Button onClick={() => window.location.reload()} className="mb-2">Reload</Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-[1000px] mx-auto border-0 shadow-lg overflow-hidden bg-[#1B1B1B]/40 backdrop-blur-xl border border-white/10">

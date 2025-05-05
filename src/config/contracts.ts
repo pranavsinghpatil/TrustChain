@@ -1,54 +1,56 @@
 // Contract addresses
 export const CONTRACT_ADDRESSES = {
-  database: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-  officerManagement: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-  userAuthentication: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-  tenderManagement: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-  bidManagement: '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e'
+  OFFICER_MANAGEMENT: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+  USER_AUTHENTICATION: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+  TENDER_MANAGEMENT: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
 };
 
 // Contract ABIs
 export const CONTRACT_ABI = {
   OFFICER_MANAGEMENT: [
     // Officer Management functions
-    "function appointOfficer(address _officerAddress, string memory _name, bool _canCreateTenders, bool _canApproveBids) external",
-    "function removeOfficer(address _officerAddress) external",
-    "function updateOfficerPermissions(address _officerAddress, bool _canCreateTenders, bool _canApproveBids) external",
-    "function getActiveOfficers() external view returns (address[] memory)",
-    "function getOfficer(address _officerAddress) external view returns (tuple(string name, bool canCreateTenders, bool canApproveBids, bool isActive))",
+    "function addOfficer(address walletAddress, string memory id, string memory name, string memory username, string memory email) external",
+    "function updateOfficer(address walletAddress, string memory name, string memory username, string memory email) external",
+    "function removeOfficer(address walletAddress) external",
+    "function setOfficerStatus(address walletAddress, bool isActive) external",
+    "function getOfficer(address walletAddress) external view returns (tuple(string id, string name, string username, string email, bool isActive, uint256 createdAt))",
+    "function getAllOfficerAddresses() external view returns (address[] memory)",
+    "function isOfficer(address walletAddress) external view returns (bool)",
     // Events
-    "event OfficerAppointed(address indexed officer, string name)",
-    "event OfficerRemoved(address indexed officer)",
-    "event OfficerPermissionsUpdated(address indexed officer, bool canCreate, bool canApprove)"
+    "event OfficerAdded(address indexed walletAddress, string id, string name, string username)",
+    "event OfficerUpdated(address indexed walletAddress, string name, string username)",
+    "event OfficerRemoved(address indexed walletAddress, string id)",
+    "event OfficerStatusChanged(address indexed walletAddress, bool isActive)"
   ],
   USER_AUTHENTICATION: [
     // User Authentication functions
-    "function registerUser(string memory _name, string memory _email) public",
-    "function loginUser(address _userAddress) public view returns (bool)",
-    "function getUserDetails(address _userAddress) public view returns (tuple(string name, string email, bool isRegistered))",
-    "function updateUserDetails(string memory _name, string memory _email) public",
+    "function registerUser(address walletAddress, string memory id, string memory name, string memory username, string memory email, string memory role, string memory companyName, string memory registrationNumber, string memory gstNumber, string memory panNumber, uint256 establishmentYear, string memory registeredAddress, string memory state, string memory city, string memory pinCode, string memory bidderType) external",
+    "function updateUser(address walletAddress, string memory name, string memory username, string memory email) external",
+    "function setUserApproval(address walletAddress, bool isApproved, string memory remark) external",
+    "function removeUser(address walletAddress) external",
+    "function getUser(address walletAddress) external view returns (tuple(string id, string name, string username, string email, string role, bool isApproved, string approvalRemark, uint256 createdAt))",
+    "function getCompanyDetails(address walletAddress) external view returns (tuple(string companyName, string registrationNumber, string gstNumber, string panNumber, uint256 establishmentYear, string registeredAddress, string state, string city, string pinCode, string bidderType))",
+    "function isUser(address walletAddress) external view returns (bool)",
+    "function isAdmin(address walletAddress) external view returns (bool)",
+    "function isOfficer(address walletAddress) external view returns (bool)",
     // Events
-    "event UserRegistered(address indexed user, string name)",
-    "event UserUpdated(address indexed user, string name)"
+    "event UserRegistered(address indexed walletAddress, string id, string username, string role)",
+    "event UserUpdated(address indexed walletAddress, string username)",
+    "event UserApprovalChanged(address indexed walletAddress, bool isApproved, string remark)",
+    "event UserRemoved(address indexed walletAddress, string id)"
   ],
   TENDER_MANAGEMENT: [
     // Tender Management functions
-    "function createTender(string memory _title, string memory _description, string memory _documentCid, uint256 _budget, uint256 _deadline) public",
-    "function getTender(uint256 _tenderId) public view returns (tuple(uint256 id, string title, string description, string documentCid, uint256 budget, uint256 deadline, address creator, uint8 status))",
-    "function getAllTenders() public view returns (tuple(uint256 id, string title, string description, string documentCid, uint256 budget, uint256 deadline, address creator, uint8 status)[] memory)",
-    "function closeTender(uint256 _tenderId) public",
-    "function cancelTender(uint256 _tenderId) public",
-    "function placeBid(uint256 _tenderId, uint256 _amount, string memory _proposalCid) public",
-    "function getBid(uint256 _tenderId, address _bidder) public view returns (tuple(address bidder, uint256 amount, string proposalCid, uint8 status))",
-    "function getAllBids(uint256 _tenderId) public view returns (tuple(address bidder, uint256 amount, string proposalCid, uint8 status)[] memory)",
-    "function approveBid(uint256 _tenderId, address _bidder) public",
-    "function rejectBid(uint256 _tenderId, address _bidder) public",
+    "function createTender(string memory id, string memory title, string memory description, string memory documentCid, uint256 budget, uint256 deadline) external",
+    "function updateTender(string memory tenderId, string memory title, string memory description, string memory documentCid, uint256 budget, uint256 deadline) external",
+    "function closeTender(string memory tenderId) external",
+    "function cancelTender(string memory tenderId) external",
+    "function getTender(string memory tenderId) external view returns (tuple(string id, string title, string description, string documentCid, uint256 budget, uint256 deadline, address creator, uint8 status, uint256 createdAt))",
+    "function getAllTenderIds() external view returns (string[] memory)",
     // Events
-    "event TenderCreated(uint256 indexed tenderId, address indexed creator, string title)",
-    "event TenderClosed(uint256 indexed tenderId)",
-    "event TenderCancelled(uint256 indexed tenderId)",
-    "event BidPlaced(uint256 indexed tenderId, address indexed bidder, uint256 amount)",
-    "event BidApproved(uint256 indexed tenderId, address indexed bidder)",
-    "event BidRejected(uint256 indexed tenderId, address indexed bidder)"
+    "event TenderCreated(string indexed tenderId, address indexed creator, string title)",
+    "event TenderUpdated(string indexed tenderId, string title)",
+    "event TenderClosed(string indexed tenderId)",
+    "event TenderCancelled(string indexed tenderId)"
   ]
 };

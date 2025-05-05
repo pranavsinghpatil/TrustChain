@@ -22,62 +22,11 @@ const Index = () => {
   const [chartData, setChartData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { fetchTenders, isConnected, connectWallet } = useWeb3();
+  const { fetchTenders, isConnected, connectWallet, tenderContract } = useWeb3();
 
   useEffect(() => {
     setShowHero(true);
   }, []);
-
-  useEffect(() => {
-    const loadTenderData = async () => {
-      try {
-        if (!isConnected) {
-          await connectWallet();
-        }
-        
-        const allTenders = await fetchTenders();
-        setTenders(allTenders);
-        
-        // Generate chart data from real tenders
-        const statusCounts = {
-          open: 0,
-          closed: 0,
-          awarded: 0,
-          disputed: 0
-        };
-        
-        allTenders.forEach(tender => {
-          statusCounts[tender.status]++;
-        });
-        
-        setChartData([
-          { name: 'Open', value: statusCounts.open, color: '#10B981' },
-          { name: 'Closed', value: statusCounts.closed, color: '#8E9196' },
-          { name: 'Awarded', value: statusCounts.awarded, color: '#8B5CF6' },
-          { name: 'Disputed', value: statusCounts.disputed, color: '#EF4444' },
-        ]);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading tender data:", error);
-        setLoading(false);
-      }
-    };
-    
-    loadTenderData();
-  }, [fetchTenders, isConnected, connectWallet]);
-
-  // Map tenders to the format expected by RecentTendersTable
-  const recentTenders = tenders
-    .slice(0, 5) // Get only the 5 most recent tenders
-    .map(tender => ({
-      id: `T-${tender.id}`,
-      title: tender.title,
-      department: tender.department,
-      budget: `₹${tender.budget}`,
-      deadline: new Date(tender.deadline * 1000).toISOString().split('T')[0],
-      status: tender.status
-    }));
 
   useEffect(() => {
     const timers = [
@@ -97,6 +46,56 @@ const Index = () => {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isConnected) {
+      connectWallet().finally(() => {});
+    }
+  }, [isConnected, connectWallet]);
+
+  useEffect(() => {
+    if (!tenderContract) return;
+    (async () => {
+      try {
+        const all = await fetchTenders();
+        setTenders(all);
+        // Generate chart data from real tenders
+        const statusCounts = {
+          open: 0,
+          closed: 0,
+          awarded: 0,
+          disputed: 0
+        };
+        
+        all.forEach(tender => {
+          statusCounts[tender.status]++;
+        });
+        
+        setChartData([
+          { name: 'Open', value: statusCounts.open, color: '#10B981' },
+          { name: 'Closed', value: statusCounts.closed, color: '#8E9196' },
+          { name: 'Awarded', value: statusCounts.awarded, color: '#8B5CF6' },
+          { name: 'Disputed', value: statusCounts.disputed, color: '#EF4444' },
+        ]);
+      } catch (err) {
+        console.error('Error loading tender data:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [tenderContract, fetchTenders]);
+
+  // Map tenders to the format expected by RecentTendersTable
+  const recentTenders = tenders
+    .slice(0, 5) // Get only the 5 most recent tenders
+    .map(tender => ({
+      id: `T-${tender.id}`,
+      title: tender.title,
+      department: tender.department,
+      budget: `₹${tender.budget}`,
+      deadline: new Date(tender.deadline * 1000).toISOString().split('T')[0],
+      status: tender.status
+    }));
 
   return (
     <div className="min-h-screen bg-gray-50/0">
