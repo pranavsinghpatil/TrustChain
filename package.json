@@ -14,6 +14,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
+    "@ethersproject/experimental": "^5.8.0",
     "@hookform/resolvers": "^5.0.1",
     "@mui/icons-material": "^5.15.10",
     "@mui/material": "^5.15.10",
@@ -30,6 +31,7 @@
     "@radix-ui/react-toast": "^1.2.11",
     "@radix-ui/react-tooltip": "^1.2.4",
     "@tanstack/react-query": "^5.74.7",
+    "@web3-react/core": "^8.2.3",
     "autoprefixer": "^10.4.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -47,11 +49,11 @@
     "react-google-recaptcha": "^3.1.0",
     "react-hook-form": "^7.56.1",
     "react-router-dom": "^7.5.2",
+    "react-toastify": "^11.0.5",
     "recharts": "^2.15.3",
     "sonner": "^2.0.3",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.1",
-    "vite": "^4.3.8",
     "zod": "^3.24.3"
   },
   "devDependencies": {
@@ -62,6 +64,7 @@
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.17",
+    "buffer": "^6.0.3",
     "chai": "^5.2.0",
     "dotenv": "^16.5.0",
     "eslint": "^8.56.0",
@@ -73,6 +76,7 @@
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4"
   }
 }

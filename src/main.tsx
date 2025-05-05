@@ -6,6 +6,9 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+import { Buffer } from 'buffer';
+;(window as any).Buffer = Buffer;
+
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { Web3Provider } from '@/contexts/Web3Context';

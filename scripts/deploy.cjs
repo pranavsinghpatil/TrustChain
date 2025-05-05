@@ -11,49 +11,31 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log(`Deploying contracts with the account: ${deployer.address}`);
 
+  // Use deployer as admin if not specified
+  const ADMIN_ADDRESS = process.env.ADMIN_ADDRESS || deployer.address;
+
   // Deploy AdminManagement contract
   const AdminManagement = await hre.ethers.getContractFactory("AdminManagement");
-  const adminManagement = await AdminManagement.deploy(deployer.address);
+  const adminManagement = await AdminManagement.deploy(ADMIN_ADDRESS);
   await adminManagement.deployed();
   console.log(`AdminManagement deployed to ${adminManagement.address}`);
   
-  // Check OfficerManagement constructor requirements
+  // Deploy OfficerManagement (no constructor args)
   const OfficerManagement = await hre.ethers.getContractFactory("OfficerManagement");
-  let officerManagement;
-  try {
-    officerManagement = await OfficerManagement.deploy();
-    await officerManagement.deployed();
-  } catch (error) {
-    console.log("Trying OfficerManagement with deployer address...");
-    officerManagement = await OfficerManagement.deploy(deployer.address);
-    await officerManagement.deployed();
-  }
+  const officerManagement = await OfficerManagement.deploy();
+  await officerManagement.deployed();
   console.log(`OfficerManagement deployed to ${officerManagement.address}`);
   
-  // Check UserAuthentication constructor requirements
+  // Deploy UserAuthentication (no constructor args)
   const UserAuthentication = await hre.ethers.getContractFactory("UserAuthentication");
-  let userAuthentication;
-  try {
-    userAuthentication = await UserAuthentication.deploy();
-    await userAuthentication.deployed();
-  } catch (error) {
-    console.log("Trying UserAuthentication with deployer address...");
-    userAuthentication = await UserAuthentication.deploy(deployer.address);
-    await userAuthentication.deployed();
-  }
+  const userAuthentication = await UserAuthentication.deploy();
+  await userAuthentication.deployed();
   console.log(`UserAuthentication deployed to ${userAuthentication.address}`);
   
-  // Check TenderManagement constructor requirements
+  // Deploy TenderManagement (no constructor args)
   const TenderManagement = await hre.ethers.getContractFactory("TenderManagement");
-  let tenderManagement;
-  try {
-    tenderManagement = await TenderManagement.deploy();
-    await tenderManagement.deployed();
-  } catch (error) {
-    console.log("Trying TenderManagement with officer management address...");
-    tenderManagement = await TenderManagement.deploy(officerManagement.address);
-    await tenderManagement.deployed();
-  }
+  const tenderManagement = await TenderManagement.deploy();
+  await tenderManagement.deployed();
   console.log(`TenderManagement deployed to ${tenderManagement.address}`);
   
   // Save the contract addresses to a file for the frontend to use
