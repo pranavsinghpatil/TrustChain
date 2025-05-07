@@ -17,23 +17,13 @@
 
 1. Click on your current account in MetaMask
 2. Click "Import Account"
-3. Choose "Private Key" import
-4. You have two options:
-   
-   ### Option 1: Use Pre-defined Account
-   - Paste one of these private keys:
-     ```
-     0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-     0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
-     0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
-     ```
-   
-   ### Option 2: Use Mnemonic Phrase
-   - Paste this mnemonic phrase:
-     ```
-     test test test test test test test test test test test junk
-     ```
-   - MetaMask will generate multiple accounts from this phrase
+3. Choose "Secret Recovery Phrase" import
+4. Paste this mnemonic phrase:
+   ```
+   test test test test test test test test test test test junk
+   ```
+   - MetaMask will generate multiple test accounts (pre-funded) from this phrase
+   - No need to import individual private keys unless you want to test as a specific account
    - Switch between accounts using the account dropdown
 
 ## 3. Verify Connection

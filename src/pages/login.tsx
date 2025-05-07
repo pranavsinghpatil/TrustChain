@@ -12,14 +12,16 @@ import RegistrationForm from "@/components/auth/RegistrationForm";
 import ContractIllustration from "@/components/ui/ContractIllustration";
 import TenderPulseAnimation from "@/components/ui/TenderPulseAnimation";
 import BlockchainNetwork from "@/components/ui/BlockchainNetwork";
+import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, authState } = useAuth();
+  const { login, register, authState } = useAuth();
   const { connectWallet, account, isConnected } = useWeb3();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,107 +29,111 @@ const Login = () => {
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
 
-    // Test credentials validation
-    const testCredentials = {
-      admin: { username: "admin", password: "admin00", role: "admin" },
-      teno: { username: "teno", password: "tender00", role: "officer" },
-      sam: { username: "sam", password: "sam00", role: "bidder" }
-    };
-
-    // Check test credentials first
-    const matchedUser = Object.values(testCredentials).find(
-      cred => cred.username === username && cred.password === password
-    );
-
-    if (matchedUser) {
-      // Skip CAPTCHA for test accounts
-      const success = await login(username, password);
-      if (success) navigate("/");
-      return;
-    }
-
+    // Handle login
     const success = await login(username, password);
-    if (success) navigate("/");
+    if (success) {
+      navigate("/");
+    } else {
+      // Show error message
+      toast({
+        title: "Login Failed",
+        description: "Invalid username or password",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-auto pb-20 relative">
-      <style jsx global>{`
-        html, body {
-          overflow-x: hidden;
-          overflow-y: auto;
-          width: 100%;
-          position: relative;
-          margin: 0;
-          padding: 0;
-          background-color: #000;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(80, 252, 149, 0.3) #111;
-        }
-        
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: #111;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: rgba(80, 252, 149, 0.3);
-          border-radius: 5px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(80, 252, 149, 0.5);
-        }
+      <style>
+        {`
+          html, body {
+            overflow-x: hidden;
+            overflow-y: auto;
+            width: 100%;
+            position: relative;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(80, 252, 149, 0.3) #111;
+          }
+          
+          ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          
+          ::-webkit-scrollbar-track {
+            background: #111;
+          }
+          
+          ::-webkit-scrollbar-thumb {
+            background: rgba(80, 252, 149, 0.3);
+            border-radius: 5px;
+          }
+          
+          ::-webkit-scrollbar-thumb:hover {
+            background: rgba(80, 252, 149, 0.5);
+          }
 
-        /* Animation classes */
-        @keyframes float {
-          0%, 100% { transform: translate3d(0, 0, 0); }
-          50% { transform: translate3d(0, -10px, 0); }
-        }
-        
-        .animate-float {
-          animation: float 5s ease-in-out infinite;
-          backface-visibility: hidden;
-          transform-style: preserve-3d;
-          perspective: 1000;
-          will-change: transform;
-        }
-        
-        /* Fix for shaking */
-        .hover-stable {
-          transform: translateZ(0);
-          backface-visibility: hidden;
-          perspective: 1000;
-          will-change: transform;
-        }
-        
-        .hover-stable:hover {
-          transform: translateZ(0) scale(1.02);
-          transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* Prevent layout shifts */
-        .content-container {
-          min-height: 100vh;
-          width: 100%;
-          position: relative;
-        }
-        
-        /* Prevent illustration shifts */
-        .illustration-container {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-          contain: layout size paint;
-        }
-      `}</style>
+          /* Animation classes */
+          @keyframes float {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -10px, 0); }
+          }
+          
+          .animate-float {
+            animation: float 5s ease-in-out infinite;
+            backface-visibility: hidden;
+            transform-style: preserve-3d;
+            perspective: 1000;
+            will-change: transform;
+          }
+          
+          /* Fix for shaking */
+          .hover-stable {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+            will-change: transform;
+          }
+          
+          .hover-stable:hover {
+            transform: translateZ(0) scale(1.02);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          
+          /* Prevent layout shifts */
+          .content-container {
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+          }
+          
+          /* Prevent illustration shifts */
+          .illustration-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            contain: layout size paint;
+          }
+          
+          .background-animate {
+            background-size: 400%;
+            -webkit-animation: AnimationName 3s ease infinite;
+            -moz-animation: AnimationName 3s ease infinite;
+            animation: AnimationName 3s ease infinite;
+          }
+          @keyframes AnimationName {
+            0%,100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+          }
+        `}
+      </style>
       
       {/* Background elements - these stay fixed */}
       <div className="fixed-container">
@@ -320,7 +326,41 @@ const Login = () => {
               </TabsContent>
               
               <TabsContent value="register">
-                <RegistrationForm />
+                <RegistrationForm 
+                  onRegister={async (formData) => {
+                    try {
+                      // First connect wallet
+                      if (!isConnected) {
+                        await connectWallet();
+                      }
+                      
+                      if (!account) {
+                        throw new Error("Wallet connection failed");
+                      }
+
+                      // Register user
+                      const success = await register({
+                        ...formData,
+                        walletAddress: account
+                      });
+
+                      if (success) {
+                        toast({
+                          title: "Success",
+                          description: "Registration successful! You can now log in.",
+                        });
+                        setActiveTab("login");
+                      }
+                    } catch (error) {
+                      console.error("Registration error:", error);
+                      toast({
+                        title: "Error",
+                        description: error instanceof Error ? error.message : "Registration failed",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

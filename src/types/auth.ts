@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "officer" | "bidder";
+export type UserRole = "admin" | "officer" | "user" | "bidder";
 
 // Payload for user registration
 export interface RegisterData {

@@ -60,6 +60,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { z } from 'zod';
+
+const officerSchema = z.object({
+  name: z.string(),
+  username: z.string(),
+  email: z.string().email(),
+});
 
 const ManageOfficers: React.FC = () => {
   const { users, createOfficer, removeOfficer, authState, updateUsers } = useAuth();
@@ -86,65 +93,57 @@ const ManageOfficers: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [targetOfficerId, setTargetOfficerId] = useState<string | null>(null);
   
-  const [contractsReady, setContractsReady] = useState(false);
-  const [contractError, setContractError] = useState<string | null>(null);
+  const [contractsInitialized, setContractsInitialized] = useState(false);
+  const [initializingContracts, setInitializingContracts] = useState(false);
   
   const officers = users.filter(user => user.role === "officer");
   
   useEffect(() => {
-    const ready = isConnected && isCorrectNetwork && !!account && officerContract && tenderContract && userAuthContract;
-    setContractsReady(ready);
-    if (ready) {
-      // Optionally, do a health check on contracts
-      (async () => {
+    const init = async () => {
+      if (isConnected && isCorrectNetwork && account) {
         try {
-          // Try a simple call to each contract
-          await officerContract.admin?.();
-          await tenderContract.getAllTenderIds?.();
-          await userAuthContract.isAdmin?.(account);
-          setContractError(null);
-        } catch (err: any) {
-          setContractError('Smart contract not found or not initialized. Please redeploy contracts and refresh.');
+          setInitializingContracts(true);
+          const hasOfficerContract = await officerContract?.deployed();
+          const hasTenderContract = await tenderContract?.deployed();
+          const hasUserAuthContract = await userAuthContract?.deployed();
+          
+          setContractsInitialized(
+            hasOfficerContract && hasTenderContract && hasUserAuthContract
+          );
+        } catch (error) {
+          console.error("Error initializing contracts:", error);
+          setContractsInitialized(false);
+        } finally {
+          setInitializingContracts(false);
         }
-      })();
-    } else {
-      setContractError(null);
-    }
+      }
+    };
+
+    init();
   }, [isConnected, isCorrectNetwork, account, officerContract, tenderContract, userAuthContract]);
   
-  const handleAddOfficer = () => {
-    if (!name || !username || !password) {
+  const handleAddOfficer = async () => {
+    try {
+      const data = officerSchema.parse({ name, username, email });
+      await createOfficer(data.name, data.username, data.email);
+
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
+        title: "Officer Added",
+        description: `${name} has been added as a tender officer`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create officer",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setName("");
+      setUsername("");
+      setPassword("");
+      setEmail("");
+      setIsAddDialogOpen(false);
     }
-    
-    // Check if username already exists
-    if (users.some(user => user.username === username)) {
-      toast({
-        title: "Username Taken",
-        description: "This username is already in use",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    createOfficer(name, username, password, email);
-    
-    // Reset form
-    setName("");
-    setUsername("");
-    setPassword("");
-    setEmail("");
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Officer Added",
-      description: `${name} has been added as a tender officer`,
-    });
   };
   
   const handleConnectWallet = async () => {
@@ -261,23 +260,12 @@ const ManageOfficers: React.FC = () => {
     setIsWalletDialogOpen(true);
   };
   
-  if (!contractsReady) {
+  if (!contractsInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-lg text-white mb-4">Please connect your wallet, select the correct network, and ensure contracts are deployed.</p>
-          <Button onClick={connectWallet} disabled={isLoading} className="mb-2">{isLoading ? 'Connecting...' : 'Connect Wallet'}</Button>
-        </div>
-      </div>
-    );
-  }
-  
-  if (contractError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg text-red-400 mb-4">{contractError}</p>
-          <Button onClick={() => window.location.reload()} className="mb-2">Reload</Button>
+          <Button onClick={connectWallet} disabled={initializingContracts} className="mb-2">{initializingContracts ? 'Connecting...' : 'Connect Wallet'}</Button>
         </div>
       </div>
     );
@@ -345,6 +333,7 @@ const ManageOfficers: React.FC = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Username</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Wallet Address</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -358,7 +347,10 @@ const ManageOfficers: React.FC = () => {
                           <TableCell className="font-medium">{officer.name}</TableCell>
                           <TableCell>{officer.username}</TableCell>
                           <TableCell>{officer.email || "-"}</TableCell>
-                          <TableCell>{officer.createdAt.toLocaleDateString()}</TableCell>
+                          <TableCell>{officer.walletAddress || "Not connected"}</TableCell>
+                          <TableCell>
+                            {officer.createdAt ? new Date(officer.createdAt).toLocaleDateString() : "N/A"}
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
                               Active
@@ -424,6 +416,7 @@ const ManageOfficers: React.FC = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Username</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Wallet Address</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -435,7 +428,10 @@ const ManageOfficers: React.FC = () => {
                         <TableCell className="font-medium">{officer.name}</TableCell>
                         <TableCell>{officer.username}</TableCell>
                         <TableCell>{officer.email || "-"}</TableCell>
-                        <TableCell>{officer.createdAt.toLocaleDateString()}</TableCell>
+                        <TableCell>{officer.walletAddress || "Not connected"}</TableCell>
+                        <TableCell>
+                          {officer.createdAt ? new Date(officer.createdAt).toLocaleDateString() : "N/A"}
+                        </TableCell>
                         <TableCell>
                           {officer.isApproved ? (
                             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">

@@ -6,27 +6,32 @@ import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/config/contracts";
 import { TARGET_NETWORK } from "@/config/network";
 
 // Proper typing for window.ethereum
+interface EthereumProvider {
+  isMetaMask?: boolean;
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
+  on: (eventName: string, handler: (accounts: string[]) => void) => void;
+  removeListener: (eventName: string, handler: (accounts: string[]) => void) => void;
+  removeAllListeners: (eventName: string) => void;
+}
+
 declare global {
   interface Window {
-    ethereum?: {
-      isMetaMask?: boolean;
-      request: (args: { method: string; params?: any[] }) => Promise<any>;
-      on: (eventName: string, handler: (...args: any[]) => void) => void;
-      removeListener: (eventName: string, handler: (...args: any[]) => void) => void;
-      removeAllListeners: (eventName: string) => void;
-    };
+    ethereum?: EthereumProvider;
   }
 }
 
 // Define proper types for contract return values
 export interface Officer {
   walletAddress: string;
+  id: string;
   name: string;
   username: string;
   email: string;
-  canCreate: boolean;
-  canApprove: boolean;
-  isActive: boolean;
+  permissions: {
+    canCreate: boolean;
+    canApprove: boolean;
+    isActive: boolean;
+  };
 }
 
 export interface Tender {
@@ -69,11 +74,12 @@ interface Web3ContextType {
   tenderContract: ethers.Contract | null;
   provider: ethers.providers.Web3Provider | null;
   signer: ethers.Signer | null;
-  addOfficer: (walletAddress: string, id: string, name: string, username: string, email: string) => Promise<boolean>;
+  addOfficer: (username: string, name: string, email: string) => Promise<boolean>;
   updateOfficer: (walletAddress: string, name: string, username: string, email: string) => Promise<boolean>;
   removeOfficer: (walletAddress: string) => Promise<boolean>;
   getOfficer: (walletAddress: string) => Promise<Officer | null>;
   getAllOfficers: () => Promise<Officer[]>;
+  createNewTender: (data: { title: string; description: string; department: string; budget: string; deadline: number; criteria: string[]; documents: { name: string; size: string }[] }) => Promise<string>;
   fetchTenders: () => Promise<FormattedTender[]>;
 }
 
@@ -405,41 +411,34 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   
   // Add an officer to the blockchain
   const addOfficer = async (
-    walletAddress: string,
-    id: string,
-    name: string,
     username: string,
+    name: string,
     email: string
   ): Promise<boolean> => {
     try {
-      if (!officerContract || !signer) {
-        throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+      if (!officerContract || !account) {
+        console.error("Contract or account not initialized");
+        return false;
       }
 
-      // Call the contract method with the correct parameters
+      // Generate a unique ID
+      const id = `officer-${Date.now()}`;
+
+      // We'll set the wallet address as empty initially
+      // The officer will connect their wallet later
+      const emptyAddress = "0x0000000000000000000000000000000000000000";
+
       const tx = await officerContract.addOfficer(
-        walletAddress,  // officer wallet address
-        id,       // officer identifier
-        name,     // officer name
-        username, // officer username
-        email     // officer email
+        emptyAddress,
+        ethers.utils.formatBytes32String(id),
+        name,
+        ethers.utils.formatBytes32String(username),
+        email
       );
-      
       await tx.wait();
-      
-      toast({
-        title: "Success",
-        description: "Officer added successfully",
-      });
-      
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error adding officer:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add officer",
-        variant: "destructive",
-      });
       return false;
     }
   };
@@ -453,7 +452,11 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   ): Promise<boolean> => {
     try {
       if (!officerContract || !signer) {
-        throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        // Attempt to connect wallet if not initialized
+        const connected = await connectWallet();
+        if (!connected || !officerContract || !signer) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
       }
 
       const tx = await officerContract.updateOfficer(
@@ -533,34 +536,38 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   const getAllOfficers = async (): Promise<Officer[]> => {
     try {
       if (!officerContract) {
-        throw new Error("Contract not initialized. Please connect your wallet first.");
-      }
-
-      let addresses: string[] = [];
-      if (typeof (officerContract as any).getActiveOfficers === 'function') {
-        addresses = await (officerContract as any).getActiveOfficers();
-      } else if (typeof (officerContract as any).getAllOfficerAddresses === 'function') {
-        addresses = await (officerContract as any).getAllOfficerAddresses();
-      } else {
-        console.error('Officer contract has no method to fetch addresses');
-      }
-
-      if (!addresses || !Array.isArray(addresses)) {
+        console.error("Officer contract not initialized");
         return [];
       }
-      
-      const officers = await Promise.all(
-        addresses.map((address: string) => officerContract.getOfficer(address))
-      );
-      
-      return officers as Officer[];
-    } catch (error: any) {
+
+      // Get all officer addresses first
+      const officerAddresses = await officerContract.getAllOfficerAddresses();
+      const officers: Officer[] = [];
+
+      // Get details for each officer
+      for (const address of officerAddresses) {
+        try {
+          const [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(address);
+          officers.push({
+            id,
+            walletAddress: address,
+            name,
+            username,
+            email,
+            permissions: {
+              canCreate: isActive,
+              canApprove: isActive,
+              isActive: isActive
+            }
+          });
+        } catch (err) {
+          console.warn(`Error fetching officer details for address ${address}:`, err);
+        }
+      }
+
+      return officers;
+    } catch (error) {
       console.error("Error getting all officers:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to get officers",
-        variant: "destructive",
-      });
       return [];
     }
   };
@@ -603,6 +610,31 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
     }
   };
 
+  const createNewTender = async (data: { title: string; description: string; department: string; budget: string; deadline: number; criteria: string[]; documents: { name: string; size: string }[] }): Promise<string> => {
+    try {
+      // Ensure wallet connected
+      if (!tenderContract || !signer) {
+        const connected = await connectWallet();
+        if (!connected || !tenderContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+      const { title, description, department, budget, deadline } = data;
+      // Generate a simple ID
+      const id = `${Date.now()}`;
+      const documentCid = ""; // Replace with real CID after IPFS upload
+      const budgetWei = ethers.utils.parseEther(budget);
+      const tx = await tenderContract.createTender(id, title, description, documentCid, budgetWei, deadline);
+      await tx.wait();
+      toast({ title: "Tender Created", description: `Tender ${id} created successfully` });
+      return id;
+    } catch (error: any) {
+      console.error("Error creating tender:", error);
+      toast({ title: "Error", description: error.message || "Failed to create tender", variant: "destructive" });
+      throw error;
+    }
+  };
+
   const value: Web3ContextType = {
     account,
     isConnected,
@@ -623,6 +655,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
     removeOfficer,
     getOfficer,
     getAllOfficers,
+    createNewTender,
     fetchTenders,
   };
 
