@@ -21,17 +21,27 @@ declare global {
 }
 
 // Define proper types for contract return values
+export interface OfficerPermissions {
+  canCreate: boolean;
+  canApprove: boolean;
+  isActive: boolean;
+}
+
+export interface OfficerPermissions {
+  canCreate: boolean;
+  canApprove: boolean;
+  isActive: boolean;
+}
+
 export interface Officer {
-  walletAddress: string;
   id: string;
   name: string;
   username: string;
   email: string;
-  permissions: {
-    canCreate: boolean;
-    canApprove: boolean;
-    isActive: boolean;
-  };
+  isActive: boolean;
+  walletAddress: string;
+  permissions: OfficerPermissions;
+  createdAt: Date;
 }
 
 export interface Tender {
@@ -111,19 +121,44 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   const isConnecting = useRef(false);
   const connectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Read-only RPC provider and contract for data-fetching before or without wallet connect
-  const rpcProvider = useMemo(
-    () => new ethers.providers.JsonRpcProvider(TARGET_NETWORK.rpcUrl),
-    []
-  );
-  const rpcTenderContract = useMemo(
-    () => new ethers.Contract(
-      CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
-      CONTRACT_ABI.TENDER_MANAGEMENT,
-      rpcProvider
-    ),
-    [rpcProvider]
-  );
+  // RPC provider for read-only operations
+  const rpcProvider = useMemo(() => {
+    try {
+      return new ethers.providers.JsonRpcProvider(TARGET_NETWORK.rpcUrl);
+    } catch (error) {
+      console.error("Error creating RPC provider:", error);
+      return null;
+    }
+  }, []);
+
+  // Read-only contract instances
+  const rpcOfficerContract = useMemo(() => {
+    if (!rpcProvider) return null;
+    try {
+      return new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        rpcProvider
+      );
+    } catch (error) {
+      console.error("Error creating RPC officer contract:", error);
+      return null;
+    }
+  }, [rpcProvider]);
+
+  const rpcTenderContract = useMemo(() => {
+    if (!rpcProvider) return null;
+    try {
+      return new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        rpcProvider
+      );
+    } catch (error) {
+      console.error("Error creating RPC tender contract:", error);
+      return null;
+    }
+  }, [rpcProvider]);
 
   // Keep references to event handlers for proper cleanup
   const accountsChangedRef = useRef<(...args: any[]) => void>(() => {});
@@ -252,91 +287,35 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   };
 
   const connectWallet = async (): Promise<boolean> => {
-    if (isConnecting.current) {
-      toast({
-        title: "Connection in Progress",
-        description: "Please wait for the current connection attempt to complete",
-        variant: "default",
-      });
+    if (isConnecting.current) return false; // Prevent multiple requests
+
+    if (typeof window.ethereum === 'undefined') {
+      setError("MetaMask is not installed. Please install MetaMask to use this application.");
+      console.error("MetaMask is not installed");
       return false;
     }
 
     isConnecting.current = true;
-    setIsLoading(true);
     setError(null);
 
     try {
-      if (typeof window.ethereum === "undefined") {
-        throw new Error("MetaMask is not installed. Please install MetaMask to use this application.");
+      const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+      const accounts = await web3Provider.send("eth_requestAccounts", []);
+
+      if (accounts.length === 0) {
+        setError("No accounts found. Please check MetaMask.");
+        return false;
       }
 
-      const web3Provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      
-      // Set a timeout for the connection attempt
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        connectionTimeout.current = setTimeout(() => {
-          reject(new Error("Connection timeout. Please try again."));
-        }, 30000); // 30 second timeout
-      });
-
-      // Check existing accounts
-      const existingAccounts = await web3Provider.listAccounts();
-      if (existingAccounts.length > 0) {
-        await handleWalletConnection(web3Provider, existingAccounts[0]);
-        return true;
-      }
-
-      // Request new connection
-      const accountsPromise = window.ethereum?.request({ method: "eth_requestAccounts" });
-      if (!accountsPromise) {
-        throw new Error("Failed to request accounts. Please try again.");
-      }
-
-      const accounts = await Promise.race([accountsPromise, timeoutPromise]) as string[];
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts found. Please unlock your MetaMask wallet.");
-      }
-
-      await handleWalletConnection(web3Provider, accounts[0]);
-      
-      toast({
-        title: "Wallet Connected",
-        description: `Connected to ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
-      });
-      
+      const address = accounts[0];
+      handleWalletConnection(web3Provider, address);
       return true;
     } catch (error: any) {
+      setError(error.message || "Failed to connect wallet");
       console.error("Error connecting wallet:", error);
-      setError(error.message || "An unknown error occurred");
-      
-      if (error.code === 4001) {
-        toast({
-          title: "Connection Rejected",
-          description: "Please connect your wallet to continue",
-          variant: "destructive",
-        });
-      } else if (error.code === -32002) {
-        toast({
-          title: "Connection Pending",
-          description: "Please check your MetaMask wallet",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Connection Error",
-          description: error.message || "Failed to connect wallet",
-          variant: "destructive",
-        });
-      }
       return false;
     } finally {
-      setIsLoading(false);
       isConnecting.current = false;
-      if (connectionTimeout.current) {
-        clearTimeout(connectionTimeout.current);
-        connectionTimeout.current = null;
-      }
     }
   };
 
@@ -410,69 +389,62 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   // Smart contract interaction functions
   
   // Add an officer to the blockchain
-  const addOfficer = async (
-    username: string,
-    name: string,
-    email: string
-  ): Promise<boolean> => {
-    try {
-      if (!officerContract || !account) {
-        console.error("Contract or account not initialized");
-        return false;
-      }
-
-      // Generate a unique ID
-      const id = `officer-${Date.now()}`;
-
-      // We'll set the wallet address as empty initially
-      // The officer will connect their wallet later
-      const emptyAddress = "0x0000000000000000000000000000000000000000";
-
-      const tx = await officerContract.addOfficer(
-        emptyAddress,
-        ethers.utils.formatBytes32String(id),
-        name,
-        ethers.utils.formatBytes32String(username),
-        email
-      );
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error("Error adding officer:", error);
-      return false;
-    }
-  };
-  
-  // Update an officer on the blockchain
-  const updateOfficer = async (
-    walletAddress: string,
-    name: string,
-    username: string,
-    email: string
-  ): Promise<boolean> => {
+  const addOfficer = async (username: string, name: string, email: string): Promise<boolean> => {
     try {
       if (!officerContract || !signer) {
-        // Attempt to connect wallet if not initialized
         const connected = await connectWallet();
-        if (!connected || !officerContract || !signer) {
+        if (!connected || !officerContract) {
           throw new Error("Contract or signer not initialized. Please connect your wallet first.");
         }
       }
 
-      const tx = await officerContract.updateOfficer(
-        walletAddress,
-        name,
-        username,
-        email
-      );
-      
+      if (!account) {
+        throw new Error("No wallet account connected");
+      }
+
+      // Generate a unique ID for the officer
+      const id = `officer-${Date.now()}`;
+
+      // Add officer to contract with all required parameters
+      const tx = await officerContract.addOfficer(account, id, name, username, email);
       await tx.wait();
-      
+
       toast({
         title: "Success",
-        description: "Officer updated successfully",
+        description: `Officer ${username} added successfully`,
       });
-      
+
+      return true;
+    } catch (error: any) {
+      console.error("Error adding officer:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add officer",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const updateOfficer = async (walletAddress: string, name: string, username: string, email: string): Promise<boolean> => {
+    try {
+      // Ensure wallet connected
+      if (!officerContract || !signer) {
+        const connected = await connectWallet();
+        if (!connected || !officerContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+
+      // Update officer in contract
+      const tx = await officerContract.updateOfficer(walletAddress, name, username, email);
+      await tx.wait();
+
+      toast({
+        title: "Success",
+        description: `Officer ${username} updated successfully`,
+      });
+
       return true;
     } catch (error: any) {
       console.error("Error updating officer:", error);
@@ -484,22 +456,26 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       return false;
     }
   };
-  
-  // Remove an officer from the blockchain
+
   const removeOfficer = async (walletAddress: string): Promise<boolean> => {
     try {
+      // Ensure wallet connected
       if (!officerContract || !signer) {
-        throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        const connected = await connectWallet();
+        if (!connected || !officerContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
       }
 
+      // Remove officer from contract
       const tx = await officerContract.removeOfficer(walletAddress);
       await tx.wait();
-      
+
       toast({
         title: "Success",
         description: "Officer removed successfully",
       });
-      
+
       return true;
     } catch (error: any) {
       console.error("Error removing officer:", error);
@@ -511,28 +487,43 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       return false;
     }
   };
-  
-  // Get officer details from the blockchain
+
   const getOfficer = async (walletAddress: string): Promise<Officer | null> => {
     try {
       if (!officerContract) {
-        throw new Error("Contract not initialized. Please connect your wallet first.");
+        console.error("Officer contract not initialized");
+        return null;
       }
 
-      const officer = await officerContract.getOfficer(walletAddress);
-      return officer as Officer;
-    } catch (error: any) {
+      const [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(walletAddress);
+
+      const officer: Officer = {
+        id: id.toString(),
+        name: name.toString(),
+        username: username.toString(),
+        email: email.toString(),
+        walletAddress,
+        isActive: Boolean(isActive),
+        permissions: {
+          canCreate: Boolean(isActive),
+          canApprove: Boolean(isActive),
+          isActive: Boolean(isActive)
+        },
+        createdAt: new Date(createdAt.toNumber() * 1000)
+      };
+
+      return officer;
+    } catch (error) {
       console.error("Error getting officer:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to get officer",
+        description: "Failed to get officer details",
         variant: "destructive",
       });
       return null;
     }
   };
-  
-  // Get all officers from the blockchain
+
   const getAllOfficers = async (): Promise<Officer[]> => {
     try {
       if (!officerContract) {
@@ -548,18 +539,21 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       for (const address of officerAddresses) {
         try {
           const [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(address);
-          officers.push({
-            id,
+          const officer: Officer = {
+            id: id.toString(),
             walletAddress: address,
-            name,
-            username,
-            email,
+            name: name.toString(),
+            username: username.toString(),
+            email: email.toString(),
+            isActive: Boolean(isActive),
             permissions: {
-              canCreate: isActive,
-              canApprove: isActive,
-              isActive: isActive
-            }
-          });
+              canCreate: Boolean(isActive),
+              canApprove: Boolean(isActive),
+              isActive: Boolean(isActive)
+            },
+            createdAt: new Date(createdAt.toNumber() * 1000)
+          };
+          officers.push(officer);
         } catch (err) {
           console.warn(`Error fetching officer details for address ${address}:`, err);
         }
@@ -574,9 +568,12 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
 
   const fetchTenders = async (): Promise<FormattedTender[]> => {
     try {
-      const contract = tenderContract ?? rpcTenderContract;
+      if (!tenderContract) {
+        console.error("Tender contract not initialized");
+        return [];
+      }
 
-      const tenderIds = await contract.getAllTenderIds();
+      const tenderIds = await tenderContract.getAllTenderIds();
       if (!tenderIds || !Array.isArray(tenderIds)) {
         return [];
       }
@@ -585,7 +582,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
 
       for (const id of tenderIds) {
         try {
-          const tender = await contract.getTender(id);
+          const tender = await tenderContract.getTender(id);
           formattedTenders.push({
             id: tender.id,
             title: tender.title,

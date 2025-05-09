@@ -267,22 +267,40 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         throw new Error("Invalid username or password");
       }
 
-      // For officers, check wallet connection
+      // For officers, verify blockchain status
       if (user.role === "officer") {
+        // Connect wallet if not connected
         if (!isConnected) {
-          throw new Error("Please connect your wallet first");
-        }
-        
-        if (!user.walletAddress) {
-          // Officer hasn't connected wallet yet, let them connect
-          const success = await connectOfficerWallet(username, password);
-          if (!success) {
+          const connected = await connectWallet();
+          if (!connected) {
             throw new Error("Failed to connect wallet");
           }
-        } else if (user.walletAddress.toLowerCase() !== account?.toLowerCase()) {
-          // Officer must use their registered wallet
-          throw new Error("Please connect with your registered wallet address");
         }
+
+        if (!account) {
+          throw new Error("Wallet not connected");
+        }
+
+        // Sync officer data from blockchain
+        await syncOfficersFromBlockchain();
+
+        // Find the officer in our updated users list
+        const officerUser = users.find(u => 
+          u.walletAddress?.toLowerCase() === account.toLowerCase() && 
+          u.role === 'officer'
+        );
+
+        if (!officerUser) {
+          throw new Error("Officer not found in blockchain. Please contact admin.");
+        }
+
+        if (!officerUser.permissions?.isActive) {
+          throw new Error("Your account is currently inactive. Please contact admin.");
+        }
+
+        // Update user with blockchain data
+        user.walletAddress = account;
+        user.permissions = officerUser.permissions;
       }
 
       // Login successful
@@ -297,7 +315,20 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         error: null
       });
 
+      // Update users array
+      const updatedUsers = users.map(u => 
+        u.id === user.id ? loggedInUser : u
+      );
+      setUsers(updatedUsers);
+      persistUsers(updatedUsers);
+
       localStorage.setItem("user", JSON.stringify(loggedInUser));
+      
+      toast({
+        title: "Success",
+        description: `Welcome back, ${loggedInUser.name}!`,
+      });
+
       return true;
 
     } catch (error: any) {
@@ -308,6 +339,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         isLoading: false,
         error: error.message
       }));
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to login",
+        variant: "destructive",
+      });
+      
       return false;
     }
   };
