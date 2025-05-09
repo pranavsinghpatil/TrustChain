@@ -27,12 +27,6 @@ export interface OfficerPermissions {
   isActive: boolean;
 }
 
-export interface OfficerPermissions {
-  canCreate: boolean;
-  canApprove: boolean;
-  isActive: boolean;
-}
-
 export interface Officer {
   id: string;
   name: string;
@@ -402,6 +396,17 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         throw new Error("No wallet account connected");
       }
 
+      // Check if officer already exists
+      const existingOfficer = await getOfficer(account);
+      if (existingOfficer && existingOfficer.id && existingOfficer.id !== "") {
+        toast({
+          title: "Error",
+          description: "Officer already exists for this address.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
       // Generate a unique ID for the officer
       const id = `officer-${Date.now()}`;
 
@@ -489,48 +494,51 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   };
 
   const getOfficer = async (walletAddress: string): Promise<Officer | null> => {
+    if (!officerContract) {
+      console.error("Officer contract not initialized");
+      return null;
+    }
     try {
-      if (!officerContract) {
-        console.error("Officer contract not initialized");
+      let id, name, username, email, isActive, createdAt;
+      try {
+        [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(walletAddress);
+      } catch (err) {
+        // If call reverts or overflows, treat as officer not found
+        console.warn(`getOfficer: contract call failed for ${walletAddress}:`, err);
         return null;
       }
-
-      const [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(walletAddress);
-
-      const officer: Officer = {
-        id: id.toString(),
+      const officerId = id?.toString?.() ?? "";
+      const createdAtStr = createdAt?.toString?.() ?? "0";
+      const createdAtNum = Number(createdAtStr);
+      if (!officerId || officerId === "" || !Number.isFinite(createdAtNum) || createdAtNum === 0) {
+        return null;
+      }
+      return {
+        id: officerId,
+        walletAddress,
         name: name.toString(),
         username: username.toString(),
         email: email.toString(),
-        walletAddress,
         isActive: Boolean(isActive),
         permissions: {
           canCreate: Boolean(isActive),
           canApprove: Boolean(isActive),
           isActive: Boolean(isActive)
         },
-        createdAt: new Date(createdAt.toNumber() * 1000)
+        createdAt: new Date(createdAtNum * 1000)
       };
-
-      return officer;
     } catch (error) {
-      console.error("Error getting officer:", error);
-      toast({
-        title: "Error",
-        description: "Failed to get officer details",
-        variant: "destructive",
-      });
+      console.error("Error getting officer (outer):", error);
       return null;
     }
   };
 
   const getAllOfficers = async (): Promise<Officer[]> => {
+    if (!officerContract) {
+      console.error("Officer contract not initialized");
+      return [];
+    }
     try {
-      if (!officerContract) {
-        console.error("Officer contract not initialized");
-        return [];
-      }
-
       // Get all officer addresses first
       const officerAddresses = await officerContract.getAllOfficerAddresses();
       const officers: Officer[] = [];
@@ -538,9 +546,22 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       // Get details for each officer
       for (const address of officerAddresses) {
         try {
-          const [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(address);
+          let id, name, username, email, isActive, createdAt;
+          try {
+            [id, name, username, email, isActive, createdAt] = await officerContract.getOfficer(address);
+          } catch (err) {
+            // If call reverts or overflows, skip this officer
+            console.warn(`getAllOfficers: contract call failed for ${address}:`, err);
+            continue;
+          }
+          const officerId = id?.toString?.() ?? "";
+          const createdAtStr = createdAt?.toString?.() ?? "0";
+          const createdAtNum = Number(createdAtStr);
+          if (!officerId || officerId === "" || !Number.isFinite(createdAtNum) || createdAtNum === 0) {
+            continue;
+          }
           const officer: Officer = {
-            id: id.toString(),
+            id: officerId,
             walletAddress: address,
             name: name.toString(),
             username: username.toString(),
@@ -551,11 +572,11 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
               canApprove: Boolean(isActive),
               isActive: Boolean(isActive)
             },
-            createdAt: new Date(createdAt.toNumber() * 1000)
+            createdAt: new Date(createdAtNum * 1000)
           };
           officers.push(officer);
         } catch (err) {
-          console.warn(`Error fetching officer details for address ${address}:`, err);
+          console.error(`Error fetching officer ${address} (outer):`, err);
         }
       }
 
