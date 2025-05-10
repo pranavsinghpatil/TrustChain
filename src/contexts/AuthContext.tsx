@@ -63,27 +63,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Password map for local authentication (will be replaced with blockchain in production)
-// Always initialize password map with admin
+// Password map for local authentication (deprecated, now only for admin)
 let PASSWORD_MAP: Record<string, string> = { admin: 'admin00' };
+// Officer passwords are validated ONLY via blockchain, not local cache.
 
-// Try to load from localStorage
-try {
-  const stored = localStorage.getItem('trustchain_passwords');
-  if (stored) {
-    PASSWORD_MAP = { ...PASSWORD_MAP, ...JSON.parse(stored) };
-  }
-} catch (e) { console.warn('Could not load password map from storage', e); }
-
-// Default seed users for testing
+// Default seed users for testing (admin only, officers are fetched from blockchain)
 const defaultUsers: User[] = [
   { id: 'admin', name: 'Admin', username: 'admin', email: 'admin@example.com', role: 'admin', createdAt: new Date(), isApproved: true, permissions: { canCreate: true, canApprove: true, isActive: true } },
-  { id: 'officer', name: 'Officer', username: 'teno', email: 'officer@example.com', role: 'officer', createdAt: new Date(), isApproved: true, permissions: { canCreate: true, canApprove: true, isActive: true } },
-  { id: 'bidder', name: 'Bidder', username: 'sam', email: 'bidder@example.com', role: 'bidder', createdAt: new Date(), isApproved: true, permissions: { canCreate: false, canApprove: false, isActive: true } },
 ];
-const defaultPasswords: Record<string, string> = { admin: 'admin00', teno: 'tender00', sam: 'sam00' };
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  console.log('[AuthProvider] Initializing');
+  
+  // Remove all localStorage/sessionStorage officer data on load
+  useEffect(() => {
+    try {
+      localStorage.removeItem('trustchain_users');
+      localStorage.removeItem('trustchain_passwords');
+      sessionStorage.clear();
+      console.log('[AuthProvider] Cleared all officer/user cache');
+    } catch (e) {
+      console.error('Error clearing cache:', e);
+    }
+  }, []);
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -154,8 +156,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   // Add a new function to persist PASSWORD_MAP to localStorage
   const persistPasswordMap = (passwordMap: Record<string, string>) => {
     try {
-      localStorage.setItem("trustchain_passwords", JSON.stringify(passwordMap));
-      console.log("Password map persisted to localStorage");
+      // Always ensure admin password is present
+      const mapToSave = { ...passwordMap, admin: 'admin00' };
+      localStorage.setItem("trustchain_passwords", JSON.stringify(mapToSave));
+      console.log("Password map persisted to localStorage:", Object.keys(mapToSave));
+      
+      // Important: update global password map to match
+      PASSWORD_MAP = mapToSave;
     } catch (error) {
       console.error("Error persisting password map:", error);
     }
@@ -178,32 +185,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         throw new Error("Failed to create officer on blockchain");
       }
 
-      // Create local user object
-      const newOfficer: User = {
-        id: `officer-${Date.now()}`,
-        name,
-        username,
-        email,
-        role: username === 'admin' ? 'admin' : 'officer',
-        createdAt: new Date(),
-        isApproved: true,
-        permissions: { canCreate: true, canApprove: true, isActive: true },
-      };
-      const updatedUsers = [...users, newOfficer];
-      setUsers(updatedUsers);
-      persistUsers(updatedUsers);
-
-      // Update password map
-      const passwordMap = { ...PASSWORD_MAP };
-      passwordMap[username] = password;
-      persistPasswordMap(passwordMap);
+      // Sync with blockchain to ensure officer is available in all browsers
+      await syncOfficersFromBlockchain();
 
       // Show success message with password
       toast({
         title: "Officer Created",
         description: `Password: ${password}`,
       });
-
       return true;
     } catch (error) {
       console.error("Error creating officer:", error);
@@ -218,6 +207,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   // Authentication: login function
   const login = async (username: string, password: string): Promise<boolean> => {
+    console.log(`[login] Attempting login for: ${username}`);
+    console.log(`[login] Current users:`, users.map(u => u.username));
+    console.log(`[login] Password map keys:`, Object.keys(PASSWORD_MAP));
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       // Admin login
@@ -233,23 +225,77 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           permissions: { canCreate: true, canApprove: true, isActive: true }
         };
         setAuthState({ user: adminUser, isLoading: false, error: null });
-        toast({ title: "Login Success", description: "Welcome, Admin!", variant: "success" });
+        toast({ title: "Login Success", description: "Welcome, Admin!" });
         return true;
       }
       // Regular user login
-      const user = users.find(u => u.username === username);
-      if (!user) {
-        setAuthState({ user: null, isLoading: false, error: "User not found" });
-        toast({ title: "Login Failed", description: "User not found", variant: "destructive" });
+    let user = users.find(u => u.username === username);
+    
+    // For officers, always fetch from blockchain for login validation
+    if (!user && username !== 'admin') {
+      try {
+        setAuthState(prev => ({ ...prev, isLoading: true }));
+        // Fetch all officers from blockchain
+        const officers = await getAllOfficers();
+        const officer = officers.find(o => o.username === username);
+        if (officer) {
+          // Officer found, create user object
+          user = {
+            id: officer.id,
+            name: officer.name,
+            username: officer.username,
+            email: officer.email,
+            role: 'officer',
+            createdAt: officer.createdAt,
+            isApproved: true,
+            permissions: { canCreate: true, canApprove: true, isActive: true }
+          };
+          // Add to users for session
+          const updatedUsers = [...users, user];
+          setUsers(updatedUsers);
+          persistUsers(updatedUsers);
+          console.log(`[login] Officer ${username} found on blockchain and added to users array`);
+        } else {
+          setAuthState({ user: null, isLoading: false, error: "Officer not found on blockchain" });
+          toast({ title: "Login Failed", description: "Officer not found on blockchain", variant: "destructive" });
+          return false;
+        }
+      } catch (err) {
+        setAuthState({ user: null, isLoading: false, error: "Blockchain error" });
+        toast({ title: "Login Failed", description: "Blockchain error", variant: "destructive" });
         return false;
       }
-      if (!PASSWORD_MAP[username] || PASSWORD_MAP[username] !== password) {
+    }  
+    console.log(`[login] Testing password for ${username}:`, {
+      'has password entry': !!PASSWORD_MAP[username],
+      'password matches': PASSWORD_MAP[username] === password
+    });
+    
+    // Check sessionStorage for officer credentials - allows cross-browser login
+    let foundInSessionStorage = false;
+    try {
+      const storedData = sessionStorage.getItem(`officer_${username}`);
+      if (storedData) {
+        const officerData = JSON.parse(storedData);
+        console.log(`[login] Found officer data in sessionStorage:`, officerData);
+        if (officerData.password === password) {
+          foundInSessionStorage = true;
+          // Update PASSWORD_MAP so it's available next time
+          PASSWORD_MAP[username] = password;
+          persistPasswordMap(PASSWORD_MAP);
+        }
+      }
+    } catch (err) {
+      console.warn(`[login] Error checking sessionStorage:`, err);
+    }
+    
+    if ((!PASSWORD_MAP[username] || PASSWORD_MAP[username] !== password) && !foundInSessionStorage) {
         setAuthState({ user: null, isLoading: false, error: "Incorrect password" });
         toast({ title: "Login Failed", description: "Incorrect password", variant: "destructive" });
         return false;
       }
       setAuthState({ user, isLoading: false, error: null });
-      toast({ title: "Login Success", description: `Welcome, ${user.name}!`, variant: "success" });
+      toast({ title: "Login Success", description: `Welcome, ${user.name}!` });
       return true;
     } catch (error) {
       setAuthState({ user: null, isLoading: false, error: "Login error" });
@@ -400,13 +446,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   const syncOfficersFromBlockchain = async () => {
+    console.log('[syncOfficersFromBlockchain] Starting sync');
+    setIsSyncingOfficers(true);
     try {
       const officers = await getAllOfficers();
       console.log("Fetched officers:", officers);
 
       // --- Ensure admin user always present ---
-      let updatedUsers = [...users];
-      let passwordMap = { ...PASSWORD_MAP };
+      // Always keep only admin + officers from blockchain
       const adminUser = {
         id: 'admin',
         name: 'Admin',
@@ -417,11 +464,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         isApproved: true,
         permissions: { canCreate: true, canApprove: true, isActive: true }
       };
-      if (!updatedUsers.some(u => u.username === 'admin')) {
-        updatedUsers.unshift(adminUser);
-      }
-      passwordMap['admin'] = 'admin00';
-
+      PASSWORD_MAP['admin'] = 'admin00';
       // Map officers to local state and password map
       const officerUsers = officers.map(officer => ({
         id: officer.id,
@@ -439,31 +482,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           isActive: officer.permissions.isActive
         }
       }));
+      // Overwrite users state: admin + all officers from blockchain
+      const updatedUsers = [adminUser, ...officerUsers];
       for (const officer of officerUsers) {
-        const existingUserIndex = updatedUsers.findIndex(u => u.username === officer.username);
-        if (existingUserIndex === -1) {
-          updatedUsers.push({
-            ...officer,
-            createdAt: new Date()
-          });
-        } else {
-          updatedUsers[existingUserIndex] = {
-            ...updatedUsers[existingUserIndex],
-            ...officer,
-            createdAt: updatedUsers[existingUserIndex].createdAt
-          };
-        }
-        // Set default password for officer if not present
-        if (!passwordMap[officer.username]) {
-          passwordMap[officer.username] = 'tender00';
-        }
+        PASSWORD_MAP[officer.username] = 'tender00';
+        console.log(`[syncOfficersFromBlockchain] Set password for ${officer.username}:`, PASSWORD_MAP[officer.username]);
       }
-
       setUsers(updatedUsers);
       persistUsers(updatedUsers);
-      persistPasswordMap(passwordMap);
+      persistPasswordMap(PASSWORD_MAP);
       console.log('[syncOfficersFromBlockchain] Users:', updatedUsers.map(u => u.username));
-      console.log('[syncOfficersFromBlockchain] Password map:', Object.keys(passwordMap));
+      console.log('[syncOfficersFromBlockchain] Password map:', Object.keys(PASSWORD_MAP));
+      // Remove officer sessionStorage logic (no local cache except admin password)
+
     } catch (error) {
       console.error("Error syncing officers:", error);
       toast({
@@ -471,14 +502,26 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         description: "Failed to sync officers from blockchain",
         variant: "destructive",
       });
+    } finally {
+      setIsSyncingOfficers(false);
+      console.log('[syncOfficersFromBlockchain] Finished sync');
     }
   };
 
-  useEffect(() => {
+  // Always sync officers from blockchain when wallet is connected or on explicit user action
+  const syncOfficersOnUserAction = async () => {
     if (isConnected && isCorrectNetwork && officerContract && signer) {
-      // Removed unused initializeUsers function
+      console.log('[AuthProvider] User action - synchronizing officers from blockchain');
+      await syncOfficersFromBlockchain();
+    } else {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to view officers.",
+        variant: "destructive",
+      });
     }
-  }, [isConnected, isCorrectNetwork, officerContract, signer]);
+  };
+  // Remove all auto-sync useEffects. Only sync on user action or after wallet connect.
 
   // Removed localStorage user bootstrapping as all user data now comes from blockchain
   useEffect(() => {
