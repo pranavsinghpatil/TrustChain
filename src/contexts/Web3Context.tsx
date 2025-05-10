@@ -240,6 +240,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         CONTRACT_ABI.OFFICER_MANAGEMENT,
         web3Signer
       );
+      console.debug('[Web3Context] officerContract initialized at', CONTRACT_ADDRESSES.OFFICER_MANAGEMENT);
       setOfficerContract(officerContractInstance);
 
       const userAuthContractInstance = new ethers.Contract(
@@ -385,8 +386,14 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   // Add an officer to the blockchain
   const addOfficer = async (username: string, name: string, email: string): Promise<boolean> => {
     try {
+      console.log('[addOfficer] called with:', { username, name, email });
+      console.log('[addOfficer] account:', account);
+      console.log('[addOfficer] signer:', signer);
+      console.log('[addOfficer] officerContract:', officerContract);
+
       if (!officerContract || !signer) {
         const connected = await connectWallet();
+        console.log('[addOfficer] connectWallet called, connected:', connected, 'officerContract:', officerContract, 'signer:', signer);
         if (!connected || !officerContract) {
           throw new Error("Contract or signer not initialized. Please connect your wallet first.");
         }
@@ -404,6 +411,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
           description: "Officer already exists for this address.",
           variant: "destructive",
         });
+        console.log('[addOfficer] Officer already exists for this wallet');
         return false;
       }
 
@@ -412,12 +420,19 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
 
       // Add officer to contract with all required parameters
       const tx = await officerContract.addOfficer(account, id, name, username, email);
+      console.log('[addOfficer] Transaction sent:', tx.hash);
       await tx.wait();
+      console.log('[addOfficer] Transaction confirmed');
 
       toast({
         title: "Success",
         description: `Officer ${username} added successfully`,
       });
+
+      // Attempt to refresh officers list after creation
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        window.dispatchEvent(new Event('officerCreated'));
+      }
 
       return true;
     } catch (error: any) {

@@ -64,7 +64,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Password map for local authentication (will be replaced with blockchain in production)
-const PASSWORD_MAP: Record<string, string> = {};
+// Always initialize password map with admin
+let PASSWORD_MAP: Record<string, string> = { admin: 'admin00' };
+
+// Try to load from localStorage
+try {
+  const stored = localStorage.getItem('trustchain_passwords');
+  if (stored) {
+    PASSWORD_MAP = { ...PASSWORD_MAP, ...JSON.parse(stored) };
+  }
+} catch (e) { console.warn('Could not load password map from storage', e); }
 
 // Default seed users for testing
 const defaultUsers: User[] = [
@@ -80,7 +89,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     isLoading: true,
     error: null,
   });
-  const [users, setUsers] = useState<User[]>([]);
+
+  // Refactored loadUsers: return stored users or defaultUsers
+  const loadUsers = () => {
+    try {
+      const stored = localStorage.getItem('trustchain_users');
+      if (stored) {
+        return JSON.parse(stored) as User[];
+      }
+    } catch (e) {
+      console.warn('Could not load users from storage', e);
+    }
+    return defaultUsers;
+  };
+  const [users, setUsers] = useState<User[]>(loadUsers());
+
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const { toast } = useToast();
   const { 
@@ -112,9 +135,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   // Add a new function to persist users to localStorage
   const persistUsers = (updatedUsers: User[]) => {
+    // Ensure admin is always present before persisting
+    let usersWithAdmin = updatedUsers;
+    if (!updatedUsers.some(u => u.username === 'admin')) {
+      usersWithAdmin = [
+        { id: 'admin', name: 'Admin', username: 'admin', email: 'admin@example.com', role: 'admin', createdAt: new Date(), isApproved: true, permissions: { canCreate: true, canApprove: true, isActive: true } },
+        ...updatedUsers
+      ];
+    }
     try {
-      localStorage.setItem("trustchain_users", JSON.stringify(updatedUsers));
-      console.log("Users persisted to localStorage:", updatedUsers.map(u => u.username));
+      localStorage.setItem("trustchain_users", JSON.stringify(usersWithAdmin));
+      console.log("Users persisted to localStorage:", usersWithAdmin.map(u => u.username));
     } catch (error) {
       console.error("Error persisting users:", error);
     }
@@ -136,9 +167,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     email: string
   ): Promise<boolean> => {
     try {
-      // Generate a temporary password
-      const tempPassword = `officer${Date.now().toString().slice(-6)}`;
-      
+      // Special case for admin
+      let password = 'tender00';
+      if (username === 'admin') {
+        password = 'admin00';
+      }
       // Create officer in blockchain
       const success = await addOfficer(username, name, email);
       if (!success) {
@@ -151,31 +184,24 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         name,
         username,
         email,
-        role: "officer",
+        role: username === 'admin' ? 'admin' : 'officer',
         createdAt: new Date(),
         isApproved: true,
-        walletAddress: undefined,
-        permissions: {
-          canCreate: true,
-          canApprove: true,
-          isActive: true
-        }
+        permissions: { canCreate: true, canApprove: true, isActive: true },
       };
-
-      // Update users array
       const updatedUsers = [...users, newOfficer];
       setUsers(updatedUsers);
       persistUsers(updatedUsers);
 
       // Update password map
       const passwordMap = { ...PASSWORD_MAP };
-      passwordMap[username] = tempPassword;
+      passwordMap[username] = password;
       persistPasswordMap(passwordMap);
 
-      // Show success message with temporary password
+      // Show success message with password
       toast({
         title: "Officer Created",
-        description: `Temporary password: ${tempPassword}`,
+        description: `Password: ${password}`,
       });
 
       return true;
@@ -190,85 +216,44 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
+  // Authentication: login function
   const login = async (username: string, password: string): Promise<boolean> => {
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-      toast({
-        title: "Login Attempt",
-        description: account ? `Wallet: ${account}` : "No wallet connected",
-        variant: "info"
-      });
-      console.log("[DEBUG] Login attempt with account:", account);
-      // Always sync officers from blockchain before login
-      await syncOfficersFromBlockchain();
-      console.log("[DEBUG] Users after sync in login:", users);
-      toast({
-        title: "Users Synced (Login)",
-        description: `Users: ${users.map(u => u.username).join(", ")}`,
-        variant: "info"
-      });
-      if (!users || users.length === 0) {
-        toast({
-          title: "No Users Found",
-          description: "No users are available on the blockchain. Please ask the admin to initialize users.",
-          variant: "destructive"
-        });
-        setAuthState(prev => ({ ...prev, isLoading: false, error: "No users found" }));
-        return false;
+      // Admin login
+      if (username === 'admin' && password === 'admin00') {
+        const adminUser = users.find(u => u.username === 'admin') || {
+          id: 'admin',
+          name: 'Admin',
+          username: 'admin',
+          email: 'admin@example.com',
+          role: 'admin' as UserRole,
+          createdAt: new Date(),
+          isApproved: true,
+          permissions: { canCreate: true, canApprove: true, isActive: true }
+        };
+        setAuthState({ user: adminUser, isLoading: false, error: null });
+        toast({ title: "Login Success", description: "Welcome, Admin!", variant: "success" });
+        return true;
       }
-      // Find user
+      // Regular user login
       const user = users.find(u => u.username === username);
       if (!user) {
-        toast({
-          title: "User Not Found",
-          description: `Username: ${username} not found in users: ${users.map(u => u.username).join(", ")}`,
-          variant: "destructive"
-        });
-        throw new Error("Invalid username or password");
+        setAuthState({ user: null, isLoading: false, error: "User not found" });
+        toast({ title: "Login Failed", description: "User not found", variant: "destructive" });
+        return false;
       }
-      // Check password
-      if (PASSWORD_MAP[username] !== password) {
-        toast({
-          title: "Password Mismatch",
-          description: `Password provided for ${username} does not match PASSWORD_MAP entry.`,
-          variant: "destructive"
-        });
-        throw new Error("Invalid username or password");
+      if (!PASSWORD_MAP[username] || PASSWORD_MAP[username] !== password) {
+        setAuthState({ user: null, isLoading: false, error: "Incorrect password" });
+        toast({ title: "Login Failed", description: "Incorrect password", variant: "destructive" });
+        return false;
       }
-      // Connect wallet if not connected
-      if (!isConnected) {
-        await connectWallet();
-      }
-      if (!account) {
-        throw new Error("Failed to connect wallet");
-      }
-      // Update user with wallet address
-      const updatedUser = {
-        ...user,
-        walletAddress: account
-      };
-      const updatedUsers = users.map(u => 
-        u.id === user.id ? updatedUser : u
-      );
-      setUsers(updatedUsers);
-      toast({
-        title: "Success",
-        description: `Welcome back, ${updatedUser.name}!`,
-      });
+      setAuthState({ user, isLoading: false, error: null });
+      toast({ title: "Login Success", description: `Welcome, ${user.name}!`, variant: "success" });
       return true;
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setAuthState(prev => ({
-        ...prev,
-        user: null,
-        isLoading: false,
-        error: error.message
-      }));
-      toast({
-        title: "Error",
-        description: error.message || "Failed to login",
-        variant: "destructive",
-      });
+    } catch (error) {
+      setAuthState({ user: null, isLoading: false, error: "Login error" });
+      toast({ title: "Login Error", description: "Unexpected error during login", variant: "destructive" });
       return false;
     }
   };
@@ -418,8 +403,26 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     try {
       const officers = await getAllOfficers();
       console.log("Fetched officers:", officers);
-      
-      // Map officers to local state
+
+      // --- Ensure admin user always present ---
+      let updatedUsers = [...users];
+      let passwordMap = { ...PASSWORD_MAP };
+      const adminUser = {
+        id: 'admin',
+        name: 'Admin',
+        username: 'admin',
+        email: 'admin@example.com',
+        role: 'admin' as UserRole,
+        createdAt: new Date(),
+        isApproved: true,
+        permissions: { canCreate: true, canApprove: true, isActive: true }
+      };
+      if (!updatedUsers.some(u => u.username === 'admin')) {
+        updatedUsers.unshift(adminUser);
+      }
+      passwordMap['admin'] = 'admin00';
+
+      // Map officers to local state and password map
       const officerUsers = officers.map(officer => ({
         id: officer.id,
         name: officer.name,
@@ -436,29 +439,31 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           isActive: officer.permissions.isActive
         }
       }));
-
-      // Add officers to users list if not already present
-      const updatedUsers = [...users];
       for (const officer of officerUsers) {
-        const existingUserIndex = updatedUsers.findIndex(u => 
-          u.walletAddress?.toLowerCase() === officer.walletAddress.toLowerCase()
-        );
-        
+        const existingUserIndex = updatedUsers.findIndex(u => u.username === officer.username);
         if (existingUserIndex === -1) {
           updatedUsers.push({
             ...officer,
-            createdAt: new Date() // Ensure createdAt is a Date object
+            createdAt: new Date()
           });
         } else {
           updatedUsers[existingUserIndex] = {
             ...updatedUsers[existingUserIndex],
             ...officer,
-            createdAt: updatedUsers[existingUserIndex].createdAt // Keep original creation date
+            createdAt: updatedUsers[existingUserIndex].createdAt
           };
+        }
+        // Set default password for officer if not present
+        if (!passwordMap[officer.username]) {
+          passwordMap[officer.username] = 'tender00';
         }
       }
 
       setUsers(updatedUsers);
+      persistUsers(updatedUsers);
+      persistPasswordMap(passwordMap);
+      console.log('[syncOfficersFromBlockchain] Users:', updatedUsers.map(u => u.username));
+      console.log('[syncOfficersFromBlockchain] Password map:', Object.keys(passwordMap));
     } catch (error) {
       console.error("Error syncing officers:", error);
       toast({
@@ -469,78 +474,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
-  // Auto-fetch blockchain officers when wallet connects or network is correct
-  useEffect(() => {
-    if (isConnected && isCorrectNetwork) {
-      syncOfficersFromBlockchain();
-    }
-  }, [isConnected, isCorrectNetwork]);
-
-  // Initialize users from blockchain
-  // Replace with your actual admin address (deployer address from Hardhat)
-  const ADMIN_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266".toLowerCase();
-
-  const isAdmin = account && account.toLowerCase() === ADMIN_ADDRESS;
-
-  const initializeUsers = async () => {
-    try {
-      toast({
-        title: "Connected Account",
-        description: account ? `Current wallet: ${account}` : "No wallet connected",
-        variant: "info"
-      });
-      console.log("[DEBUG] Connected account:", account);
-      // First sync from blockchain
-      await syncOfficersFromBlockchain();
-      console.log("[DEBUG] Users after blockchain sync:", users);
-      toast({
-        title: "Users Synced",
-        description: `Users after sync: ${users.map(u => u.username).join(", ")}`,
-        variant: "info"
-      });
-      // If no users exist, seed default users (only if admin is connected)
-      if (users.length === 0) {
-        if (!isAdmin) {
-          toast({
-            title: "Admin Wallet Required",
-            description: "Please connect the admin/deployer wallet to initialize default users.",
-            variant: "destructive"
-          });
-          console.log("[DEBUG] Not admin, skipping default user creation.");
-          return;
-        }
-        // Create admin user on blockchain
-        await createOfficer('Admin', 'admin', 'admin@example.com');
-        // Create officer user on blockchain
-        await createOfficer('Officer', 'teno', 'officer@example.com');
-        // Create bidder user on blockchain
-        await createOfficer('Bidder', 'sam', 'bidder@example.com');
-        toast({
-          title: "Default Users Initialized",
-          description: `Admin, Officer, and Bidder created on-chain by ${account}`,
-          variant: "success"
-        });
-        console.log("[DEBUG] Default users created by:", account);
-      }
-      console.log("[DEBUG] Users after initialization:", users);
-      toast({
-        title: "Users Synced",
-        description: `Users after init: ${users.map(u => u.username).join(", ")}`,
-        variant: "info"
-      });
-    } catch (error: any) {
-      console.error("Error initializing users:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to initialize user data",
-        variant: "destructive" 
-      });
-    }
-  };
-
   useEffect(() => {
     if (isConnected && isCorrectNetwork && officerContract && signer) {
-      initializeUsers();
+      // Removed unused initializeUsers function
     }
   }, [isConnected, isCorrectNetwork, officerContract, signer]);
 
