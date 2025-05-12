@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         const officers = await getAllOfficers();
         const officer = officers.find(o => o.username === username);
         if (officer) {
-          // Officer found, create user object
+          // Officer found, create user object (ignore walletAddress for login)
           user = {
             id: officer.id,
             name: officer.name,
@@ -249,6 +249,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             createdAt: officer.createdAt,
             isApproved: true,
             permissions: { canCreate: true, canApprove: true, isActive: true }
+            // walletAddress: officer.walletAddress, // purposely omitted for login
           };
           // Add to users for session
           const updatedUsers = [...users, user];

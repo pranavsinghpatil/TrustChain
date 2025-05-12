@@ -260,17 +260,6 @@ const ManageOfficers: React.FC = () => {
     setIsWalletDialogOpen(true);
   };
   
-  if (!contractsInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg text-white mb-4">Please connect your wallet, select the correct network, and ensure contracts are deployed.</p>
-          <Button onClick={connectWallet} disabled={initializingContracts} className="mb-2">{initializingContracts ? 'Connecting...' : 'Connect Wallet'}</Button>
-        </div>
-      </div>
-    );
-  }
-  
   if (authState.user?.role !== "admin") {
     return (
       <div className="container mx-auto p-6">
@@ -285,9 +274,25 @@ const ManageOfficers: React.FC = () => {
       </div>
     );
   }
-  
+
+  // Show a warning banner if contracts are not initialized, but do not block the UI
+  const renderWarningBanner = () => (
+    !contractsInitialized && (
+      <div className="w-full bg-yellow-600 text-white text-center py-2 mb-4 rounded shadow">
+        <span>
+          Blockchain not connected: Officer management will use local storage only. Connect your wallet for blockchain features.
+        </span>
+        <Button onClick={connectWallet} disabled={initializingContracts} className="ml-4 px-2 py-1 text-sm">
+          {initializingContracts ? 'Connecting...' : 'Connect Wallet'}
+        </Button>
+      </div>
+    )
+  );
+
   return (
     <div className="container mx-auto p-6">
+      {renderWarningBanner()}
+
       <Card className="bg-[#1B1B1B]/40 backdrop-blur-xl border border-white/10">
         <CardHeader>
           <div className="flex justify-between items-center">
