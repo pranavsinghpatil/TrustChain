@@ -6,6 +6,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/config/contracts";
 import { TARGET_NETWORK } from "@/config/network";
 
+// Simulated blockchain data store
+const localStorageKeys = {
+  officers: 'tender_officers',
+  tenders: 'tender_tenders',
+  users: 'tender_users',
+  bids: 'tender_bids'
+};
+
 // Proper typing for window.ethereum
 interface EthereumProvider {
   isMetaMask?: boolean;
@@ -35,6 +43,7 @@ export interface Officer {
   email: string;
   isActive: boolean;
   walletAddress: string;
+  password?: string; // Add password field for local storage
   permissions: OfficerPermissions;
   createdAt: Date;
 }
@@ -466,44 +475,63 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         throw new Error("No wallet account connected");
       }
 
-      // First check if the address is already in the officers list
+      // Store officer credentials for login regardless of whether the address is already an officer
+      const defaultPassword = 'tender00';
       try {
-        const officerAddresses = await officerContract.getAllOfficerAddresses();
-        const isExistingOfficer = officerAddresses.some((addr: string) => 
-          addr.toLowerCase() === account.toLowerCase());
+        sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+          username,
+          password: defaultPassword
+        }));
+        console.log(`[addOfficer] Stored credentials for ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing credentials:`, err);
+      }
+      
+      // Check if username already exists among officers
+      try {
+        const existingOfficers = await getAllOfficers();
+        const isExistingUsername = existingOfficers.some((officer: Officer) => 
+          officer.username === username);
         
-        if (isExistingOfficer) {
-          console.log(`[addOfficer] Address ${account} is already an officer`);
-          
-          // Instead of failing, try to update the existing officer
-          try {
-            // Store officer credentials for login
-            sessionStorage.setItem(`officer_${username}`, JSON.stringify({
-              username,
-              password: 'tender00'
-            }));
-            
-            toast({
-              title: "Officer Already Exists",
-              description: `Using existing officer. Password: tender00`,
-            });
-            
-            // Return true to indicate success - we're treating this as a successful operation
-            return true;
-          } catch (err) {
-            console.warn(`[addOfficer] Error storing credentials:`, err);
-          }
-          
+        if (isExistingUsername) {
+          console.log(`[addOfficer] Username ${username} already exists`);
           toast({
             title: "Error",
-            description: "Officer already exists for this address.",
+            description: "Officer with this username already exists.",
             variant: "destructive",
           });
           return false;
         }
+        
+        // Also store in localStorage for backup/recovery
+        try {
+          const newOfficer: Officer = {
+            id: `officer_${username}`,
+            name,
+            username,
+            email,
+            password: defaultPassword,
+            isActive: true,
+            walletAddress: account || '',
+            permissions: {
+              canCreate: true,
+              canApprove: true,
+              isActive: true
+            },
+            createdAt: new Date()
+          };
+          
+          const localOfficers = JSON.parse(localStorage.getItem(localStorageKeys.officers) || '[]');
+          localOfficers.push(newOfficer);
+          localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+          (window as any).officerTempStore = localOfficers;
+          console.log(`[addOfficer] Stored officer in localStorage: ${username}`);
+        } catch (err) {
+          console.warn(`[addOfficer] Error storing officer in localStorage:`, err);
+        }
       } catch (err) {
-        console.warn(`[addOfficer] Error checking officer addresses:`, err);
-        // Continue anyway to try direct creation
+        // If we can't check existing officers, proceed anyway
+        console.warn(`[addOfficer] Could not check existing usernames:`, err);
       }
 
       // Generate a unique ID for the officer
@@ -718,94 +746,127 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   };
 
   const getAllOfficers = async (): Promise<Officer[]> => {
-    if (!officerContract) {
-      console.error("Officer contract not initialized");
-      return [];
+    // First try to get officers from localStorage
+    let localOfficers: Officer[] = [];
+    try {
+      const storedOfficers = localStorage.getItem(localStorageKeys.officers);
+      if (storedOfficers) {
+        localOfficers = JSON.parse(storedOfficers);
+        console.log(`[getAllOfficers] Found ${localOfficers.length} officers in localStorage`);
+      }
+
+      // Also check window.officerTempStore as a backup
+      if (localOfficers.length === 0 && (window as any).officerTempStore) {
+        localOfficers = (window as any).officerTempStore;
+        console.log(`[getAllOfficers] Found ${localOfficers.length} officers in officerTempStore`);
+        // Save to localStorage for future use
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+      }
+    } catch (err) {
+      console.warn('[getAllOfficers] Error reading from localStorage:', err);
     }
+
+    // If we have local officers and no contract, return them
+    if (localOfficers.length > 0 && !officerContract) {
+      console.log(`[getAllOfficers] Returning ${localOfficers.length} officers from localStorage (no contract)`);
+      return localOfficers;
+    }
+
+    // Try to get officers from blockchain if contract is available
+    if (!officerContract) {
+      console.warn("Officer contract not initialized, using only localStorage officers");
+      return localOfficers;
+    }
+
     try {
       // Get all officer addresses first
       const officerAddresses = await officerContract.getAllOfficerAddresses();
       const officers: Officer[] = [];
+      const usernamesFromContract = new Set<string>();
 
-      // Get details for each officer
+      // Get details for each officer from contract
       for (const address of officerAddresses) {
         try {
           let id = "", name = "", username = "", email = "", isActive = false;
           let createdAt = '0';
-          
           try {
-            // Get raw contract data without any conversion
+            // Get raw contract data
             const rawData = await officerContract['getOfficer(address)'].staticCall(address);
-            
-            // Handle each field with extreme safety
-            id = typeof rawData[0] === 'string' ? rawData[0] : `officer-${address.slice(2, 8)}`;
-            name = typeof rawData[1] === 'string' ? rawData[1] : 'Officer';
-            username = typeof rawData[2] === 'string' ? rawData[2] : `user-${address.slice(2, 6)}`;
-            email = typeof rawData[3] === 'string' ? rawData[3] : `${username}@org.com`;
+            id = typeof rawData[0] === 'string' ? rawData[0] : '';
+            name = typeof rawData[1] === 'string' ? rawData[1] : '';
+            username = typeof rawData[2] === 'string' ? rawData[2] : '';
+            email = typeof rawData[3] === 'string' ? rawData[3] : '';
             isActive = Boolean(rawData[4]);
-            
-            // Handle timestamp as string only - NEVER convert to number
             createdAt = rawData[5]?.toString() || Date.now().toString();
-            
-            console.log('[Officer Data] Processed safely:', {
-              id, name, username, email, isActive
-            });
-          } catch (err) {
-            // Create minimal viable officer data
-            id = `officer-${address.slice(2, 8)}`;
-            name = 'Officer';
-            username = `user-${address.slice(2, 6)}`;
-            email = `${username}@org.com`;
-            isActive = true;
-            createdAt = Date.now().toString();
-            
-            console.warn('[Officer Recovery] Created fallback data for:', address);
-          }
-          
-          // Skip officers with invalid IDs
-          if (!id || id === "") {
-            console.warn(`[getAllOfficers] Skipping officer with empty ID: ${address}`);
-            continue;
-          }
-          
-          const officer: Officer = {
-            id,
-            walletAddress: address,
-            name,
-            username,
-            email,
-            isActive,
-            permissions: {
-              canCreate: isActive,
-              canApprove: isActive,
-              isActive: isActive
-            },
-            createdAt: new Date(parseInt(createdAt, 10))
-          };
-          
-          officers.push(officer);
-          
-          // Store officer credentials in sessionStorage for cross-browser access
-          console.log(`[getAllOfficers] Successfully added officer: ${username} (${id})`);
-          try {
-            // Store officer password in sessionStorage
-            sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+
+            // Only add if username and id are present
+            if (!id || !username) {
+              console.warn(`[getAllOfficers] Skipping officer with missing id/username: ${address}`);
+              continue;
+            }
+
+            const officer: Officer = {
+              id,
+              walletAddress: address,
+              name,
               username,
-              password: 'tender00'
-            }));
+              email,
+              isActive,
+              permissions: {
+                canCreate: isActive,
+                canApprove: isActive,
+                isActive: isActive
+              },
+              createdAt: new Date(parseInt(createdAt, 10))
+            };
+            officers.push(officer);
+            usernamesFromContract.add(username);
+            
+            // Store officer credentials in sessionStorage for cross-browser access
+            console.log(`[getAllOfficers] Successfully added officer from contract: ${username} (${id})`);
+            try {
+              sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+                username,
+                password: 'tender00'
+              }));
+            } catch (err) {
+              console.warn(`[getAllOfficers] Failed to store officer in sessionStorage:`, err);
+            }
           } catch (err) {
-            console.warn(`[getAllOfficers] Failed to store officer in sessionStorage:`, err);
+            // If contract call fails, skip this officer
+            console.warn('[Officer Recovery] Skipping officer due to contract data error:', address);
+            continue;
           }
         } catch (err) {
           console.error(`[getAllOfficers] Error processing officer ${address}:`, err);
         }
       }
       
+      // Add any officers from localStorage that weren't found in the contract
+      for (const localOfficer of localOfficers) {
+        if (!usernamesFromContract.has(localOfficer.username)) {
+          console.log(`[getAllOfficers] Adding officer from localStorage: ${localOfficer.username}`);
+          // Make sure the officer has password field for login
+          if (!localOfficer.password) {
+            localOfficer.password = 'tender00';
+          }
+          officers.push(localOfficer);
+        }
+      }
+      
+      // Update localStorage with the combined list
+      if (officers.length > 0) {
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
+        (window as any).officerTempStore = officers;
+      }
+      
       console.log(`[getAllOfficers] Retrieved ${officers.length} officers successfully`);
       return officers;
     } catch (error) {
-      console.error("Error getting all officers:", error);
-      return [];
+      console.error("Error getting officers from contract:", error);
+      // Fallback to localStorage if contract call fails
+      console.log(`[getAllOfficers] Falling back to ${localOfficers.length} officers from localStorage`);
+      return localOfficers;
     }
   };
 
