@@ -59,6 +59,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { z } from 'zod';
 
@@ -69,6 +70,26 @@ const officerSchema = z.object({
 });
 
 const ManageOfficers: React.FC = () => {
+  // ...existing state declarations
+  // Add a loading state for status change
+  const [statusLoading, setStatusLoading] = useState<string | null>(null);
+
+  // Handler for toggling officer status
+  const handleStatusToggle = (officerId: string, newStatus: boolean) => {
+    setStatusLoading(officerId);
+    const updatedUsers = users.map(user => {
+      if (user.id === officerId) {
+        return { ...user, isApproved: newStatus };
+      }
+      return user;
+    });
+    updateUsers(updatedUsers);
+    setStatusLoading(null);
+    toast({
+      title: "Officer Status Updated",
+      description: `Officer has been marked as ${newStatus ? 'Active' : 'Inactive'}`,
+    });
+  };
   const { users, createOfficer, removeOfficer, authState, updateUsers } = useAuth();
   const { connectWallet, account, isConnected, isLoading, isCorrectNetwork, officerContract, tenderContract, userAuthContract } = useWeb3();
   const { toast } = useToast();
@@ -96,7 +117,8 @@ const ManageOfficers: React.FC = () => {
   const [contractsInitialized, setContractsInitialized] = useState(false);
   const [initializingContracts, setInitializingContracts] = useState(false);
   
-  const officers = users.filter(user => user.role === "officer");
+  // Only officers, never admin
+const officers = users.filter(user => user.role?.toLowerCase() === "officer" && user.username?.toLowerCase() !== "admin");
   
   useEffect(() => {
     const init = async () => {
@@ -352,15 +374,23 @@ const ManageOfficers: React.FC = () => {
                           <TableCell className="font-medium">{officer.name}</TableCell>
                           <TableCell>{officer.username}</TableCell>
                           <TableCell>{officer.email || "-"}</TableCell>
-                          <TableCell>{officer.walletAddress || "Not connected"}</TableCell>
+                          <TableCell>{officer.walletAddress ? `${officer.walletAddress.slice(0, 6)}...${officer.walletAddress.slice(-3)}` : "Not connected"}</TableCell>
                           <TableCell>
                             {officer.createdAt ? new Date(officer.createdAt).toLocaleDateString() : "N/A"}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                              Active
-                            </Badge>
-                          </TableCell>
+  <div className="flex items-center gap-2">
+    <Switch
+      checked={officer.isApproved}
+      onCheckedChange={(checked) => handleStatusToggle(officer.id, checked)}
+      disabled={statusLoading === officer.id}
+      aria-label={officer.isApproved ? "Set Inactive" : "Set Active"}
+    />
+    <Badge variant="outline" className={officer.isApproved ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"}>
+      {officer.isApproved ? "Active" : "Inactive"}
+    </Badge>
+  </div>
+</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -433,20 +463,22 @@ const ManageOfficers: React.FC = () => {
                         <TableCell className="font-medium">{officer.name}</TableCell>
                         <TableCell>{officer.username}</TableCell>
                         <TableCell>{officer.email || "-"}</TableCell>
-                        <TableCell>{officer.walletAddress || "Not connected"}</TableCell>
+                        <TableCell>{officer.walletAddress ? `${officer.walletAddress.slice(0, 6)}...${officer.walletAddress.slice(-3)}` : "Not connected"}</TableCell>
                         <TableCell>
                           {officer.createdAt ? new Date(officer.createdAt).toLocaleDateString() : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {officer.isApproved ? (
-                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                              Active
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={officer.isApproved}
+                              onCheckedChange={(checked) => handleStatusToggle(officer.id, checked)}
+                              disabled={statusLoading === officer.id}
+                              aria-label={officer.isApproved ? "Set Inactive" : "Set Active"}
+                            />
+                            <Badge variant="outline" className={officer.isApproved ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"}>
+                              {officer.isApproved ? "Active" : "Inactive"}
                             </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-                              Pending
-                            </Badge>
-                          )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

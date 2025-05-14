@@ -11,9 +11,30 @@ import { UserRole } from "@/types/auth";
 const localStorageKeys = {
   officers: 'tender_officers',
   tenders: 'tender_tenders',
-  users: 'tender_users',
-  bids: 'tender_bids'
+  bids: 'tender_bids',
+  documents: 'tender_documents'
 };
+
+// Ensure localStorage has the correct keys on initialization
+if (typeof window !== 'undefined') {
+  // Initialize officers storage if it doesn't exist
+  if (!localStorage.getItem(localStorageKeys.officers)) {
+    localStorage.setItem(localStorageKeys.officers, '[]');
+    console.log('[Web3Context] Initialized empty officers array in localStorage');
+  }
+  
+  // Make sure window.officerTempStore is initialized
+  if (!(window as any).officerTempStore) {
+    try {
+      const storedOfficers = localStorage.getItem(localStorageKeys.officers);
+      (window as any).officerTempStore = storedOfficers ? JSON.parse(storedOfficers) : [];
+      console.log('[Web3Context] Initialized officerTempStore from localStorage');
+    } catch (err) {
+      console.warn('[Web3Context] Error initializing officerTempStore:', err);
+      (window as any).officerTempStore = [];
+    }
+  }
+}
 
 // Proper typing for window.ethereum
 interface EthereumProvider {
@@ -476,63 +497,12 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         throw new Error("No wallet account connected");
       }
 
-      // Store officer credentials for login regardless of whether the address is already an officer
-      const defaultPassword = 'tender00';
-      try {
-        sessionStorage.setItem(`officer_${username}`, JSON.stringify({
-          username,
-          password: defaultPassword
-        }));
-        console.log(`[addOfficer] Stored credentials for ${username}`);
-      } catch (err) {
-        console.warn(`[addOfficer] Error storing credentials:`, err);
-      }
-      
-      // Check if username already exists among officers
-      try {
-        const existingOfficers = await getAllOfficers();
-        const isExistingUsername = existingOfficers.some((officer: Officer) => 
-          officer.username === username);
-        
-        if (isExistingUsername) {
-          console.log(`[addOfficer] Username ${username} already exists`);
-          toast({
-            title: "Error",
-            description: "Officer with this username already exists.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        
-        // Also store in localStorage for backup/recovery
-        try {
-          const newOfficer: Officer = {
-            id: `officer_${username}`,
-            name,
-            username,
-            email,
-            password: defaultPassword,
-            isActive: true,
-            walletAddress: account || '',
-            permissions: {
-              canCreate: true,
-              canApprove: true,
-              isActive: true
-            },
-            createdAt: new Date()
-          };
-          
-          const localOfficers = JSON.parse(localStorage.getItem(localStorageKeys.officers) || '[]');
-          localOfficers.push(newOfficer);
-          localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
-          (window as any).officerTempStore = localOfficers;
-          console.log(`[addOfficer] Stored officer in localStorage: ${username}`);
-        } catch (err) {
-          console.warn(`[addOfficer] Error storing officer in localStorage:`, err);
-        }
-      } catch (err) {
-        // If we can't check existing officers, proceed anyway
-        console.warn(`[addOfficer] Could not check existing usernames:`, err);
+      // Check if officer with this username already exists
+      const officers = await getAllOfficers();
+      const existingOfficer = officers.find(officer => officer.username === username);
+      if (existingOfficer) {
+        console.error("Officer with this username already exists");
+        return false;
       }
 
       // Generate a unique ID for the officer
@@ -557,15 +527,81 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         throw new Error(`Failed to add officer: ${err.message}`);
       }
 
-      // Store officer credentials for login
+      // Store officer credentials in multiple places for cross-browser access
+      const defaultPassword = 'tender00';
+      
+      // 1. Store in sessionStorage (current browser only)
       try {
         sessionStorage.setItem(`officer_${username}`, JSON.stringify({
           username,
-          password: 'tender00'
+          password: defaultPassword
         }));
         console.log(`[addOfficer] Stored credentials for ${username} in sessionStorage`);
       } catch (err) {
-        console.warn(`[addOfficer] Error storing credentials:`, err);
+        console.warn(`[addOfficer] Error storing in sessionStorage:`, err);
+      }
+      
+      // 2. Store in localStorage.officers (shared across browsers)
+      try {
+        const newOfficer: Officer = {
+          id,
+          name,
+          username,
+          email,
+          password: defaultPassword,
+          isActive: true,
+          walletAddress: account,
+          permissions: {
+            canCreate: true,
+            canApprove: true,
+            isActive: true
+          },
+          createdAt: new Date()
+        };
+        
+        const localOfficers = JSON.parse(localStorage.getItem(localStorageKeys.officers) || '[]');
+        localOfficers.push(newOfficer);
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+        (window as any).officerTempStore = localOfficers;
+        console.log(`[addOfficer] Stored officer in localStorage.officers: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in localStorage.officers:`, err);
+      }
+      
+      // 3. Store in trustchain_users (shared across browsers)
+      try {
+        const storedUsers = localStorage.getItem('trustchain_users') || '[]';
+        const users = JSON.parse(storedUsers);
+        users.push({
+          id,
+          name,
+          username,
+          email,
+          role: 'officer',
+          walletAddress: account,
+          createdAt: new Date(),
+          isApproved: true,
+          permissions: {
+            canCreate: true,
+            canApprove: true,
+            isActive: true
+          }
+        });
+        localStorage.setItem('trustchain_users', JSON.stringify(users));
+        console.log(`[addOfficer] Stored officer in trustchain_users: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in trustchain_users:`, err);
+      }
+      
+      // 4. Store password in trustchain_passwords (shared across browsers)
+      try {
+        const storedPasswords = localStorage.getItem('trustchain_passwords') || '{}';
+        const passwords = JSON.parse(storedPasswords);
+        passwords[username] = defaultPassword;
+        localStorage.setItem('trustchain_passwords', JSON.stringify(passwords));
+        console.log(`[addOfficer] Stored password in trustchain_passwords: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in trustchain_passwords:`, err);
       }
 
       toast({
@@ -747,24 +783,93 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   };
 
   const getAllOfficers = async (): Promise<Officer[]> => {
-    // First try to get officers from localStorage
+    // First try to get officers from all possible localStorage sources
     let localOfficers: Officer[] = [];
-    try {
-      const storedOfficers = localStorage.getItem(localStorageKeys.officers);
-      if (storedOfficers) {
-        localOfficers = JSON.parse(storedOfficers);
-        console.log(`[getAllOfficers] Found ${localOfficers.length} officers in localStorage`);
+    let officersFound = false;
+    
+    // Check all possible localStorage keys that might contain officers
+    const keysToCheck = [
+      localStorageKeys.officers,
+      'trustchain_users',
+      'tender_officers'
+    ];
+    
+    for (const key of keysToCheck) {
+      try {
+        const storedData = localStorage.getItem(key);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          if (Array.isArray(parsed)) {
+            // Filter to only include items that look like officers
+            const officers = parsed.filter((item: any) => 
+              item.username && 
+              (item.role === 'officer' || item.permissions)
+            );
+            
+            if (officers.length > 0) {
+              console.log(`[getAllOfficers] Found ${officers.length} officers in localStorage key: ${key}`);
+              
+              // Add any officers not already in localOfficers
+              const existingUsernames = new Set(localOfficers.map(o => o.username));
+              for (const officer of officers) {
+                if (!existingUsernames.has(officer.username)) {
+                  // Ensure the officer has all required fields
+                  const completeOfficer: Officer = {
+                    id: officer.id || `officer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: officer.name || officer.username,
+                    username: officer.username,
+                    email: officer.email || `${officer.username}@example.com`,
+                    walletAddress: officer.walletAddress || '',
+                    isActive: officer.isActive || true,
+                    password: officer.password || 'tender00',
+                    permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true },
+                    createdAt: officer.createdAt ? new Date(officer.createdAt) : new Date()
+                  };
+                  
+                  localOfficers.push(completeOfficer);
+                  existingUsernames.add(officer.username);
+                  officersFound = true;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[getAllOfficers] Error reading from ${key}:`, err);
       }
-
-      // Also check window.officerTempStore as a backup
-      if (localOfficers.length === 0 && (window as any).officerTempStore) {
-        localOfficers = (window as any).officerTempStore;
-        console.log(`[getAllOfficers] Found ${localOfficers.length} officers in officerTempStore`);
-        // Save to localStorage for future use
-        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+    }
+    
+    // Also check window.officerTempStore as a backup
+    try {
+      if ((window as any).officerTempStore && Array.isArray((window as any).officerTempStore)) {
+        const tempStoreOfficers = (window as any).officerTempStore;
+        if (tempStoreOfficers.length > 0) {
+          console.log(`[getAllOfficers] Found ${tempStoreOfficers.length} officers in officerTempStore`);
+          
+          // Add any officers not already in localOfficers
+          const existingUsernames = new Set(localOfficers.map(o => o.username));
+          for (const officer of tempStoreOfficers) {
+            if (officer.username && !existingUsernames.has(officer.username)) {
+              localOfficers.push(officer);
+              existingUsernames.add(officer.username);
+              officersFound = true;
+            }
+          }
+        }
       }
     } catch (err) {
-      console.warn('[getAllOfficers] Error reading from localStorage:', err);
+      console.warn('[getAllOfficers] Error reading from officerTempStore:', err);
+    }
+    
+    // If officers were found, save the combined list back to localStorage
+    if (officersFound) {
+      try {
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+        (window as any).officerTempStore = localOfficers;
+        console.log(`[getAllOfficers] Saved ${localOfficers.length} officers to localStorage and officerTempStore`);
+      } catch (err) {
+        console.warn('[getAllOfficers] Error saving officers to localStorage:', err);
+      }
     }
 
     // If we have local officers and no contract, return them
@@ -823,15 +928,23 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
             officers.push(officer);
             usernamesFromContract.add(username);
             
-            // Store officer credentials in sessionStorage for cross-browser access
+            // Store officer credentials in both sessionStorage and localStorage for cross-browser access
             console.log(`[getAllOfficers] Successfully added officer from contract: ${username} (${id})`);
             try {
+              // Store in sessionStorage for current browser
               sessionStorage.setItem(`officer_${username}`, JSON.stringify({
                 username,
                 password: 'tender00'
               }));
+              
+              // Also update the PASSWORD_MAP which is stored in localStorage
+              const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
+              passwordMap[username] = 'tender00';
+              localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
+              
+              console.log(`[getAllOfficers] Stored credentials for ${username} in both storages`);
             } catch (err) {
-              console.warn(`[getAllOfficers] Failed to store officer in sessionStorage:`, err);
+              console.warn(`[getAllOfficers] Failed to store officer credentials:`, err);
             }
           } catch (err) {
             // If contract call fails, skip this officer
