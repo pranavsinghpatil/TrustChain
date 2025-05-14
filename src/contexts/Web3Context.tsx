@@ -5,6 +5,7 @@ import { Web3Provider } from '@ethersproject/providers';
 import { useToast } from "@/components/ui/use-toast";
 import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/config/contracts";
 import { TARGET_NETWORK } from "@/config/network";
+import { UserRole } from "@/types/auth";
 
 // Simulated blockchain data store
 const localStorageKeys = {
@@ -855,9 +856,45 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       }
       
       // Update localStorage with the combined list
-      if (officers.length > 0) {
-        localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
-        (window as any).officerTempStore = officers;
+      // IMPORTANT: Always update localStorage, even if officers list is empty
+      // This prevents data loss when the application restarts
+      localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
+      (window as any).officerTempStore = officers;
+      
+      // Also ensure we persist the officers to the trustchain_users localStorage
+      // This provides additional redundancy for officer data
+      try {
+        const trustchainUsers = JSON.parse(localStorage.getItem('trustchain_users') || '[]');
+        const adminUser = trustchainUsers.find((u: any) => u.username === 'admin');
+        
+        // Convert officers to the format expected by trustchain_users
+        const officerUsers = officers.map((officer: Officer) => ({
+          id: officer.id,
+          name: officer.name,
+          username: officer.username,
+          email: officer.email,
+          role: 'officer' as UserRole,
+          walletAddress: officer.walletAddress,
+          createdAt: officer.createdAt,
+          isApproved: officer.permissions?.isActive || true,
+          approvalRemark: '',
+          permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true }
+        }));
+        
+        // Create updated users list with admin + officers
+        const updatedUsers = adminUser ? [adminUser, ...officerUsers] : officerUsers;
+        localStorage.setItem('trustchain_users', JSON.stringify(updatedUsers));
+        
+        // Also update password map
+        const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
+        for (const officer of officers) {
+          passwordMap[officer.username] = officer.password || 'tender00';
+        }
+        localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
+        
+        console.log(`[getAllOfficers] Updated trustchain_users with ${officerUsers.length} officers`);
+      } catch (err) {
+        console.warn('[getAllOfficers] Error updating trustchain_users:', err);
       }
       
       console.log(`[getAllOfficers] Retrieved ${officers.length} officers successfully`);

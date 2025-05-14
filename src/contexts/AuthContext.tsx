@@ -450,11 +450,16 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     console.log('[syncOfficersFromBlockchain] Starting sync');
     setIsSyncingOfficers(true);
     try {
+      // First, load existing users from localStorage to preserve them
+      const existingUsers = loadUsers();
+      const existingOfficers = existingUsers.filter(user => user.role === 'officer');
+      console.log(`[syncOfficersFromBlockchain] Existing officers in localStorage: ${existingOfficers.length}`);
+      
+      // Get officers from blockchain/localStorage
       const officers = await getAllOfficers();
       console.log("Fetched officers:", officers);
 
       // --- Ensure admin user always present ---
-      // Always keep only admin + officers from blockchain
       const adminUser = {
         id: 'admin',
         name: 'Admin',
@@ -466,6 +471,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         permissions: { canCreate: true, canApprove: true, isActive: true }
       };
       PASSWORD_MAP['admin'] = 'admin00';
+      
       // Map officers to local state and password map
       const officerUsers = officers.map(officer => ({
         id: officer.id,
@@ -483,12 +489,41 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           isActive: officer.permissions.isActive
         }
       }));
-      // Overwrite users state: admin + all officers from blockchain
+      
+      // Create a map of usernames for quick lookup
+      const officerUsernames = new Set(officerUsers.map(o => o.username));
+      
+      // Add any existing officers that weren't found in the blockchain
+      for (const existingOfficer of existingOfficers) {
+        if (!officerUsernames.has(existingOfficer.username)) {
+          console.log(`[syncOfficersFromBlockchain] Preserving local officer: ${existingOfficer.username}`);
+          // Create a properly typed officer object with all required fields
+          const preservedOfficer = {
+            ...existingOfficer,
+            // Ensure walletAddress exists (required in officerUsers type)
+            walletAddress: existingOfficer.walletAddress || '',
+            // Ensure other required fields
+            approvalRemark: existingOfficer.approvalRemark || '',
+            permissions: existingOfficer.permissions || { canCreate: true, canApprove: true, isActive: true }
+          };
+          officerUsers.push(preservedOfficer);
+          // Make sure the password is set
+          if (!PASSWORD_MAP[existingOfficer.username]) {
+            PASSWORD_MAP[existingOfficer.username] = 'tender00';
+          }
+        }
+      }
+      
+      // Create final user list: admin + all officers
       const updatedUsers = [adminUser, ...officerUsers];
+      
+      // Ensure all officers have passwords
       for (const officer of officerUsers) {
-        PASSWORD_MAP[officer.username] = 'tender00';
+        PASSWORD_MAP[officer.username] = PASSWORD_MAP[officer.username] || 'tender00';
         console.log(`[syncOfficersFromBlockchain] Set password for ${officer.username}:`, PASSWORD_MAP[officer.username]);
       }
+      
+      // Update state and persist to localStorage
       setUsers(updatedUsers);
       persistUsers(updatedUsers);
       persistPasswordMap(PASSWORD_MAP);
