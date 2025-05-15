@@ -58,6 +58,8 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "@types/node": "^20.17.32",
@@ -74,6 +76,7 @@
     "ethers": "^5.8.0",
     "hardhat": "^2.23.0",
     "postcss": "^8.4.35",
+    "stream-browserify": "^3.0.0",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",

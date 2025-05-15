@@ -297,15 +297,15 @@ const officers = users.filter(user => user.role?.toLowerCase() === "officer" && 
     );
   }
 
-  // Show a warning banner if contracts are not initialized, but do not block the UI
+  // Show a warning banner if wallet is not connected, but do not block the UI
   const renderWarningBanner = () => (
-    !contractsInitialized && (
+    !isConnected && (
       <div className="w-full bg-yellow-600 text-white text-center py-2 mb-4 rounded shadow">
         <span>
-          Blockchain not connected: Officer management will use local storage only. Connect your wallet for blockchain features.
+          Wallet not connected: Officer management will use local storage only. Connect your wallet for blockchain features.
         </span>
-        <Button onClick={connectWallet} disabled={initializingContracts} className="ml-4 px-2 py-1 text-sm">
-          {initializingContracts ? 'Connecting...' : 'Connect Wallet'}
+        <Button onClick={connectWallet} disabled={isLoading} className="ml-4 px-2 py-1 text-sm">
+          {isLoading ? 'Connecting...' : 'Connect Wallet'}
         </Button>
       </div>
     )

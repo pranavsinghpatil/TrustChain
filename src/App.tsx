@@ -30,6 +30,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Sitemap from './pages/Sitemap';
 import MnemonicWallet from './components/wallet/MnemonicWallet';
+import BidderRegistration from './pages/BidderRegistration';
 
 import "./App.css";
 
@@ -58,6 +59,7 @@ const App = () => (
                   <Routes>
                     {/* Public route */}
                     <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<BidderRegistration />} />
                     
                     {/* Protected routes for all authenticated users */}
                     <Route path="/" element={

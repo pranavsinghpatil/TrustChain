@@ -290,6 +290,11 @@ const Login = () => {
                       {authState.isLoading ? "Signing in..." : "Sign in"}
                     </Button>
                     
+                    <div className="mt-4 text-center">
+                      <span className="text-sm text-gray-400">New bidder? </span>
+                      <a href="/register" className="text-sm text-primary hover:underline">Register here</a>
+                    </div>
+                    
                     {/* Default accounts for testing */}
                     <div className="mt-12 pt-6 space-y-2">
                       <div className="text-sm text-center text-gray-400">Default accounts for testing:</div>

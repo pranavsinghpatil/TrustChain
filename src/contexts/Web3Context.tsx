@@ -205,43 +205,66 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   // Initialize provider and check connection on mount
   useEffect(() => {
     const init = async () => {
-      if (typeof window.ethereum === "undefined") {
-        console.warn("MetaMask is not installed");
-        return;
-      }
+      if (window.ethereum) {
+        try {
+          // Request account access
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          console.log("[Web3Init] Ethereum accounts accessed successfully");
 
-      const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-      setProvider(web3Provider);
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          console.log("[Web3Init] Web3 Provider initialized", provider);
 
-      try {
-        // Auto-connect to set up contracts immediately
-        await connectWallet();
-      } catch (err) {
-        console.error("Auto wallet connection failed:", err);
+          const network = await provider.getNetwork();
+          console.log("[Web3Init] Connected to network:", network);
+
+          const signer = provider.getSigner();
+          console.log("[Web3Init] Signer obtained");
+
+          const address = await signer.getAddress();
+          console.log("[Web3Init] Connected account address:", address);
+
+          setProvider(provider);
+          setSigner(signer);
+          setAccount(address);
+          setIsConnected(true);
+
+          // Load contracts after provider is ready
+          await loadContracts(provider, signer);
+        } catch (error) {
+          console.error("[Web3Init] Error initializing Web3 provider:", error);
+          setError(error.message || "Failed to initialize Web3 provider");
+        }
+      } else {
+        console.error("[Web3Init] MetaMask not detected");
+        setError("MetaMask not detected. Please install MetaMask.");
       }
     };
 
     init();
 
-    // Setup event listeners
-    accountsChangedRef.current = handleAccountsChanged;
-    chainChangedRef.current = handleChainChanged;
-    disconnectRef.current = handleDisconnect;
-
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', accountsChangedRef.current);
-      window.ethereum.on('chainChanged', chainChangedRef.current);
-      window.ethereum.on('disconnect', disconnectRef.current);
-    }
+    // Add a longer delay before setting up listeners to avoid MetaMask async errors
+    setTimeout(() => {
+      // Listen for account or network changes with error handling
+      if (window.ethereum) {
+        try {
+          window.ethereum.on("accountsChanged", handleAccountsChanged);
+          window.ethereum.on("chainChanged", handleChainChanged);
+          console.log("[Web3Init] Event listeners set up successfully");
+        } catch (listenerError) {
+          console.error("[Web3Init] Error setting up event listeners:", listenerError);
+        }
+      }
+    }, 1000);
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', accountsChangedRef.current);
-        window.ethereum.removeListener('chainChanged', chainChangedRef.current);
-        window.ethereum.removeListener('disconnect', disconnectRef.current);
-      }
-      if (connectionTimeout.current) {
-        clearTimeout(connectionTimeout.current);
+        try {
+          window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+          window.ethereum.removeListener("chainChanged", handleChainChanged);
+          console.log("[Web3Init] Event listeners removed successfully");
+        } catch (listenerError) {
+          console.error("[Web3Init] Error removing event listeners:", listenerError);
+        }
       }
     };
   }, []);
@@ -1023,40 +1046,53 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   const fetchTenders = async (): Promise<FormattedTender[]> => {
     try {
       if (!tenderContract) {
-        console.error("Tender contract not initialized");
+        console.warn("[fetchTenders] No tender contract available, returning empty list");
         return [];
       }
-
-      const tenderIds = await tenderContract.getAllTenderIds();
-      if (!tenderIds || !Array.isArray(tenderIds)) {
+      // Check if contract is properly initialized by calling a simple method
+      try {
+        await tenderContract.address; // Basic check to see if contract object is valid
+      } catch (contractError) {
+        console.error("[fetchTenders] Contract object invalid, skipping blockchain call:", contractError);
         return [];
       }
-      
-      const formattedTenders: FormattedTender[] = [];
-
-      for (const id of tenderIds) {
-        try {
-          const tender = await tenderContract.getTender(id);
-          formattedTenders.push({
-            id: tender.id,
-            title: tender.title,
-            description: tender.description,
-            documentCid: tender.documentCid,
-            budget: ethers.utils.formatEther(tender.budget),
-            deadline: new Date(tender.deadline.toNumber() * 1000),
-            creator: tender.creator,
-            status: tender.status,
-            createdAt: new Date(tender.createdAt.toNumber() * 1000)
-          });
-        } catch (err) {
-          console.error(`Error fetching tender ${id}:`, err);
-          // Continue with other tenders even if one fails
-        }
+      let tenderIds = [];
+      try {
+        tenderIds = await tenderContract.getAllTenderIds();
+        console.log("[fetchTenders] Retrieved tender IDs:", tenderIds);
+      } catch (idError) {
+        console.error("[fetchTenders] Failed to get tender IDs, falling back to empty list:", idError);
+        return [];
       }
-
-      return formattedTenders;
-    } catch (error: any) {
-      console.warn("Error fetching tenders (fallback to empty):", error.message || error);
+      const tenders = await Promise.all(
+        tenderIds.map(async (id) => {
+          try {
+            const tender = await tenderContract.tenders(id);
+            const highestBid = await tenderContract.getHighestBid(id);
+            return {
+              id: id.toNumber(),
+              title: tender.title,
+              description: tender.description,
+              documentCid: tender.documentCid,
+              budget: ethers.utils.formatEther(tender.budget),
+              deadline: new Date(tender.deadline.toNumber() * 1000),
+              creator: tender.creator || "",
+              status: tender.status || "",
+              createdAt: tender.createdAt ? new Date(tender.createdAt.toNumber() * 1000) : new Date(),
+              isActive: tender.isActive,
+              highestBid: highestBid ? ethers.utils.formatEther(highestBid.amount) : "0",
+              highestBidder: highestBid ? highestBid.bidder : "",
+            };
+          } catch (tenderError) {
+            console.error(`[fetchTenders] Error fetching tender ID ${id}:`, tenderError);
+            return null;
+          }
+        })
+      );
+      // Filter out any null results from failed tender fetches
+      return tenders.filter(tender => tender !== null);
+    } catch (error) {
+      console.error("[fetchTenders] General error fetching tenders (fallback to empty):", error);
       return [];
     }
   };
@@ -1083,6 +1119,36 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       console.error("Error creating tender:", error);
       toast({ title: "Error", description: error.message || "Failed to create tender", variant: "destructive" });
       throw error;
+    }
+  };
+
+  const loadContracts = async (provider: ethers.providers.Web3Provider, signer: ethers.Signer) => {
+    try {
+      // Initialize contracts
+      const officerContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        signer
+      );
+      console.debug('[Web3Context] officerContract initialized at', CONTRACT_ADDRESSES.OFFICER_MANAGEMENT);
+      setOfficerContract(officerContractInstance);
+
+      const userAuthContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.USER_AUTHENTICATION,
+        CONTRACT_ABI.USER_AUTHENTICATION,
+        signer
+      );
+      setUserAuthContract(userAuthContractInstance);
+
+      const tenderContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        signer
+      );
+      setTenderContract(tenderContractInstance);
+    } catch (error) {
+      console.error("Error loading contracts:", error);
+      setError(error.message || "Failed to load contracts");
     }
   };
 
