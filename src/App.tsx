@@ -14,6 +14,7 @@ import ScrollToTop from "@/components/layout/ScrollToTop";
 // Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Tenders from "./pages/Tenders";
 import TenderDetails from "./pages/TenderDetails";
 import CreateTender from "./pages/CreateTender";
@@ -59,7 +60,8 @@ const App = () => (
                   <Routes>
                     {/* Public route */}
                     <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<BidderRegistration />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/register/bidder" element={<BidderRegistration />} />
                     
                     {/* Protected routes for all authenticated users */}
                     <Route path="/" element={

@@ -10,7 +10,26 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Wallet, Check, ChevronDown, Upload, FileText, X, Plus } from "lucide-react";
+import { 
+  Eye, 
+  EyeOff, 
+  Wallet, 
+  Check, 
+  ChevronDown, 
+  Upload, 
+  FileText, 
+  X, 
+  Plus, 
+  User, 
+  Mail, 
+  Lock, 
+  Briefcase, 
+  Calendar, 
+  MapPin,
+  Globe,
+  Hash,
+  Lock as LockIcon
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -163,6 +182,13 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
       // Helper function to safely trim strings
       const safeTrim = (str: string | undefined): string => (str || '').trim();
       
+      // Ensure terms are included in the registration data
+      const termsAccepted = formData.terms1 && formData.terms2;
+      
+      if (!termsAccepted) {
+        throw new Error("Please accept all terms and conditions");
+      }
+      
       // Upload supporting documents if any
       const uploadedDocs = [];
       for (const doc of supportingDocs) {
@@ -209,7 +235,7 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
         ref.name && ref.contact && ref.email && ref.relation
       );
       
-      // Prepare registration data
+      // Prepare registration data with proper types
       const registrationData: RegisterData = {
         // Account Information
         username: safeTrim(formData.username),
@@ -238,6 +264,10 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
         
         // Additional Info
         additionalInfo: formData.additionalInfo ? safeTrim(formData.additionalInfo) : undefined,
+        
+        // Terms and Conditions
+        terms1: formData.terms1 || false,
+        terms2: formData.terms2 || false,
         
         // System fields
         isApproved: false,
@@ -316,89 +346,173 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
   };
 
   return (
-    <Card className="w-full max-w-6xl mx-auto shadow-xl overflow-hidden border-0">
-      <CardHeader className="text-center bg-gradient-to-r from-blue-600 to-green-600 text-white py-6">
-        <CardTitle className="text-3xl font-bold tracking-tight">TrustChain</CardTitle>
-        <CardDescription className="text-blue-100 text-base">
-          Secure Blockchain-based Tender Management System
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* File Upload Section */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="supporting-docs" className="text-sm font-medium text-gray-700">
-                Supporting Documents (Optional)
-              </Label>
-              <p className="text-xs text-gray-500 mb-2">
-                Upload any supporting documents like business licenses, certifications, or other relevant files
-              </p>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-md">
-                <div className="space-y-1 text-center">
-                  <div className="flex text-sm text-gray-600">
-                    <label
-                      htmlFor="supporting-docs"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
-                    >
-                      <span>Upload files</span>
-                      <input
-                        id="supporting-docs"
-                        name="supporting-docs"
-                        type="file"
-                        className="sr-only"
-                        multiple
-                        onChange={handleFileChange}
-                        disabled={uploading}
-                      />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <Card className="w-full shadow-xl overflow-hidden border-0">
+          <CardHeader className="text-center bg-gradient-to-r from-blue-600 to-green-600 text-white py-8">
+            <CardTitle className="text-4xl font-bold tracking-tight">Create Your Account</CardTitle>
+            <CardDescription className="text-blue-100 text-lg">
+              Join our secure blockchain-based tender management system
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* Form content will go here */}
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+              {/* Progress Steps */}
+              <div className="flex items-center justify-between max-w-2xl mx-auto mb-8">
+                {['Account', 'Company', 'Details', 'Review'].map((step, index) => (
+                  <div key={index} className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                      index === 0 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      index === 0 ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {step}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    PDF, DOC, JPG, PNG up to 10MB
-                  </p>
+                ))}
+              </div>
+              {/* Account Information Section */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+                  <User className="inline-block h-5 w-5 mr-2 text-blue-600" />
+                  Account Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Username */}
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                      Username <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="username"
+                        {...register('username', { required: 'Username is required' })}
+                        className={`pl-10 ${errors.username ? 'border-red-500' : ''}`}
+                        placeholder="Enter username"
+                      />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
+                    {errors.username && (
+                      <p className="text-xs text-red-500 mt-1">{errors.username.message}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        type="email"
+                        {...register('email', { 
+                          required: 'Email is required',
+                          pattern: {
+                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                            message: 'Invalid email address'
+                          }
+                        })}
+                        className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                        placeholder="your@email.com"
+                      />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
+                    {errors.email && (
+                      <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                      Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        {...register('password', { 
+                          required: 'Password is required',
+                          minLength: {
+                            value: 8,
+                            message: 'Password must be at least 8 characters'
+                          }
+                        })}
+                        className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                        placeholder="Create a password"
+                      />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.password ? (
+                      <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Use 8+ characters with a mix of letters, numbers & symbols
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        {...register('confirmPassword', {
+                          validate: value =>
+                            value === watch('password') || 'Passwords do not match'
+                        })}
+                        className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                        placeholder="Confirm your password"
+                      />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              {/* Upload progress */}
-              {uploading && (
-                <div className="mt-2">
-                  <Progress value={uploadProgress} className="h-2" />
-                  <p className="text-xs text-right text-gray-500 mt-1">
-                    {Math.round(uploadProgress)}% uploaded
-                  </p>
-                </div>
-              )}
-              
-              {/* Uploaded files preview */}
-              {supportingDocs.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700">Files to upload:</h4>
-                  <ul className="space-y-2">
-                    {supportingDocs.map((file, index) => (
-                      <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700 truncate max-w-xs">{file.name}</span>
-                          <span className="text-xs text-gray-500">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="text-red-500 hover:text-red-700"
-                          disabled={uploading}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
           
           {/* Three-column layout for the form sections */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -451,13 +565,13 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
                   <Input 
                     id="mobileNumber" 
                     placeholder={
-                      bidderType === "Indian" 
+                      watch("bidderType") === "Indian" 
                         ? "Enter 10-digit mobile number (e.g., 9876543210)" 
                         : "Enter mobile number with country code (e.g., +441234567890)"
                     }
                     {...register("mobileNumber", { 
                       required: "Mobile number is required",
-                      pattern: bidderType === "Indian" 
+                      pattern: watch("bidderType") === "Indian" 
                         ? { 
                             value: /^[6-9][0-9]{9}$/, 
                             message: "Please enter a valid 10-digit Indian mobile number" 
@@ -518,105 +632,161 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
                 </div>
               </div>
             </div>
-            
-            {/* Company Details Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-primary text-center pb-2 border-b">Company Details</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name*</Label>
-                  <Input 
-                    id="companyName" 
-                    placeholder="Enter your company name"
-                    {...register("companyName", { required: "Company name is required" })} 
-                  />
-                  {errors.companyName && <p className="text-xs text-red-500">{errors.companyName.message}</p>}
-                </div>
+          </div>
+          
+          {/* Company Information Section */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+                  <Briefcase className="inline-block h-5 w-5 mr-2 text-blue-600" />
+                  Company Information
+                </h3>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Registration Number*</Label>
-                  <Input 
-                    id="registrationNumber" 
-                    placeholder="Company registration number"
-                    {...register("registrationNumber", { required: "Registration number is required" })} 
-                  />
-                  {errors.registrationNumber && <p className="text-xs text-red-500">{errors.registrationNumber.message}</p>}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="legalStatus">Legal Status*</Label>
-                  <Select
-                    onValueChange={(value: LegalStatus) => 
-                      handleSelectChange("legalStatus", value)
-                    }
-                    value={watch("legalStatus") as LegalStatus}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select legal status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="private">Private Limited</SelectItem>
-                      <SelectItem value="public">Public Limited</SelectItem>
-                      <SelectItem value="llp">LLP (Limited Liability Partnership)</SelectItem>
-                      <SelectItem value="opc">OPC (One Person Company)</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.legalStatus && <p className="text-xs text-red-500">{errors.legalStatus.message}</p>}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="companyCategory">Company Category*</Label>
-                  <Select
-                    onValueChange={(value: CompanyCategory) => 
-                      handleSelectChange("companyCategory", value)
-                    }
-                    value={watch("companyCategory") as CompanyCategory}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="startup">Startup</SelectItem>
-                      <SelectItem value="sme">SME (Small & Medium Enterprise)</SelectItem>
-                      <SelectItem value="msme">MSME (Micro, Small & Medium Enterprise)</SelectItem>
-                      <SelectItem value="large">Large Enterprise</SelectItem>
-                      <SelectItem value="mnc">MNC (Multinational Corporation)</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.companyCategory && <p className="text-xs text-red-500">{errors.companyCategory.message}</p>}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="taxId">
-                    {watch("bidderType") === "Indian" ? "GST / PAN Number" : "Tax Identification Number"}
-                  </Label>
-                  <Input 
-                    id="taxId" 
-                    placeholder={
-                      watch("bidderType") === "Indian" 
-                        ? "Enter GST or PAN number (optional)" 
-                        : "Enter Tax Identification Number (optional)"
-                    }
-                    {...register("taxId")} 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="establishmentYear">Establishment Year*</Label>
-                  <Input 
-                    id="establishmentYear" 
-                    placeholder="YYYY"
-                    {...register("establishmentYear", { required: "Establishment year is required" })} 
-                  />
-                  {errors.establishmentYear && <p className="text-xs text-red-500">{errors.establishmentYear.message}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Company Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName" className="text-sm font-medium text-gray-700">
+                      Company Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="companyName"
+                      {...register('companyName', { required: 'Company name is required' })}
+                      className={errors.companyName ? 'border-red-500' : ''}
+                      placeholder="Your company name"
+                    />
+                    {errors.companyName && (
+                      <p className="text-xs text-red-500 mt-1">{errors.companyName.message}</p>
+                    )}
+                  </div>
+
+                  {/* Registration Number */}
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber" className="text-sm font-medium text-gray-700">
+                      Registration Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="registrationNumber"
+                      {...register('registrationNumber', { 
+                        required: 'Registration number is required' 
+                      })}
+                      className={errors.registrationNumber ? 'border-red-500' : ''}
+                      placeholder="Company registration number"
+                    />
+                    {errors.registrationNumber && (
+                      <p className="text-xs text-red-500 mt-1">{errors.registrationNumber.message}</p>
+                    )}
+                  </div>
+
+                  {/* Legal Status */}
+                  <div className="space-y-2">
+                    <Label htmlFor="legalStatus" className="text-sm font-medium text-gray-700">
+                      Legal Status <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      onValueChange={(value: 'private' | 'public' | 'llp' | 'opc' | 'other') => 
+                        handleSelectChange("legalStatus", value)
+                      }
+                      value={watch("legalStatus") as 'private' | 'public' | 'llp' | 'opc' | 'other'}
+                    >
+                      <SelectTrigger className={errors.legalStatus ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Select legal status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="private">Private Limited</SelectItem>
+                        <SelectItem value="public">Public Limited</SelectItem>
+                        <SelectItem value="llp">LLP (Limited Liability Partnership)</SelectItem>
+                        <SelectItem value="opc">OPC (One Person Company)</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.legalStatus && (
+                      <p className="text-xs text-red-500 mt-1">{errors.legalStatus.message}</p>
+                    )}
+                  </div>
+
+                  {/* Company Category */}
+                  <div className="space-y-2">
+                    <Label htmlFor="companyCategory" className="text-sm font-medium text-gray-700">
+                      Company Category <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      onValueChange={(value: 'startup' | 'sme' | 'msme' | 'large' | 'mnc' | 'other') => 
+                        handleSelectChange("companyCategory", value)
+                      }
+                      value={watch("companyCategory") as 'startup' | 'sme' | 'msme' | 'large' | 'mnc' | 'other'}
+                    >
+                      <SelectTrigger className={errors.companyCategory ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Select company category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="startup">Startup</SelectItem>
+                        <SelectItem value="sme">SME (Small & Medium Enterprise)</SelectItem>
+                        <SelectItem value="msme">MSME (Micro, Small & Medium Enterprise)</SelectItem>
+                        <SelectItem value="large">Large Enterprise</SelectItem>
+                        <SelectItem value="mnc">MNC (Multinational Corporation)</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.companyCategory && (
+                      <p className="text-xs text-red-500 mt-1">{errors.companyCategory.message}</p>
+                    )}
+                  </div>
+
+                  {/* Tax ID */}
+                  <div className="space-y-2">
+                    <Label htmlFor="taxId" className="text-sm font-medium text-gray-700">
+                      {watch('bidderType') === 'Indian' ? 'GST / PAN Number' : 'Tax Identification Number'}
+                    </Label>
+                    <Input
+                      id="taxId"
+                      {...register('taxId')}
+                      placeholder={
+                        watch('bidderType') === 'Indian'
+                          ? 'Enter GST or PAN number (optional)'
+                          : 'Enter Tax ID (optional)'
+                      }
+                    />
+                  </div>
+
+                  {/* Establishment Year */}
+                  <div className="space-y-2">
+                    <Label htmlFor="establishmentYear" className="text-sm font-medium text-gray-700">
+                      Establishment Year <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="establishmentYear"
+                        type="number"
+                        min="1900"
+                        max={new Date().getFullYear()}
+                        {...register('establishmentYear', { 
+                          required: 'Establishment year is required',
+                          min: {
+                            value: 1900,
+                            message: 'Please enter a valid year'
+                          },
+                          max: {
+                            value: new Date().getFullYear(),
+                            message: 'Year cannot be in the future'
+                          }
+                        })}
+                        className={`pl-10 ${errors.establishmentYear ? 'border-red-500' : ''}`}
+                        placeholder="e.g., 2010"
+                      />
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
+                    {errors.establishmentYear ? (
+                      <p className="text-xs text-red-500 mt-1">{errors.establishmentYear.message}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Year your company was established</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Additional Details Section */}
-            <div className="space-y-4">
+          </div>
+          
+          {/* Additional Details Section */}
+          <div className="space-y-4">
               <h3 className="text-lg font-medium text-primary text-center pb-2 border-b">Additional Details</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -706,17 +876,6 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="additionalInfo">Additional Information (Optional)</Label>
-                  <Textarea
-                    id="additionalInfo"
-                    placeholder="Any additional details you would like to provide"
-                    {...register("additionalInfo")}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          
           {/* Business Profile */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Business Profile</h3>
@@ -974,6 +1133,8 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
           </div>
           
           {/* Agreements Section */}
+          </div>
+          
           <div className="space-y-4 mb-6 mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
             <div className="flex items-start space-x-3">
               <Checkbox 
@@ -1079,7 +1240,8 @@ const RegistrationForm: FC<RegistrationFormProps> = ({ onRegister }) => {
         </form>
       </CardContent>
     </Card>
-  );
-};
+  </div>
+);
 
 export default RegistrationForm;
+
