@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Badge, BadgeDollarSign, BadgeIndianRupee, User, Lock, Wallet } from "lucide-react";
-import RegistrationForm from "@/components/auth/RegistrationForm";
 import ContractIllustration from "@/components/ui/ContractIllustration";
 import TenderPulseAnimation from "@/components/ui/TenderPulseAnimation";
 import BlockchainNetwork from "@/components/ui/BlockchainNetwork";
@@ -292,7 +291,13 @@ const Login = () => {
                     
                     <div className="mt-4 text-center">
                       <span className="text-sm text-gray-400">New bidder? </span>
-                      <a href="/register" className="text-sm text-primary hover:underline">Register here</a>
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("register")} 
+                        className="text-sm text-primary hover:underline focus:outline-none"
+                      >
+                        Register here
+                      </button>
                     </div>
                     
                     {/* Default accounts for testing */}
@@ -331,41 +336,214 @@ const Login = () => {
               </TabsContent>
               
               <TabsContent value="register">
-                <RegistrationForm 
-                  onRegister={async (formData) => {
-                    try {
-                      // First connect wallet
-                      if (!isConnected) {
-                        await connectWallet();
-                      }
-                      
-                      if (!account) {
-                        throw new Error("Wallet connection failed");
-                      }
+                <div className="space-y-4">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-white mb-2">Create an Account</h3>
+                    <p className="text-sm text-gray-400">Join our platform to start bidding on tenders</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name" className="text-gray-400">Full Name *</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          placeholder="Enter your full name"
+                          className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email" className="text-gray-400">Email *</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="Enter your email"
+                          className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                      // Register user
-                      const success = await register({
-                        ...formData,
-                        walletAddress: account
-                      });
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="username" className="text-gray-400">Username *</Label>
+                        <Input
+                          id="username"
+                          name="username"
+                          placeholder="Choose a username"
+                          className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="companyName" className="text-gray-400">Company Name *</Label>
+                        <Input
+                          id="companyName"
+                          name="companyName"
+                          placeholder="Your company name"
+                          className="bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                      if (success) {
-                        toast({
-                          title: "Success",
-                          description: "Registration successful! You can now log in.",
-                        });
-                        setActiveTab("login");
-                      }
-                    } catch (error) {
-                      console.error("Registration error:", error);
-                      toast({
-                        title: "Error",
-                        description: error instanceof Error ? error.message : "Registration failed",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="password" className="text-gray-400">Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Create a password"
+                            className="pl-10 bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                            required
+                            minLength={8}
+                          />
+                          {showPassword ? (
+                            <EyeOff 
+                              className="absolute right-3 top-3 h-4 w-4 text-gray-500 cursor-pointer" 
+                              onClick={() => setShowPassword(false)} 
+                            />
+                          ) : (
+                            <Eye 
+                              className="absolute right-3 top-3 h-4 w-4 text-gray-500 cursor-pointer" 
+                              onClick={() => setShowPassword(true)} 
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="confirmPassword" className="text-gray-400">Confirm Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Confirm your password"
+                            className="pl-10 bg-transparent backdrop-blur-sm border-gray-700/50 focus:border-green-400 focus:ring-green-400/20"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wallet Connection */}
+                    <div className="pt-2">
+                      {!isConnected ? (
+                        <Button
+                          type="button"
+                          onClick={connectWallet}
+                          variant="outline"
+                          className="w-full flex items-center justify-center gap-2 border border-green-400/30 text-green-400 bg-transparent hover:bg-gray-700"
+                        >
+                          <Wallet className="h-4 w-4" />
+                          Connect Wallet
+                        </Button>
+                      ) : (
+                        <div className="w-full text-center text-sm font-mono border border-green-400/30 text-green-400 bg-black/20 rounded-md px-3 py-2">
+                          Connected: {account?.slice(0, 6)}...{account?.slice(-4)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Terms and Conditions */}
+                    <div className="flex items-start space-x-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="terms"
+                        className="mt-1 h-4 w-4 rounded border-gray-700/50 bg-transparent text-green-400 focus:ring-green-400/20"
+                        required
+                      />
+                      <label htmlFor="terms" className="text-xs text-gray-400">
+                        I agree to the <a href="#" className="text-green-400 hover:underline">Terms of Service</a> and <a href="#" className="text-green-400 hover:underline">Privacy Policy</a>
+                      </label>
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          // First connect wallet
+                          if (!isConnected) {
+                            await connectWallet();
+                            return;
+                          }
+                          
+                          if (!account) {
+                            throw new Error("Wallet connection failed");
+                          }
+
+                          // Get form values
+                          const form = document.querySelector('form');
+                          if (!form) return;
+                          
+                          const formData = new FormData(form);
+                          const password = formData.get('password') as string;
+                          const confirmPassword = formData.get('confirmPassword') as string;
+                          
+                          // Basic validation
+                          if (password !== confirmPassword) {
+                            toast({
+                              title: "Error",
+                              description: "Passwords do not match",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+
+                          // Register user
+                          const success = await register({
+                            name: formData.get('name') as string,
+                            email: formData.get('email') as string,
+                            username: formData.get('username') as string,
+                            password: password,
+                            companyName: formData.get('companyName') as string,
+                            walletAddress: account,
+                            role: 'bidder',
+                          });
+
+                          if (success) {
+                            toast({
+                              title: "Success",
+                              description: "Registration successful! You can now log in.",
+                            });
+                            setActiveTab("login");
+                          }
+                        } catch (error) {
+                          console.error("Registration error:", error);
+                          toast({
+                            title: "Error",
+                            description: error instanceof Error ? error.message : "Registration failed",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white hover:from-green-500 hover:to-blue-600 mt-4"
+                      disabled={!isConnected}
+                    >
+                      Create Account
+                    </Button>
+
+                    <div className="text-center text-sm text-gray-400 pt-2">
+                      Already have an account?{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("login")} 
+                        className="text-green-400 hover:underline"
+                      >
+                        Sign in
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>
