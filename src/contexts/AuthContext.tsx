@@ -46,6 +46,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  register: (userData: RegisterData) => Promise<boolean>;
 
   createOfficer: (name: string, username: string, email: string) => Promise<boolean>;
   updateOfficer: (id: string, fields: { name?: string; username?: string; email?: string; walletAddress?: string }) => void;
@@ -906,6 +907,60 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     });
   }, []);
 
+  // Register new user
+  const register = async (userData: RegisterData): Promise<boolean> => {
+    try {
+      // Generate a unique ID
+      const userId = `user-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      // Check if username already exists
+      if (users.some(u => u.username === userData.username)) {
+        toast({
+          title: "Username Exists",
+          description: "This username is already taken",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Create new user object
+      const newUser: User = {
+        id: userId,
+        name: userData.name,
+        username: userData.username,
+        email: userData.email,
+        role: userData.role || 'bidder',
+        createdAt: new Date(),
+        isApproved: false, // Bidders need approval
+        approvalRemark: "Pending officer approval",
+        walletAddress: userData.walletAddress,
+        profileData: userData,
+      };
+      
+      // Add user to users array
+      const updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
+      persistUsers(updatedUsers);
+      
+      // Store password in PASSWORD_MAP
+      PASSWORD_MAP[userData.username] = userData.password;
+      persistPasswordMap(PASSWORD_MAP);
+      
+      // Notify officers about new user registration
+      notifyOfficers(`New user registration: ${userData.username} (${userData.name}) needs approval`, userId);
+      
+      return true;
+    } catch (error) {
+      console.error("Error registering user:", error);
+      toast({
+        title: "Registration Error",
+        description: "Failed to register user",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -915,6 +970,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         currentUser: authState.user,
         login,
         logout,
+        register,
 
         createOfficer,
         updateOfficer,

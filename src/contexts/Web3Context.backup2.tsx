@@ -115,7 +115,6 @@ interface Web3ContextType {
   removeOfficer: (walletAddress: string) => Promise<boolean>;
   getOfficer: (walletAddress: string) => Promise<Officer | null>;
   getAllOfficers: () => Promise<Officer[]>;
-  checkUserExists: (walletAddress: string) => Promise<boolean>;
   registerUser: (userData: { name: string; username: string; email: string; companyName: string; walletAddress: string }) => Promise<boolean>;
   createNewTender: (data: { title: string; description: string; department: string; budget: string; deadline: number; criteria: string[]; documents: { name: string; size: string }[] }) => Promise<string>;
   fetchTenders: () => Promise<FormattedTender[]>;
@@ -737,6 +736,91 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
     }
   };
 
+  // Register a new user on the blockchain
+  const registerUser = async (userData: { name: string; username: string; email: string; companyName: string; walletAddress: string }): Promise<boolean> => {
+    console.log("[registerUser] Starting user registration on blockchain", userData);
+    try {
+      // Ensure wallet is connected
+      if (!userAuthContract || !signer) {
+        console.log("[registerUser] Wallet not connected, connecting...");
+        const connected = await connectWallet();
+        console.log("[registerUser] connectWallet result:", connected);
+        if (!connected || !userAuthContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+
+      if (!account) {
+        throw new Error("No wallet account connected");
+      }
+
+      console.log("[registerUser] Wallet connected, account:", account);
+      console.log("[registerUser] userAuthContract:", userAuthContract);
+
+      // Generate a unique ID for the user
+      const userId = `user-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      console.log("[registerUser] Generated userId:", userId);
+      
+      try {
+        // Call the smart contract to register the user
+        console.log("[registerUser] Calling smart contract with params:", {
+          walletAddress: userData.walletAddress,
+          userId,
+          name: userData.name,
+          username: userData.username,
+          email: userData.email,
+          role: "bidder",
+          companyName: userData.companyName
+        });
+        
+        // Call the registerUser function on the smart contract
+        const tx = await userAuthContract.registerUser(
+          userData.walletAddress,
+          userId,
+          userData.name,
+          userData.username,
+          userData.email,
+          "bidder",
+          userData.companyName,
+          "", // Additional fields can be empty for now
+          "",
+          "",
+          0,
+          "",
+          "",
+          "",
+          "",
+          "Indian"
+        );
+        
+        console.log("[registerUser] Transaction sent:", tx.hash);
+        
+        // Wait for transaction confirmation
+        const receipt = await tx.wait();
+        console.log("[registerUser] Transaction confirmed:", receipt.transactionHash);
+        
+        toast({
+          title: "Success",
+          description: "User registered on blockchain successfully!",
+        });
+        
+        return true;
+      } catch (err) {
+        console.error("[registerUser] Transaction failed:", err);
+        throw new Error(`Failed to register user on blockchain: ${err.message}`);
+      }
+    } catch (error: any) {
+      console.error("[registerUser] Error registering user:", error);
+      toast({
+        title: "Registration Error",
+        description: error.message || "Failed to register user on blockchain",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   const getOfficer = async (walletAddress: string): Promise<Officer | null> => {
     if (!officerContract) {
       console.error("Officer contract not initialized");
@@ -808,13 +892,15 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   };
 
   const getAllOfficers = async (): Promise<Officer[]> => {
+    // First try to get officers from all possible localStorage sources
     let localOfficers: Officer[] = [];
     let officersFound = false;
     
-    // Try to get officers from localStorage first
+    // Check all possible localStorage keys that might contain officers
     const keysToCheck = [
       localStorageKeys.officers,
-      'trustchain_users'
+      'trustchain_users',
+      'tender_officers'
     ];
     
     for (const key of keysToCheck) {
@@ -823,33 +909,34 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         if (storedData) {
           const parsed = JSON.parse(storedData);
           if (Array.isArray(parsed)) {
+            // Filter to only include items that look like officers
             const officers = parsed.filter((item: any) => 
+              item.username && 
               (item.role === 'officer' || item.permissions)
             );
             
             if (officers.length > 0) {
-              console.log(`[getAllOfficers] Found ${officers.length} officers in ${key}`);
+              console.log(`[getAllOfficers] Found ${officers.length} officers in localStorage key: ${key}`);
               
-              // Add only officers that don't already exist in localOfficers
+              // Add any officers not already in localOfficers
               const existingUsernames = new Set(localOfficers.map(o => o.username));
               for (const officer of officers) {
                 if (!existingUsernames.has(officer.username)) {
+                  // Ensure the officer has all required fields
                   const completeOfficer: Officer = {
-                    id: officer.id || `officer-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    id: officer.id || `officer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: officer.name || officer.username,
+                    username: officer.username,
+                    email: officer.email || `${officer.username}@example.com`,
                     walletAddress: officer.walletAddress || '',
-                    name: officer.name || 'Officer',
-                    username: officer.username || '',
-                    email: officer.email || '',
-                    isActive: officer.isActive !== undefined ? officer.isActive : true,
-                    permissions: officer.permissions || {
-                      canCreate: true,
-                      canApprove: true,
-                      isActive: true
-                    },
+                    isActive: officer.isActive || true,
                     password: officer.password || 'tender00',
+                    permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true },
                     createdAt: officer.createdAt ? new Date(officer.createdAt) : new Date()
                   };
+                  
                   localOfficers.push(completeOfficer);
+                  existingUsernames.add(officer.username);
                   officersFound = true;
                 }
               }
@@ -857,60 +944,68 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
           }
         }
       } catch (err) {
-        console.warn(`[getAllOfficers] Error parsing ${key}:`, err);
+        console.warn(`[getAllOfficers] Error reading from ${key}:`, err);
       }
     }
     
-    // Check window temp store
+    // Also check window.officerTempStore as a backup
     try {
-      const tempStoreOfficers = (window as any).officerTempStore;
-      if (Array.isArray(tempStoreOfficers) && tempStoreOfficers.length > 0) {
-        console.log(`[getAllOfficers] Found ${tempStoreOfficers.length} officers in window.officerTempStore`);
-        
-        const existingUsernames = new Set(localOfficers.map(o => o.username));
-        for (const officer of tempStoreOfficers) {
-          if (officer.username && !existingUsernames.has(officer.username)) {
-            localOfficers.push(officer);
-            officersFound = true;
+      if ((window as any).officerTempStore && Array.isArray((window as any).officerTempStore)) {
+        const tempStoreOfficers = (window as any).officerTempStore;
+        if (tempStoreOfficers.length > 0) {
+          console.log(`[getAllOfficers] Found ${tempStoreOfficers.length} officers in officerTempStore`);
+          
+          // Add any officers not already in localOfficers
+          const existingUsernames = new Set(localOfficers.map(o => o.username));
+          for (const officer of tempStoreOfficers) {
+            if (officer.username && !existingUsernames.has(officer.username)) {
+              localOfficers.push(officer);
+              existingUsernames.add(officer.username);
+              officersFound = true;
+            }
           }
         }
       }
     } catch (err) {
-      console.warn('[getAllOfficers] Error accessing window.officerTempStore:', err);
+      console.warn('[getAllOfficers] Error reading from officerTempStore:', err);
     }
     
-    // Store back to localStorage for persistence
-    try {
-      localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
-      (window as any).officerTempStore = localOfficers;
-    } catch (err) {
-      console.warn('[getAllOfficers] Error storing officers to localStorage:', err);
-    }
-    
-    // If we found officers locally, return them
+    // If officers were found, save the combined list back to localStorage
     if (officersFound) {
-      console.log(`[getAllOfficers] Returning ${localOfficers.length} officers from local storage`);
+      try {
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+        (window as any).officerTempStore = localOfficers;
+        console.log(`[getAllOfficers] Saved ${localOfficers.length} officers to localStorage and officerTempStore`);
+      } catch (err) {
+        console.warn('[getAllOfficers] Error saving officers to localStorage:', err);
+      }
+    }
+
+    // If we have local officers and no contract, return them
+    if (localOfficers.length > 0 && !officerContract) {
+      console.log(`[getAllOfficers] Returning ${localOfficers.length} officers from localStorage (no contract)`);
       return localOfficers;
     }
-    
-    // Otherwise try to get from blockchain
+
+    // Try to get officers from blockchain if contract is available
+    if (!officerContract) {
+      console.warn("Officer contract not initialized, using only localStorage officers");
+      return localOfficers;
+    }
+
     try {
-      if (!officerContract) {
-        console.warn("[getAllOfficers] Officer contract not initialized, returning local officers");
-        return localOfficers;
-      }
-      
+      // Get all officer addresses first
       const officerAddresses = await officerContract.getAllOfficerAddresses();
       const officers: Officer[] = [];
       const usernamesFromContract = new Set<string>();
-      
-      // Process each officer from the contract
+
+      // Get details for each officer from contract
       for (const address of officerAddresses) {
         try {
           let id = "", name = "", username = "", email = "", isActive = false;
           let createdAt = '0';
-          
           try {
+            // Get raw contract data
             const rawData = await officerContract['getOfficer(address)'].staticCall(address);
             id = typeof rawData[0] === 'string' ? rawData[0] : '';
             name = typeof rawData[1] === 'string' ? rawData[1] : '';
@@ -918,12 +1013,13 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
             email = typeof rawData[3] === 'string' ? rawData[3] : '';
             isActive = Boolean(rawData[4]);
             createdAt = rawData[5]?.toString() || Date.now().toString();
-            
+
+            // Only add if username and id are present
             if (!id || !username) {
               console.warn(`[getAllOfficers] Skipping officer with missing id/username: ${address}`);
               continue;
             }
-            
+
             const officer: Officer = {
               id,
               walletAddress: address,
@@ -934,26 +1030,23 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
               permissions: {
                 canCreate: isActive,
                 canApprove: isActive,
-                isActive
+                isActive: isActive
               },
-              password: 'tender00',
               createdAt: new Date(parseInt(createdAt, 10))
             };
-            
             officers.push(officer);
             usernamesFromContract.add(username);
             
-            // Store officer data in session storage for quick access
+            // Store officer credentials in both sessionStorage and localStorage for cross-browser access
+            console.log(`[getAllOfficers] Successfully added officer from contract: ${username} (${id})`);
             try {
-              console.log(`[getAllOfficers] Successfully added officer from contract: ${username} (${id})`);
-              
-              // Store in sessionStorage
+              // Store in sessionStorage for current browser
               sessionStorage.setItem(`officer_${username}`, JSON.stringify({
-                password: 'tender00',
-                walletAddress: address
+                username,
+                password: 'tender00'
               }));
               
-              // Store in passwordMap
+              // Also update the PASSWORD_MAP which is stored in localStorage
               const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
               passwordMap[username] = 'tender00';
               localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
@@ -963,77 +1056,74 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
               console.warn(`[getAllOfficers] Failed to store officer credentials:`, err);
             }
           } catch (err) {
-            // Skip this officer if we can't get data
+            // If contract call fails, skip this officer
             console.warn('[Officer Recovery] Skipping officer due to contract data error:', address);
             continue;
           }
         } catch (err) {
           console.error(`[getAllOfficers] Error processing officer ${address}:`, err);
-          continue;
         }
       }
       
-      // Add any local officers that weren't in the contract
+      // Add any officers from localStorage that weren't found in the contract
       for (const localOfficer of localOfficers) {
         if (!usernamesFromContract.has(localOfficer.username)) {
           console.log(`[getAllOfficers] Adding officer from localStorage: ${localOfficer.username}`);
-          
+          // Make sure the officer has password field for login
           if (!localOfficer.password) {
             localOfficer.password = 'tender00';
           }
-          
           officers.push(localOfficer);
         }
       }
       
       // Update localStorage with the combined list
+      // IMPORTANT: Always update localStorage, even if officers list is empty
+      // This prevents data loss when the application restarts
+      localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
+      (window as any).officerTempStore = officers;
+      
+      // Also ensure we persist the officers to the trustchain_users localStorage
+      // This provides additional redundancy for officer data
       try {
-        localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
-        (window as any).officerTempStore = officers;
+        const trustchainUsers = JSON.parse(localStorage.getItem('trustchain_users') || '[]');
+        const adminUser = trustchainUsers.find((u: any) => u.username === 'admin');
         
-        // Also update trustchain_users to include officers
-        try {
-          const trustchainUsers = JSON.parse(localStorage.getItem('trustchain_users') || '[]');
-          const adminUser = trustchainUsers.find((u: any) => u.username === 'admin');
-          
-          // Map officers to trustchain_users format
-          const officerUsers = officers.map((officer: Officer) => ({
-            username: officer.username,
-            email: officer.email,
-            name: officer.name,
-            role: 'officer',
-            walletAddress: officer.walletAddress,
-            isActive: officer.isActive,
-            permissions: officer.permissions,
-            createdAt: officer.createdAt,
-            id: officer.id
-          }));
-          
-          // Combine admin with officers if admin exists
-          const updatedUsers = adminUser ? [adminUser, ...officerUsers] : officerUsers;
-          
-          // Update passwords too
-          localStorage.setItem('trustchain_users', JSON.stringify(updatedUsers));
-          
-          const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
-          for (const officer of officers) {
-            passwordMap[officer.username] = officer.password || 'tender00';
-          }
-          localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
-          
-          console.log(`[getAllOfficers] Updated trustchain_users with ${officerUsers.length} officers`);
-        } catch (err) {
-          console.warn('[getAllOfficers] Error updating trustchain_users:', err);
+        // Convert officers to the format expected by trustchain_users
+        const officerUsers = officers.map((officer: Officer) => ({
+          id: officer.id,
+          name: officer.name,
+          username: officer.username,
+          email: officer.email,
+          role: 'officer' as UserRole,
+          walletAddress: officer.walletAddress,
+          createdAt: officer.createdAt,
+          isApproved: officer.permissions?.isActive || true,
+          approvalRemark: '',
+          permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true }
+        }));
+        
+        // Create updated users list with admin + officers
+        const updatedUsers = adminUser ? [adminUser, ...officerUsers] : officerUsers;
+        localStorage.setItem('trustchain_users', JSON.stringify(updatedUsers));
+        
+        // Also update password map
+        const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
+        for (const officer of officers) {
+          passwordMap[officer.username] = officer.password || 'tender00';
         }
+        localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
+        
+        console.log(`[getAllOfficers] Updated trustchain_users with ${officerUsers.length} officers`);
       } catch (err) {
-        console.warn('[getAllOfficers] Error updating localStorage:', err);
+        console.warn('[getAllOfficers] Error updating trustchain_users:', err);
       }
       
       console.log(`[getAllOfficers] Retrieved ${officers.length} officers successfully`);
       return officers;
     } catch (error) {
       console.error("Error getting officers from contract:", error);
-      // Fallback to local officers
+      // Fallback to localStorage if contract call fails
       console.log(`[getAllOfficers] Falling back to ${localOfficers.length} officers from localStorage`);
       return localOfficers;
     }
@@ -1045,13 +1135,13 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         console.warn("[fetchTenders] No tender contract available, returning empty list");
         return [];
       }
-      
-      // Check if contract is properly initialized
-      if (!tenderContract.provider) {
-        console.error("[fetchTenders] Contract not properly initialized, skipping blockchain call");
+      // Check if contract is properly initialized by calling a simple method
+      try {
+        await tenderContract.address; // Basic check to see if contract object is valid
+      } catch (contractError) {
+        console.error("[fetchTenders] Contract object invalid, skipping blockchain call:", contractError);
         return [];
       }
-      
       let tenderIds = [];
       try {
         tenderIds = await tenderContract.getAllTenderIds();
@@ -1060,7 +1150,6 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         console.error("[fetchTenders] Failed to get tender IDs, falling back to empty list:", idError);
         return [];
       }
-      
       const tenders = await Promise.all(
         tenderIds.map(async (id) => {
           try {
@@ -1073,12 +1162,12 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
               documentCid: tender.documentCid,
               budget: ethers.utils.formatEther(tender.budget),
               deadline: new Date(tender.deadline.toNumber() * 1000),
-              creator: tender.creator,
-              status: tender.status,
+              creator: tender.creator || "",
+              status: tender.status || "",
               createdAt: tender.createdAt ? new Date(tender.createdAt.toNumber() * 1000) : new Date(),
-              // Additional fields for UI
+              isActive: tender.isActive,
               highestBid: highestBid ? ethers.utils.formatEther(highestBid.amount) : "0",
-              highestBidder: highestBid ? highestBid.bidder : ""
+              highestBidder: highestBid ? highestBid.bidder : "",
             };
           } catch (tenderError) {
             console.error(`[fetchTenders] Error fetching tender ID ${id}:`, tenderError);
@@ -1086,7 +1175,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
           }
         })
       );
-      
+      // Filter out any null results from failed tender fetches
       return tenders.filter(tender => tender !== null);
     } catch (error) {
       console.error("[fetchTenders] General error fetching tenders (fallback to empty):", error);
@@ -1103,9 +1192,8 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
           throw new Error("Contract or signer not initialized. Please connect your wallet first.");
         }
       }
-      
       const { title, description, department, budget, deadline } = data;
-      
+      // Generate a simple ID
       const id = `${Date.now()}`;
       const documentCid = ""; // Replace with real CID after IPFS upload
       const budgetWei = ethers.utils.parseEther(budget);
@@ -1117,28 +1205,6 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       console.error("Error creating tender:", error);
       toast({ title: "Error", description: error.message || "Failed to create tender", variant: "destructive" });
       throw error;
-    }
-  };
-
-  // Check if a user already exists for a wallet address
-  const checkUserExists = async (walletAddress: string): Promise<boolean> => {
-    try {
-      if (!userAuthContract) {
-        console.log("[checkUserExists] Contract not initialized");
-        return false;
-      }
-
-      console.log("[checkUserExists] Checking if user exists for address:", walletAddress);
-      
-      // Call the isUser function on the smart contract instead of userExists
-      // This is based on the actual ABI which has isUser, not userExists
-      const exists = await userAuthContract.isUser(walletAddress);
-      console.log("[checkUserExists] User exists result:", exists);
-      
-      return exists;
-    } catch (error) {
-      console.error("[checkUserExists] Error checking if user exists:", error);
-      return false;
     }
   };
 
@@ -1162,13 +1228,6 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
 
       console.log("[registerUser] Wallet connected, account:", account);
       console.log("[registerUser] userAuthContract:", userAuthContract);
-
-      // Check if user already exists for this wallet address
-      const userExists = await checkUserExists(userData.walletAddress);
-      if (userExists) {
-        console.log("[registerUser] User already exists for this wallet address");
-        throw new Error("User already exists for this wallet address. Please use a different wallet or log in with your existing account.");
-      }
 
       // Generate a unique ID for the user
       const userId = `user-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -1219,14 +1278,8 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
         });
         
         return true;
-      } catch (err: any) {
+      } catch (err) {
         console.error("[registerUser] Transaction failed:", err);
-        
-        // Check if the error message contains 'User already exists'
-        if (err.message && err.message.includes("User already exists")) {
-          throw new Error("User already exists for this wallet address. Please use a different wallet or log in with your existing account.");
-        }
-        
         throw new Error(`Failed to register user on blockchain: ${err.message}`);
       }
     } catch (error: any) {
@@ -1290,7 +1343,6 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
     removeOfficer,
     getOfficer,
     getAllOfficers,
-    checkUserExists,
     registerUser,
     createNewTender,
     fetchTenders,
