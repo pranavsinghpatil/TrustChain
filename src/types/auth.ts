@@ -8,29 +8,31 @@ export interface RegisterData {
   name: string;
   role: UserRole;
   email: string;
-  mobileNumber: string;
   walletAddress?: string;
-  
-  // Company Details
-  bidderType: "Indian" | "Foreign";
   companyName: string;
-  registrationNumber: string;
+  
+  // Optional fields for simplified registration
+  mobileNumber?: string;
+  
+  // Company Details - optional
+  bidderType?: "Indian" | "Foreign";
+  registrationNumber?: string;
   gstNumber?: string;
   panNumber?: string;
-  establishmentYear: string;
+  establishmentYear?: string;
   
-  // Address Details
-  registeredAddress: string;
-  city: string;
-  state: string;
-  pinCode: string;
+  // Address Details - optional
+  registeredAddress?: string;
+  city?: string;
+  state?: string;
+  pinCode?: string;
   
   // Additional Information
   additionalInfo?: string;
   
   // Captcha and Terms
-  terms1: boolean;
-  terms2: boolean;
+  terms1?: boolean;
+  terms2?: boolean;
 }
 
 export interface User {

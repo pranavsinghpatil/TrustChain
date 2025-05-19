@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 const Login = () => {
   const navigate = useNavigate();
   const { login, register, authState } = useAuth();
-  const { connectWallet, account, isConnected } = useWeb3();
+  const { connectWallet, account, isConnected, registerUser } = useWeb3();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -336,7 +336,7 @@ const Login = () => {
               </TabsContent>
               
               <TabsContent value="register">
-                <div className="space-y-4">
+                <form id="registration-form" className="space-y-4">
                   <div className="text-center mb-6">
                     <h3 className="text-xl font-semibold text-white mb-2">Create an Account</h3>
                     <p className="text-sm text-gray-400">Join our platform to start bidding on tenders</p>
@@ -470,27 +470,55 @@ const Login = () => {
                     <Button
                       type="button"
                       onClick={async () => {
+                        console.log("Create Account button clicked");
                         try {
-                          // First connect wallet
-                          if (!isConnected) {
-                            await connectWallet();
+                          // Get form values first to validate before connecting wallet
+                          const form = document.getElementById('registration-form') as HTMLFormElement;
+                          console.log("Form found:", !!form);
+                          if (!form) {
+                            toast({
+                              title: "Error",
+                              description: "Registration form not found",
+                              variant: "destructive",
+                            });
                             return;
                           }
-                          
-                          if (!account) {
-                            throw new Error("Wallet connection failed");
-                          }
-
-                          // Get form values
-                          const form = document.querySelector('form');
-                          if (!form) return;
                           
                           const formData = new FormData(form);
                           const password = formData.get('password') as string;
                           const confirmPassword = formData.get('confirmPassword') as string;
+                          const name = formData.get('name') as string;
+                          const email = formData.get('email') as string;
+                          const username = formData.get('username') as string;
+                          const companyName = formData.get('companyName') as string;
+                          
+                          console.log("Form data collected:", { name, email, username, companyName });
+                          
+                          // Check if terms checkbox is checked
+                          const termsCheckbox = document.getElementById('terms') as HTMLInputElement;
+                          console.log("Terms checkbox:", termsCheckbox?.checked);
+                          if (!termsCheckbox || !termsCheckbox.checked) {
+                            toast({
+                              title: "Error",
+                              description: "You must agree to the Terms of Service and Privacy Policy",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
                           
                           // Basic validation
+                          if (!name || !email || !username || !companyName || !password || !confirmPassword) {
+                            console.log("Missing required fields");
+                            toast({
+                              title: "Error",
+                              description: "Please fill in all required fields",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
                           if (password !== confirmPassword) {
+                            console.log("Passwords don't match");
                             toast({
                               title: "Error",
                               description: "Passwords do not match",
@@ -498,24 +526,71 @@ const Login = () => {
                             });
                             return;
                           }
+                          
+                          // Now connect wallet after validation
+                          if (!isConnected) {
+                            console.log("Wallet not connected, connecting...");
+                            const connected = await connectWallet();
+                            console.log("Wallet connection result:", connected);
+                            if (!connected) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to connect to MetaMask. Please make sure MetaMask is installed and unlocked.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                          }
+                          
+                          console.log("Wallet connected, account:", account);
+                          if (!account) {
+                            toast({
+                              title: "Error",
+                              description: "Wallet connection failed. Please try again.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
 
-                          // Register user
-                          const success = await register({
-                            name: formData.get('name') as string,
-                            email: formData.get('email') as string,
-                            username: formData.get('username') as string,
-                            password: password,
-                            companyName: formData.get('companyName') as string,
-                            walletAddress: account,
-                            role: 'bidder',
+                          // Show loading toast
+                          toast({
+                            title: "Processing",
+                            description: "Registering on blockchain. Please confirm the transaction in MetaMask.",
                           });
 
-                          if (success) {
-                            toast({
-                              title: "Success",
-                              description: "Registration successful! You can now log in.",
+                          console.log("Starting blockchain registration...");
+                          // Register user on the blockchain first
+                          const blockchainSuccess = await registerUser({
+                            name,
+                            email,
+                            username,
+                            companyName,
+                            walletAddress: account,
+                          });
+                          
+                          console.log("Blockchain registration result:", blockchainSuccess);
+                          
+                          if (blockchainSuccess) {
+                            console.log("Starting local registration...");
+                            // Now register in the local system
+                            const success = await register({
+                              name,
+                              email,
+                              username,
+                              password,
+                              companyName,
+                              walletAddress: account,
+                              role: 'bidder',
                             });
-                            setActiveTab("login");
+                            
+                            console.log("Local registration result:", success);
+                            if (success) {
+                              toast({
+                                title: "Success",
+                                description: "Registration successful! Your account is pending approval by an officer. You can log in to check your status.",
+                              });
+                              setActiveTab("login");
+                            }
                           }
                         } catch (error) {
                           console.error("Registration error:", error);
@@ -543,7 +618,7 @@ const Login = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </form>
               </TabsContent>
             </Tabs>
           </CardContent>
