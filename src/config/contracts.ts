@@ -41,14 +41,17 @@ export const CONTRACT_ABI = {
   ],
   TENDER_MANAGEMENT: [
     // Tender Management functions
-    "function createTender(string memory id, string memory title, string memory description, string memory documentCid, uint256 budget, uint256 deadline) external",
-    "function updateTender(string memory tenderId, string memory title, string memory description, string memory documentCid, uint256 budget, uint256 deadline) external",
+    "function createTender(string memory id, string memory title, string memory description, uint256 estimatedValue, uint256 startDate, uint256 endDate, string memory category, string memory department, string memory location, string[] memory documents) external",
+    "function updateTender(string memory tenderId, string memory title, string memory description, uint256 estimatedValue, uint256 startDate, uint256 endDate, string memory category, string memory department, string memory location, string[] memory documents) external",
+    "function changeTenderStatus(string memory tenderId, uint8 status) external",
     "function closeTender(string memory tenderId) external",
     "function cancelTender(string memory tenderId) external",
-    "function getTender(string memory tenderId) external view returns (tuple(string id, string title, string description, string documentCid, uint256 budget, uint256 deadline, address creator, uint8 status, uint256 createdAt))",
+    "function getTender(string memory tenderId) external view returns (tuple(string id, string title, string description, uint256 estimatedValue, uint256 startDate, uint256 endDate, address createdBy, uint8 status, uint256 createdAt, string category, string department, string location, string[] documents))",
     "function getAllTenderIds() external view returns (string[] memory)",
+    "function getTenderCount() external view returns (uint256)",
     // Events
     "event TenderCreated(string indexed tenderId, address indexed creator, string title)",
+    "event TenderUpdated(string indexed tenderId, string title, uint8 status)",
     "event TenderUpdated(string indexed tenderId, string title)",
     "event TenderClosed(string indexed tenderId)",
     "event TenderCancelled(string indexed tenderId)"

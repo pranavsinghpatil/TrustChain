@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Calendar, Coins, Clock } from "lucide-react";
 
@@ -28,11 +28,15 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
   };
   
   const isDeadlineSoon = () => {
-    const deadlineDate = new Date(deadline);
-    const now = new Date();
-    const diffTime = deadlineDate.getTime() - now.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    return diffDays <= 3 && status === 'open';
+    try {
+      const deadlineDate = new Date(deadline);
+      const now = new Date();
+      const diffTime = deadlineDate.getTime() - now.getTime();
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      return diffDays <= 3 && status === 'open';
+    } catch (e) {
+      return false;
+    }
   };
 
   // Format budget to display ₹ symbol
