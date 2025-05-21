@@ -53,40 +53,34 @@ export interface Tender {
   id: string;
   title: string;
   description: string;
-  
   // Financial properties
-  budget?: string | ethers.BigNumber;
-  budge?: string | ethers.BigNumber; // Common typo for budget
-  budjet?: string | ethers.BigNumber; // Another common typo
-  
+  budget?: string | ethers.BigNumber | number;
+  budge?: string | ethers.BigNumber | number;
+  budjet?: string | ethers.BigNumber | number;
   // Date properties
   deadline?: number | Date | ethers.BigNumber;
   createdAt: number | Date | ethers.BigNumber;
   startDate?: number | Date | ethers.BigNumber;
   endDate?: number | Date | ethers.BigNumber;
-  createDate?: number | Date | ethers.BigNumber; // Alternative for createdAt
-  
+  createDate?: number | Date | ethers.BigNumber;
   // User-related properties
   creator?: string;
   createdBy?: string;
-  creatr?: string; // Common typo for creator
-  
+  creatr?: string;
   // Status and metadata
   status: number | 'open' | 'closed' | 'awarded' | 'disputed';
   department: string;
   category: string;
   location: string;
-  
   // Bids and documents
   bidCount?: number | string | ethers.BigNumber;
-  criteria: string[];
+  criteria: string[] | any[];
   documents: Array<{
     name: string;
     size: string;
     cid: string;
     hash?: string;
   }>;
-  
   // Additional properties that might come from the contract
   [key: string]: any;
 }

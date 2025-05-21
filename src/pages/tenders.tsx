@@ -28,7 +28,7 @@ const Tenders = () => {
     try {
       if (!isConnected) await connectWallet();
       const tenders = await fetchTenders();
-      console.log('Loaded tenders:', tenders);
+      // Removed console.log for loaded tenders
       if (tenders && Array.isArray(tenders)) {
         setTendersList(tenders);
       } else {
@@ -132,12 +132,7 @@ const Tenders = () => {
     }
   };
 
-  // For debugging - log the tenders list
-  useEffect(() => {
-    if (tendersList.length > 0) {
-      console.log('Tenders available for display:', tendersList.length);
-    }
-  }, [tendersList]);
+  // Removed debugging log for tenders list
 
   // Filter based on user role
   const displayList = (role as string) === 'bidder'
