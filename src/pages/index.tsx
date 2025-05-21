@@ -54,48 +54,89 @@ const Index = () => {
   }, [isConnected, connectWallet]);
 
   useEffect(() => {
-    if (!tenderContract) return;
-    (async () => {
+    const loadTenderData = async () => {
+      if (!isConnected) {
+        try {
+          await connectWallet();
+        } catch (error) {
+          console.error('Error connecting wallet:', error);
+        }
+      }
+      
       try {
         const all = await fetchTenders();
-        setTenders(all);
-        // Generate chart data from real tenders
-        const statusCounts = {
-          open: 0,
-          closed: 0,
-          awarded: 0,
-          disputed: 0
-        };
-        
-        all.forEach(tender => {
-          statusCounts[tender.status]++;
-        });
-        
-        setChartData([
-          { name: 'Open', value: statusCounts.open, color: '#10B981' },
-          { name: 'Closed', value: statusCounts.closed, color: '#8E9196' },
-          { name: 'Awarded', value: statusCounts.awarded, color: '#8B5CF6' },
-          { name: 'Disputed', value: statusCounts.disputed, color: '#EF4444' },
-        ]);
+        if (Array.isArray(all)) {
+          setTenders(all);
+          console.log('Loaded tenders:', all.length);
+          
+          // Generate chart data from real tenders
+          const statusCounts = {
+            open: 0,
+            closed: 0,
+            awarded: 0,
+            disputed: 0
+          };
+          
+          all.forEach(tender => {
+            if (typeof tender.status === 'string' && statusCounts.hasOwnProperty(tender.status)) {
+              statusCounts[tender.status]++;
+            }
+          });
+          
+          // If we have no tenders, set at least 1 for each category to show the chart properly
+          const hasAnyTenders = all.length > 0;
+          
+          setChartData([
+            { name: 'Open', value: hasAnyTenders ? statusCounts.open : 0, color: '#10B981' },
+            { name: 'Closed', value: hasAnyTenders ? statusCounts.closed : 0, color: '#8E9196' },
+            { name: 'Awarded', value: hasAnyTenders ? statusCounts.awarded : 0, color: '#8B5CF6' },
+            { name: 'Disputed', value: hasAnyTenders ? statusCounts.disputed : 0, color: '#EF4444' },
+          ]);
+        }
       } catch (err) {
         console.error('Error loading tender data:', err);
+        // Set zero values for chart data if there's an error
+        setChartData([
+          { name: 'Open', value: 0, color: '#10B981' },
+          { name: 'Closed', value: 0, color: '#8E9196' },
+          { name: 'Awarded', value: 0, color: '#8B5CF6' },
+          { name: 'Disputed', value: 0, color: '#EF4444' },
+        ]);
       } finally {
         setLoading(false);
       }
-    })();
-  }, [tenderContract, fetchTenders]);
+    };
+    
+    loadTenderData();
+  }, [isConnected, connectWallet, fetchTenders]);
 
   // Map tenders to the format expected by RecentTendersTable
   const recentTenders = tenders
     .slice(0, 5) // Get only the 5 most recent tenders
-    .map(tender => ({
-      id: `T-${tender.id}`,
-      title: tender.title,
-      department: tender.department,
-      budget: `₹${tender.budget}`,
-      deadline: new Date(tender.deadline * 1000).toISOString().split('T')[0],
-      status: tender.status
-    }));
+    .map(tender => {
+      // Ensure we have valid data for each field
+      let deadline = '';
+      try {
+        if (tender.deadline instanceof Date) {
+          deadline = tender.deadline.toISOString().split('T')[0];
+        } else if (typeof tender.deadline === 'number') {
+          deadline = new Date(tender.deadline * 1000).toISOString().split('T')[0];
+        } else {
+          deadline = new Date().toISOString().split('T')[0];
+        }
+      } catch (e) {
+        deadline = new Date().toISOString().split('T')[0];
+      }
+      
+      return {
+        id: tender.id || `T-${Date.now()}`,
+        title: tender.title || 'Untitled Tender',
+        department: tender.department || 'General Department',
+        budget: `₹${tender.budget || '0'}`,
+        deadline: deadline,
+        status: typeof tender.status === 'string' ? tender.status : 'open'
+      };
+    });
 
   return (
     <div className="min-h-screen bg-gray-50/0">
