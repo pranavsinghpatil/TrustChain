@@ -13,6 +13,7 @@ interface TenderDetailsHeaderProps {
   status: 'open' | 'closed' | 'awarded' | 'disputed';
   createdAt: string;
   documentUrl?: string;
+  bidCount?: number;
 }
 
 const TenderDetailsHeader = ({ 
