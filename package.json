@@ -12,8 +12,9 @@
     "deploy": "hardhat run scripts/deploy.js --network localhost"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
+    "@chakra-ui/react": "^3.19.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@ethersproject/experimental": "^5.8.0",
     "@hookform/resolvers": "^5.0.1",
     "@mui/icons-material": "^5.15.10",
@@ -38,7 +39,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "framer-motion": "^12.9.4",
+    "framer-motion": "^12.12.1",
     "gsap": "^3.13.0",
     "ipfs-http-client": "^60.0.1",
     "lucide-react": "^0.331.0",
