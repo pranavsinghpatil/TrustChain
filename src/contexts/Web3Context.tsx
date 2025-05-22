@@ -15,6 +15,24 @@ import { useToast } from "@/components/ui/use-toast";
 import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/config/contracts";
 import { TARGET_NETWORK } from "@/config/network";
 
+// Helper function to format dates
+const formatDate = (date: Date | number): string => {
+  try {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch (e) {
+    console.warn('Error formatting date:', e);
+    return 'Invalid date';
+  }
+};
+
 // Types
 interface EthereumProvider {
   isMetaMask?: boolean;
@@ -49,29 +67,71 @@ export interface Officer {
 }
 
 export interface Tender {
-  // Core properties
+  // Core properties from TenderManager
+  id: number | string;
+  title: string;
+  description: string;
+  deadline: number;
+  minBid: ethers.BigNumber | string | number;
+  ownerAddress: string;
+  status: number | 'open' | 'closed' | 'awarded' | 'disputed';
+  winningBidId: number;
+  createdAt: number;
+  documentHash: string;
+  isPrivate: boolean;
+  allowedBidders: string[];
+  
+  // Additional properties used in the frontend
+  budget?: string | number | ethers.BigNumber;
+  budge?: string | number | ethers.BigNumber;  // Common typo
+  budjet?: string | number | ethers.BigNumber; // Common typo
+  creator?: string;
+  createdBy?: string;
+  creatr?: string; // Common typo
+  department?: string;
+  category?: string;
+  location?: string;
+  bidCount?: number | string | ethers.BigNumber;
+  criteria?: string[] | any[];
+  documents?: Array<{
+    name: string;
+    size: string;
+    cid: string;
+    hash?: string;
+  }>;
+  createDate?: number; // Alias for createdAt
+  endDate?: number;    // Alias for deadline
+  
+  // Allow any additional properties
+  [key: string]: any;
+}
+
+export interface FormattedTender {
   id: string;
   title: string;
   description: string;
+  
   // Financial properties
-  budget?: string | ethers.BigNumber | number;
-  budge?: string | ethers.BigNumber | number;
-  budjet?: string | ethers.BigNumber | number;
+  budget: string | number | ethers.BigNumber;
+  formattedBudget: string;
+  
   // Date properties
-  deadline?: number | Date | ethers.BigNumber;
-  createdAt: number | Date | ethers.BigNumber;
-  startDate?: number | Date | ethers.BigNumber;
-  endDate?: number | Date | ethers.BigNumber;
-  createDate?: number | Date | ethers.BigNumber;
+  deadline: Date | number | ethers.BigNumber;
+  createdAt: Date | number | ethers.BigNumber;
+  startDate?: Date | number | ethers.BigNumber;
+  endDate?: Date | number | ethers.BigNumber;
+  
   // User-related properties
-  creator?: string;
-  createdBy?: string;
+  creator: string;
+  createdBy: string;
   creatr?: string;
+  
   // Status and metadata
-  status: number | 'open' | 'closed' | 'awarded' | 'disputed';
+  status: 'open' | 'closed' | 'awarded' | 'disputed' | number;
   department: string;
   category: string;
   location: string;
+  
   // Bids and documents
   bidCount?: number | string | ethers.BigNumber;
   criteria: string[] | any[];
@@ -80,44 +140,6 @@ export interface Tender {
     size: string;
     cid: string;
     hash?: string;
-  }>;
-  // Additional properties that might come from the contract
-  [key: string]: any;
-}
-
-export interface FormattedTender {
-  // Core properties
-  id: string;
-  title: string;
-  description: string;
-  
-  // Financial properties
-  budget: string;
-  formattedBudget: string;
-  
-  // Date properties
-  deadline: Date | number;
-  createdAt: Date | number;
-  startDate?: Date | number;
-  endDate?: Date | number;
-  
-  // User-related properties
-  creator?: string;
-  createdBy?: string;
-  
-  // Status and metadata
-  status: 'open' | 'closed' | 'awarded' | 'disputed';
-  department: string;
-  category: string;
-  location: string;
-  
-  // Bids and documents
-  bidCount?: number;
-  criteria: string[];
-  documents: Array<{
-    name: string;
-    size: string;
-    cid: string;
   }>;
   
   // Formatted strings
@@ -1111,43 +1133,135 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
             console.warn('Error reading documents array:', e);
           }
 
+          // Create a base tender object with all required properties
           const tender: Tender = {
-            id,
-            title,
-            description,
-            budget: estimatedValue,
-            deadline: endDate,
-            creator: createdBy,
-            status,
-            createdAt,
-            category,
-            department,
-            location,
-            documents,
+            id: id || `tender-${Date.now()}`,
+            title: title || 'Untitled Tender',
+            description: description || 'No description available',
+            budget: estimatedValue || ethers.BigNumber.from(0),
+            deadline: endDate ? ethers.BigNumber.from(endDate) : ethers.BigNumber.from(0),
+            creator: createdBy || ethers.constants.AddressZero,
+            createdBy: createdBy || ethers.constants.AddressZero,
+            status: status || 0,
+            category: category || 'Uncategorized',
+            department: department || 'General',
+            location: location || 'Not specified',
+            documents: documents || [],
             bidCount: 0,
-            criteria: []
+            criteria: [],
+            createdAt: createdAt ? ethers.BigNumber.from(createdAt) : ethers.BigNumber.from(Math.floor(Date.now() / 1000))
+          };
+          
+          // Copy any additional properties from the original tender data
+          const sourceData = tender as any;
+          if (sourceData) {
+            Object.keys(sourceData).forEach(key => {
+              if (!(key in tender)) {
+                (tender as any)[key] = sourceData[key];
+              }
+            });
+          }
+
+          // Type-safe property accessor with fallback that handles all property types
+          const getTenderProp = <T,>(key: string, defaultValue: T): T => {
+            if (!tender) return defaultValue;
+            
+            // Handle property access with type safety
+            const value = (tender as any)[key];
+            
+            // Handle undefined/null values
+            if (value === undefined || value === null) {
+              return defaultValue;
+            }
+            
+            // Handle BigNumber conversion
+            if (value && typeof value.toNumber === 'function') {
+              return value.toNumber() as unknown as T;
+            }
+            
+            // Handle string conversion for string properties
+            if (typeof defaultValue === 'string' && value !== undefined) {
+              return String(value) as unknown as T;
+            }
+            
+            // Handle number conversion for number properties
+            if (typeof defaultValue === 'number' && value !== undefined) {
+              if (typeof value === 'number') return value as unknown as T;
+              if (typeof value === 'string') {
+                const num = parseFloat(value);
+                return (isNaN(num) ? defaultValue : num) as unknown as T;
+              }
+              return defaultValue;
+            }
+            
+            // For arrays and objects, return as is
+            return value as unknown as T;
           };
 
-          // Type assertion to handle dynamic properties
-          const t = tender as any;
+          // Safely get a string property with fallback
+          const getString = (key: string, defaultValue: string = ''): string => {
+            return getTenderProp<string>(key, defaultValue);
+          };
+          
+          // Safely get a number property with fallback
+          const getNumber = (key: string, defaultValue: number = 0): number => {
+            return getTenderProp<number>(key, defaultValue);
+          };
+          
+          // Helper to get the creator address with fallback chain
+          const getCreator = (): string => {
+            return (
+              getString('ownerAddress', '') ||
+              getString('creator', '') ||
+              getString('createdBy', '') ||
+              'unknown'
+            );
+          };
+          
+          // Helper to get the budget value with fallback chain
+          const getBudget = (): string => {
+            const budget = getNumber('minBid', NaN) || 
+                         getNumber('budget', NaN) || 
+                         getNumber('budge', 0);
+            return String(budget || '0');
+          };
+          
+          // Helper to get the deadline with fallback
+          const getDeadline = (): string => {
+            const deadline = getNumber('deadline', 0) || 
+                           getNumber('endDate', 0);
+            return deadline ? String(deadline) : 'N/A';
+          };
+          
+          // Helper to get the bid count with fallback
+          const getBidCount = (): number => {
+            return getNumber('bidCount', 0);
+          };
+          
+          // Helper to get array length safely
+          const getArrayLength = (key: string): number => {
+            const arr = getTenderProp<any[]>(key, []);
+            return Array.isArray(arr) ? arr.length : 0;
+          };
           
           // Log the successfully decoded tender data for debugging
           const logData = {
-            id: t?.id || 'unknown',
-            title: t?.title || 'No title',
-            description: t?.description ? 
-              (t.description.length > 50 ? t.description.substring(0, 47) + '...' : t.description) : 
-              'No description',
-            status: t?.status ?? 'unknown',
-            createdAt: (t?.createdAt || t?.createDate)?.toString() || 'N/A',
-            deadline: t?.deadline?.toString?.() || 'N/A',
-            budget: (t?.budget || t?.budge || t?.budjet)?.toString() || '0',
-            creator: t?.creator || t?.creatr || t?.createdBy || 'unknown',
-            category: t?.category || 'Uncategorized',
-            department: t?.department || 'General',
-            location: t?.location || 'Not specified',
-            documentCount: Array.isArray(t?.documents) ? t.documents.length : 0,
-            bidCount: typeof t?.bidCount === 'number' ? t.bidCount : 0
+            id: getString('id', 'unknown'),
+            title: getString('title', 'No title'),
+            description: (() => {
+              const desc = getString('description', '');
+              return desc.length > 50 ? `${desc.substring(0, 47)}...` : desc || 'No description';
+            })(),
+            status: String(getNumber('status', 0)),
+            createdAt: String(getNumber('createdAt', getNumber('createDate', Date.now()))),
+            deadline: getDeadline(),
+            budget: getBudget(),
+            creator: getCreator(),
+            category: getString('category', 'Uncategorized'),
+            department: getString('department', 'General'),
+            location: getString('location', 'Not specified'),
+            documentCount: getArrayLength('documents'),
+            bidCount: getBidCount()
           };
           
           console.log('4.1.2 Successfully decoded tender:', logData);
@@ -1224,51 +1338,66 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
           const createdAtDate = safeParseTimestamp((tender as any).createdAt || (tender as any).createDate || Date.now());
           const creatorAddress = (tender as any).creator || (tender as any).createdBy || (tender as any).creatr || ethers.constants.AddressZero;
 
+          // Helper to safely convert BigNumber to number
+          const safeToNumber = (value: any, defaultValue: number = 0): number => {
+            try {
+              if (value === undefined || value === null) return defaultValue;
+              if (typeof value === 'number') return value;
+              if (typeof value === 'string') return parseInt(value, 10) || defaultValue;
+              if (ethers.BigNumber.isBigNumber(value)) return value.toNumber();
+              if (typeof value.toNumber === 'function') return value.toNumber();
+              return defaultValue;
+            } catch (e) {
+              console.warn('Error converting to number:', e);
+              return defaultValue;
+            }
+          };
+
+          // Helper to safely convert to string
+          const safeToString = (value: any, defaultValue: string = ''): string => {
+            if (value === undefined || value === null) return defaultValue;
+            if (typeof value === 'string') return value;
+            return String(value);
+          };
+
+          const bidCount = safeToNumber((tender as any).bidCount, 0);
+          const status = getStatusText(safeToNumber((tender as any).status, 0));
+          
           const formattedTender: FormattedTender = {
-            id: tender.id || `tender-${Date.now()}`,
-            title: tender.title || 'Untitled Tender',
-            description: tender.description || 'No description available',
+            id: safeToString(tender.id, `tender-${Date.now()}`),
+            title: safeToString(tender.title, 'Untitled Tender'),
+            description: safeToString(tender.description, 'No description available'),
             budget: budgetValue,
             formattedBudget: `${formatEther(budgetValue)} ETH`,
             deadline: deadlineDate.getTime() / 1000,
             createdAt: createdAtDate.getTime() / 1000,
-            creator: creatorAddress,
-            createdBy: creatorAddress,
-            status: getStatusText((tender as any).status || 0),
-            department: (tender as any).department || 'General',
-            category: (tender as any).category || 'Uncategorized',
-            location: (tender as any).location || 'Not specified',
-            bidCount: (() => {
-              try {
-                const bidCount = (tender as any).bidCount;
-                if (bidCount === undefined || bidCount === null) return 0;
-                if (typeof bidCount === 'number') return bidCount;
-                if (typeof bidCount === 'string') {
-                  const parsed = parseInt(bidCount, 10);
-                  return isNaN(parsed) ? 0 : parsed;
-                }
-                if (typeof bidCount.toNumber === 'function') {
-                  return bidCount.toNumber();
-                }
-                return 0;
-              } catch (e) {
-                console.warn('Error parsing bidCount:', e);
-                return 0;
-              }
-            })() as number,
+            creator: safeToString(creatorAddress, ethers.constants.AddressZero),
+            createdBy: safeToString(creatorAddress, ethers.constants.AddressZero),
+            status: status as 'open' | 'closed' | 'awarded' | 'disputed',
+            department: safeToString((tender as any).department, 'General'),
+            category: safeToString((tender as any).category, 'Uncategorized'),
+            location: safeToString((tender as any).location, 'Not specified'),
+            bidCount: bidCount,
             criteria: Array.isArray((tender as any).criteria) 
-              ? (tender as any).criteria.map((c: any) => c.toString()) 
+              ? (tender as any).criteria.map((c: any) => safeToString(c))
               : [],
             documents: Array.isArray((tender as any).documents) 
               ? (tender as any).documents.map((doc: any) => ({
-                  name: doc.name || 'Document',
-                  size: doc.size || '0 KB',
-                  cid: doc.cid || doc.hash || ''
+                  name: safeToString(doc.name, 'Document'),
+                  size: safeToString(doc.size, '0 KB'),
+                  cid: safeToString(doc.cid || doc.hash, '')
                 }))
               : [],
             formattedDeadline: formatDate(deadlineDate),
             formattedCreatedAt: formatDate(createdAtDate)
           };
+
+          // Add any additional properties from tender
+          Object.keys(tender).forEach(key => {
+            if (!(key in formattedTender)) {
+              (formattedTender as any)[key] = (tender as any)[key];
+            }
+          });
 
           console.log('4.5 Formatted tender:', {
             id: formattedTender.id,
