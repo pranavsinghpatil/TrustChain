@@ -106,7 +106,7 @@ const BlockchainVisualizer = ({ tenders, className }: BlockchainVisualizerProps)
                   <div className="text-xs text-gray-300 mb-1">{actionType}</div>
                   <div className="text-sm font-medium text-white">{tender.title}</div>
                   <div className="text-xs text-gray-400 mt-1">
-                    {tender.department} • Budget: ₹{tender.budget}
+                    {tender.department} • Budget: ₹{ethers.utils.formatEther(tender.budget)}
                   </div>
                 </div>
               </div>
