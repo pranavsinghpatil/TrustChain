@@ -47,27 +47,27 @@ const Index = () => {
     };
   }, []);
 
+  // Effect for wallet connection
   useEffect(() => {
     if (!isConnected) {
       connectWallet().finally(() => {});
     }
   }, [isConnected, connectWallet]);
 
+  // Load tender data only when connected and only once
   useEffect(() => {
+    let mounted = true;
+
     const loadTenderData = async () => {
-      if (!isConnected) {
-        try {
-          await connectWallet();
-        } catch (error) {
-          console.error('Error connecting wallet:', error);
-        }
-      }
+      if (!mounted || !isConnected) return;
       
       try {
+        setLoading(true);
         const all = await fetchTenders();
+        if (!mounted) return;
+
         if (Array.isArray(all)) {
           setTenders(all);
-          console.log('Loaded tenders:', all.length);
           
           // Generate chart data from real tenders
           const statusCounts = {
@@ -82,20 +82,26 @@ const Index = () => {
               statusCounts[tender.status]++;
             }
           });
-          
-          // If we have no tenders, set at least 1 for each category to show the chart properly
-          const hasAnyTenders = all.length > 0;
-          
-          setChartData([
-            { name: 'Open', value: hasAnyTenders ? statusCounts.open : 0, color: '#10B981' },
-            { name: 'Closed', value: hasAnyTenders ? statusCounts.closed : 0, color: '#8E9196' },
-            { name: 'Awarded', value: hasAnyTenders ? statusCounts.awarded : 0, color: '#8B5CF6' },
-            { name: 'Disputed', value: hasAnyTenders ? statusCounts.disputed : 0, color: '#EF4444' },
-          ]);
+
+          const chartColors = {
+            open: '#22c55e',     // Green
+            closed: '#64748b',   // Gray
+            awarded: '#3b82f6',  // Blue
+            disputed: '#ef4444'  // Red
+          };
+
+          const newChartData = Object.entries(statusCounts).map(([name, value]) => ({
+            name,
+            value,
+            color: chartColors[name]
+          }));
+
+          if (mounted) {
+            setChartData(newChartData);
+          }
         }
-      } catch (err) {
-        console.error('Error loading tender data:', err);
-        // Set zero values for chart data if there's an error
+      } catch (error) {
+        console.error('Error loading tenders:', error);
         setChartData([
           { name: 'Open', value: 0, color: '#10B981' },
           { name: 'Closed', value: 0, color: '#8E9196' },
@@ -103,12 +109,20 @@ const Index = () => {
           { name: 'Disputed', value: 0, color: '#EF4444' },
         ]);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     
-    loadTenderData();
-  }, [isConnected, connectWallet, fetchTenders]);
+    if (isConnected) {
+      loadTenderData();
+    }
+    
+    return () => {
+      mounted = false;
+    };
+  }, [isConnected, fetchTenders]); // Removed connectWallet from dependencies
 
   // Map tenders to the format expected by RecentTendersTable
   const recentTenders = tenders
@@ -117,13 +131,9 @@ const Index = () => {
       // Ensure we have valid data for each field
       let deadline = '';
       try {
-        if (tender.deadline instanceof Date) {
-          deadline = tender.deadline.toISOString().split('T')[0];
-        } else if (typeof tender.deadline === 'number') {
-          deadline = new Date(tender.deadline * 1000).toISOString().split('T')[0];
-        } else {
-          deadline = new Date().toISOString().split('T')[0];
-        }
+        // deadline is always a number in seconds since epoch
+        const timestamp = tender.deadline || Math.floor(Date.now() / 1000);
+        deadline = new Date(timestamp * 1000).toISOString().split('T')[0];
       } catch (e) {
         deadline = new Date().toISOString().split('T')[0];
       }
