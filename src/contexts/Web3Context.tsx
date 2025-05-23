@@ -165,27 +165,41 @@ const tenderHelpers = {
   formatTender: (tender: Tender | null): FormattedTender | null => {
     if (!tender) return null;
 
+    const defaultDate = Math.floor(Date.now() / 1000);
+    const defaultStatus: TenderStatus = 'open';
+    
     return {
-      id: String(tender.id),
-      title: tender.title || '',
-      description: tender.description || '',
-      budget: tender.budget.toString() || '0',
+      id: String(tender.id || ''),
+      title: String(tender.title || ''),
+      description: String(tender.description || ''),
+      budget: String(tender.budget || '0'),
       formattedBudget: ethers.utils.formatEther(tender.budget || '0'),
-      deadline: tender.deadline || 0,
-      createdAt: tender.createdAt || 0,
-      creator: tender.creator || ethers.constants.AddressZero,
-      createdBy: tender.createdBy || '',
-      status: tender.status || 'open',
-      department: tender.department || '',
-      category: tender.category || '',
-      location: tender.location || '',
+      deadline: Number(tender.deadline || defaultDate + 86400),
+      createdAt: Number(tender.createdAt || defaultDate),
+      startDate: Number(tender.startDate || defaultDate),
+      endDate: Number(tender.endDate || defaultDate + 86400),
+      creator: String(tender.creator || ethers.constants.AddressZero),
+      createdBy: String(tender.createdBy || ''),
+      status: (tender.status && ['open', 'closed', 'awarded', 'disputed'].includes(tender.status))
+        ? tender.status as TenderStatus
+        : defaultStatus,
+      department: String(tender.department || ''),
+      category: String(tender.category || ''),
+      location: String(tender.location || ''),
       bidCount: Number(tender.bidCount || 0),
-      criteria: tender.criteria || [],
-      documents: tender.documents || [],
-      formattedDeadline: tenderHelpers.formatDate(tender.deadline || 0),
-      formattedCreatedAt: tenderHelpers.formatDate(tender.createdAt || 0),
-      formattedStartDate: tender.startDate ? tenderHelpers.formatDate(tender.startDate) : undefined,
-      formattedEndDate: tender.endDate ? tenderHelpers.formatDate(tender.endDate) : undefined,
+      criteria: Array.isArray(tender.criteria) ? [...tender.criteria] : [],
+      documents: Array.isArray(tender.documents) 
+        ? tender.documents.map(doc => ({
+            name: String(doc.name || 'Document'),
+            size: String(doc.size || '0'),
+            cid: String(doc.cid || '')
+          }))
+        : [],
+      notes: String(tender.notes || ''),
+      formattedDeadline: tenderHelpers.formatDate(tender.deadline || defaultDate + 86400),
+      formattedCreatedAt: tenderHelpers.formatDate(tender.createdAt || defaultDate),
+      formattedStartDate: tenderHelpers.formatDate(tender.startDate || defaultDate),
+      formattedEndDate: tenderHelpers.formatDate(tender.endDate || defaultDate + 86400),
     };
   },
 };
@@ -223,18 +237,20 @@ export interface Officer {
   createdAt: Date;
 }
 
-export interface Tender {
+export type TenderStatus = 'open' | 'closed' | 'awarded' | 'disputed';
+
+type TenderBase = {
   id: string;
   title: string;
   description: string;
-  budget: ethers.BigNumber | string; // Can be BigNumber or string
+  budget: string;
   deadline: number;
   createdAt: number;
-  startDate?: number;
-  endDate?: number;
+  startDate: number;
+  endDate: number;
   creator: string;
   createdBy: string;
-  status: 'open' | 'closed' | 'awarded' | 'disputed';
+  status: TenderStatus;
   department: string;
   category: string;
   location: string;
@@ -245,7 +261,11 @@ export interface Tender {
     size: string;
     cid: string;
   }>;
-  notes?: string;
+  notes: string;
+};
+
+interface Tender extends TenderBase {
+  // All properties are now inherited from TenderBase
 }
 
 export interface TenderInput {
@@ -265,13 +285,14 @@ export interface TenderInput {
   location?: string;
 }
 
-export interface FormattedTender extends Omit<Tender, 'budget'> {
-  budget: string; // Always string in formatted version
+export interface FormattedTender extends Omit<TenderBase, 'budget'> {
+  budget: string; // Always string
   formattedBudget: string;
   formattedDeadline: string;
   formattedCreatedAt: string;
-  formattedStartDate?: string;
-  formattedEndDate?: string;
+  formattedStartDate: string;
+  formattedEndDate: string;
+  status: TenderStatus;
 }
 
 export interface Web3ContextType {
@@ -510,46 +531,141 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Fetching tenders from contract...');
-      // Get the number of tenders from the contract
-      const tenderCount = await tenderContract.getTenderCount();
-      console.log('Tender count:', tenderCount.toString());
       
-      const tenderPromises = [];
-      for (let i = 0; i < tenderCount; i++) {
-        tenderPromises.push(tenderContract.getTenderByIndex(i));
+      // First get all tender IDs
+      const tenderIds = await tenderContract.getAllTenderIds();
+      console.log('Tender IDs:', tenderIds);
+      
+      if (!tenderIds || tenderIds.length === 0) {
+        console.log('No tenders found');
+        return [];
       }
       
-      const tenderResults = await Promise.all(tenderPromises);
-      console.log('Tender results:', tenderResults);
+      // Create a provider for read-only operations
+      const provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
+      const readOnlyTenderContract = new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        provider
+      );
       
-      // Map contract data to our Tender interface
-      const contractTenders = tenderResults.map((result, index) => {
-        try {
-          return {
-            id: result.id || `tender-${index}`,
-            title: result.title || '',
-            description: result.description || '',
-            budget: result.budget || ethers.BigNumber.from(0),
-            deadline: result.deadline ? Number(result.deadline) : Math.floor(Date.now() / 1000) + 86400, // 1 day from now
-            createdAt: result.createdAt ? Number(result.createdAt) : Math.floor(Date.now() / 1000),
-            startDate: result.startDate ? Number(result.startDate) : Math.floor(Date.now() / 1000),
-            endDate: result.endDate ? Number(result.endDate) : Math.floor(Date.now() / 1000) + 86400,
-            creator: result.creator || ethers.constants.AddressZero,
-            createdBy: result.createdBy || 'Unknown',
-            status: result.status || 'open',
-            department: result.department || '',
-            category: result.category || '',
-            location: result.location || '',
-            bidCount: result.bidCount ? Number(result.bidCount) : 0,
-            criteria: result.criteria || [],
-            documents: result.documents || [],
-            notes: result.notes || ''
-          };
-        } catch (e) {
-          console.error('Error parsing tender:', e);
-          return null;
-        }
-      }).filter(Boolean) as Tender[];
+      // Fetch each tender by ID with better error handling
+      const contractTenders = await Promise.all(
+        tenderIds.map(async (id: string) => {
+          try {
+            // Use callStatic to avoid gas estimation issues and get raw data
+            const result = await readOnlyTenderContract.callStatic.getTender(id);
+            
+            // Convert status to TenderStatus
+            const statuses: TenderStatus[] = ['open', 'closed', 'awarded', 'disputed'];
+            let status: TenderStatus = 'open';
+            
+            if (result.status !== undefined) {
+              const statusValue = result.status.toString();
+              if (statuses.includes(statusValue as TenderStatus)) {
+                status = statusValue as TenderStatus;
+              } else if (!isNaN(parseInt(statusValue))) {
+                const statusIndex = parseInt(statusValue);
+                if (statusIndex >= 0 && statusIndex < statuses.length) {
+                  status = statuses[statusIndex];
+                }
+              }
+            }
+            
+            // Helper to safely convert values to string
+            const safeString = (value: any, defaultValue = ''): string => {
+              try {
+                return value !== undefined && value !== null ? String(value) : defaultValue;
+              } catch (e) {
+                console.error('Error converting value to string:', e);
+                return defaultValue;
+              }
+            };
+            
+            // Helper to safely convert BigNumber to string without overflow
+            const safeBigNumber = (value: any, defaultValue = '0'): string => {
+              try {
+                if (value === undefined || value === null) return defaultValue;
+                if (ethers.BigNumber.isBigNumber(value)) {
+                  return value.toString();
+                }
+                return String(value);
+              } catch (e) {
+                console.error('Error converting BigNumber:', e);
+                return defaultValue;
+              }
+            };
+            
+            // Helper to safely parse timestamps
+            const safeTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)): number => {
+              try {
+                if (value === undefined || value === null) return defaultValue;
+                const strValue = safeBigNumber(value);
+                const numValue = parseInt(strValue);
+                return isNaN(numValue) ? defaultValue : Math.min(numValue, 2000000000);
+              } catch (e) {
+                console.error('Error parsing timestamp:', e);
+                return defaultValue;
+              }
+            };
+            
+            const now = Math.floor(Date.now() / 1000);
+            const endDate = safeTimestamp(result.endDate, now + 86400);
+            const startDate = safeTimestamp(result.startDate, now);
+            const createdAt = safeTimestamp(result.createdAt, now);
+            
+            // Handle documents array
+            let documents: Array<{ name: string; size: string; cid: string }> = [];
+            try {
+              if (Array.isArray(result.documents)) {
+                documents = result.documents.map((doc: any) => {
+                  if (typeof doc === 'string') {
+                    return {
+                      name: doc.split('/').pop() || 'Document',
+                      size: '0',
+                      cid: doc
+                    };
+                  }
+                  return {
+                    name: safeString(doc.name, 'Document'),
+                    size: safeString(doc.size, '0'),
+                    cid: safeString(doc.cid, doc || '')
+                  };
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing documents:', e);
+            }
+            
+            return {
+              id: safeString(id),
+              title: safeString(result.title, 'Untitled Tender'),
+              description: safeString(result.description, ''),
+              budget: safeBigNumber(result.estimatedValue, '0'),
+              deadline: endDate,
+              createdAt: createdAt,
+              startDate: startDate,
+              endDate: endDate,
+              creator: safeString(result.creator || result.createdBy, ethers.constants.AddressZero),
+              createdBy: safeString(result.createdBy, 'Unknown'),
+              status: status,
+              department: safeString(result.department, ''),
+              category: safeString(result.category, ''),
+              location: safeString(result.location, ''),
+              bidCount: 0, // This would need to be fetched separately
+              criteria: [], // This would need to be fetched separately
+              documents: documents,
+              notes: ''
+            };
+          } catch (err) {
+            console.error(`Error processing tender ${id}:`, err);
+            return null;
+          }
+        })
+      );
+      
+      // Filter out any null entries and ensure type safety
+      return contractTenders.filter((t): t is Tender => t !== null);
       
       // Format the contract tenders
       const formattedTenders = contractTenders.map(tender => ({
@@ -578,30 +694,85 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       
-      // Get tender from contract
-      const result = await tenderContract.getTenderById(id);
-      if (!result || !result.id) return null;
+      console.log(`Fetching tender with ID: ${id}`);
+      
+      // Get tender from contract with callStatic to avoid gas estimation issues
+      let result;
+      try {
+        result = await tenderContract.callStatic.getTender(id);
+      } catch (err) {
+        console.error(`Error fetching tender ${id}:`, err);
+        return null;
+      }
+      
+      if (!result || !result.id) {
+        console.warn('Tender not found or invalid data:', result);
+        return null;
+      }
+      
+      // Convert status to TenderStatus
+      const statuses: TenderStatus[] = ['open', 'closed', 'awarded', 'disputed'];
+      let status: TenderStatus = 'open';
+      
+      if (typeof result.status === 'number' && result.status >= 0 && result.status < statuses.length) {
+        status = statuses[result.status];
+      } else if (typeof result.status === 'string' && statuses.includes(result.status as TenderStatus)) {
+        status = result.status as TenderStatus;
+      }
+      
+      // Safely parse BigNumber values
+      const parseBigNumber = (value: any, defaultValue = '0') => {
+        try {
+          return value ? value.toString() : defaultValue;
+        } catch (e) {
+          console.error('Error parsing BigNumber:', e);
+          return defaultValue;
+        }
+      };
+      
+      // Safely parse timestamp values
+      const parseTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)) => {
+        try {
+          if (!value) return defaultValue;
+          const num = typeof value === 'object' && value.toString ? value.toString() : String(value);
+          return Math.min(Number(num) || defaultValue, 2000000000); // Cap at year 2033 to prevent overflow
+        } catch (e) {
+          console.error('Error parsing timestamp:', e);
+          return defaultValue;
+        }
+      };
+      
+      const now = Math.floor(Date.now() / 1000);
+      const endDate = parseTimestamp(result.endDate, now + 86400);
+      const startDate = parseTimestamp(result.startDate, now);
+      const createdAt = parseTimestamp(result.createdAt, now);
       
       // Map contract data to our Tender interface
       const tender: Tender = {
-        id: result.id,
-        title: result.title || '',
-        description: result.description || '',
-        budget: result.budget || ethers.BigNumber.from(0),
-        deadline: result.deadline ? Number(result.deadline) : Math.floor(Date.now() / 1000) + 86400,
-        createdAt: result.createdAt ? Number(result.createdAt) : Math.floor(Date.now() / 1000),
-        startDate: result.startDate ? Number(result.startDate) : Math.floor(Date.now() / 1000),
-        endDate: result.endDate ? Number(result.endDate) : Math.floor(Date.now() / 1000) + 86400,
-        creator: result.creator || ethers.constants.AddressZero,
-        createdBy: result.createdBy || 'Unknown',
-        status: result.status || 'open',
-        department: result.department || '',
-        category: result.category || '',
-        location: result.location || '',
-        bidCount: result.bidCount ? Number(result.bidCount) : 0,
-        criteria: result.criteria || [],
-        documents: result.documents || [],
-        notes: result.notes || ''
+        id: String(result.id || ''),
+        title: String(result.title || ''),
+        description: String(result.description || ''),
+        budget: parseBigNumber(result.estimatedValue, '0'),
+        deadline: endDate,
+        createdAt: createdAt,
+        startDate: startDate,
+        endDate: endDate,
+        creator: String(result.createdBy || ethers.constants.AddressZero),
+        createdBy: String(result.createdBy || 'Unknown'),
+        status: status,
+        department: String(result.department || ''),
+        category: String(result.category || ''),
+        location: String(result.location || ''),
+        bidCount: 0, // This would need to be fetched separately
+        criteria: [], // This would need to be fetched separately
+        documents: Array.isArray(result.documents) 
+          ? result.documents.map((doc: any) => ({
+              name: String((doc.name || doc).split('/').pop() || 'Document'),
+              size: '0',
+              cid: String(doc.cid || doc || '')
+            }))
+          : [],
+        notes: ''
       };
 
       const formattedTender = {
