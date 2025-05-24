@@ -5,9 +5,10 @@ import React, {
   useEffect, 
   ReactNode, 
   useCallback,
-  useMemo
+  useMemo,
+  useRef
 } from "react";
-import { ethers, BigNumber } from 'ethers';
+import { ethers, BigNumber, Contract, Signer, providers, JsonRpcSigner } from 'ethers';
 const { formatEther } = ethers.utils;
 import { Web3Provider as EthersWeb3Provider } from '@ethersproject/providers';
 import { useToast } from "@/components/ui/use-toast";
@@ -303,7 +304,7 @@ export interface Web3ContextType {
   chainId: number | null;
   isCorrectNetwork: boolean;
   provider: ethers.providers.Web3Provider | null;
-  signer: ethers.Signer | null;
+  signer: JsonRpcSigner | null;
   officerContract: ethers.Contract | null;
   userAuthContract: ethers.Contract | null;
   tenderContract: ethers.Contract | null;
@@ -335,54 +336,314 @@ export interface Web3ContextType {
 const Web3Context = createContext<Web3ContextType | null>(null);
 
 export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Connection state
   const [account, setAccount] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
-  const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [provider, setProvider] = useState<EthersWeb3Provider | null>(null);
+  const [signer, setSigner] = useState<JsonRpcSigner | null>(null);
+  
+  // Contract instances
   const [officerContract, setOfficerContract] = useState<ethers.Contract | null>(null);
   const [userAuthContract, setUserAuthContract] = useState<ethers.Contract | null>(null);
   const [tenderContract, setTenderContract] = useState<ethers.Contract | null>(null);
   
-  // We'll fetch real tenders from the contract
+  // Application state
   const [tenders, setTenders] = useState<FormattedTender[]>([]);
-  const [tender, setTender] = useState<Tender | null>(null);
+  const [currentTender, setCurrentTender] = useState<Tender | null>(null);
   const [officers, setOfficers] = useState<Officer[]>([]);
-  const [officer, setOfficer] = useState<Officer | null>(null);
-  const [isOfficerState, setIsOfficerState] = useState(false);
+  const [currentOfficer, setCurrentOfficer] = useState<Officer | null>(null);
+  const [isOfficerState, setIsOfficerState] = useState<boolean>(false);
+  
+  // Refs for cleanup
+  const isMounted = useRef(true);
+  
+  // Format tender data from contract
+  const formatTender = useCallback((tenderData: any): FormattedTender | null => {
+    if (!tenderData) return null;
+    
+    try {
+      const deadline = tenderData.deadline ? new Date(tenderData.deadline.toNumber() * 1000) : new Date();
+      const createdAt = tenderData.createdAt ? new Date(tenderData.createdAt.toNumber() * 1000) : new Date();
+      const formattedTender: FormattedTender = {
+        id: tenderData.id ? tenderData.id.toString() : '',
+        title: tenderData.title || '',
+        description: tenderData.description || '',
+        budget: tenderData.budget ? tenderData.budget.toString() : '0',
+        deadline: deadline.toISOString(),
+        status: (tenderData.status as TenderStatus) || 'draft',
+        createdAt: createdAt.toISOString(),
+        documents: [],
+        bids: [],
+        createdBy: tenderData.createdBy || '',
+        isActive: Boolean(tenderData.isActive),
+        winner: tenderData.winner || '',
+        formattedBudget: tenderData.budget ? ethers.utils.formatEther(tenderData.budget) : '0',
+        formattedDeadline: deadline.toLocaleDateString(),
+        formattedCreatedAt: createdAt.toLocaleDateString(),
+        formattedStartDate: '',
+        formattedEndDate: '',
+        department: '',
+        category: '',
+        location: '',
+        bidCount: 0,
+        notes: ''
+      };
+      return formattedTender;
+    } catch (err) {
+      console.error('Error formatting tender data:', err);
+      return null;
+    }
+  }, []);
 
+  // Fetch all tenders from the contract
+  const fetchTenders = useCallback(async (): Promise<FormattedTender[]> => {
+    if (!tenderContract) return [];
+    
+    try {
+      const tenderIds = await tenderContract.getAllTenderIds();
+      const tenders = await Promise.all(
+        tenderIds.map(async (id: BigNumber) => {
+          try {
+            const tenderData = await tenderContract.getTender(id);
+            return formatTender(tenderData);
+          } catch (err) {
+            console.error(`Error fetching tender ${id}:`, err);
+            return null;
+          }
+        })
+      );
+      return tenders.filter((t): t is FormattedTender => t !== null);
+    } catch (err) {
+      console.error('Error fetching tenders:', err);
+      return [];
+    }
+  }, [tenderContract, formatTender]);
+
+  // Fetch all officers from the contract
+  const getAllOfficers = useCallback(async (): Promise<Officer[]> => {
+    if (!officerContract) return [];
+    
+    try {
+      const officerAddresses = await officerContract.getAllOfficers();
+      const officers = await Promise.all(
+        officerAddresses.map(async (address: string) => {
+          try {
+            const officerData = await officerContract.getOfficer(address);
+            return {
+              id: officerData.id,
+              name: officerData.name,
+              email: officerData.email,
+              isActive: officerData.isActive,
+              walletAddress: address,
+              permissions: {
+                canCreate: officerData.canCreate,
+                canApprove: officerData.canApprove,
+                isActive: officerData.isActive
+              },
+              createdAt: new Date(officerData.createdAt.toNumber() * 1000).getTime()
+            };
+          } catch (err) {
+            console.error(`Error fetching officer ${address}:`, err);
+            return null;
+          }
+        })
+      );
+      return officers.filter((o): o is Officer => o !== null);
+    } catch (err) {
+      console.error('Error fetching officers:', err);
+      return [];
+    }
+  }, [officerContract]);
+
+  // Initialize contracts
+  const initContracts = useCallback(async (provider: ethers.providers.Web3Provider) => {
+    if (!account) return null;
+    
+    try {
+      const signerInstance = provider.getSigner();
+      setSigner(signerInstance);
+
+      // Initialize officer management contract
+      const officerContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        signerInstance
+      );
+      setOfficerContract(officerContractInstance);
+
+      // Initialize user authentication contract
+      const userAuthContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.USER_AUTHENTICATION,
+        CONTRACT_ABI.USER_AUTHENTICATION,
+        signerInstance
+      );
+      setUserAuthContract(userAuthContractInstance);
+
+      // Initialize tender management contract
+      const tenderContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        signerInstance
+      );
+      setTenderContract(tenderContractInstance);
+
+      // Check if user is an officer
+      try {
+        const isOfficer = await officerContractInstance.isOfficer(account);
+        setIsOfficerState(isOfficer);
+        if (isOfficer) {
+          const officerData = await officerContractInstance.getOfficer(account);
+          setCurrentOfficer({
+            id: officerData.id,
+            name: officerData.name,
+            email: officerData.email,
+            isActive: officerData.isActive,
+            walletAddress: account,
+            permissions: {
+              canCreate: officerData.canCreate,
+              canApprove: officerData.canApprove,
+              isActive: officerData.isActive
+            },
+            createdAt: new Date(officerData.createdAt.toNumber() * 1000).getTime()
+          });
+        }
+      } catch (err) {
+        console.error('Error checking officer status:', err);
+        setIsOfficerState(false);
+      }
+
+      return { 
+        officerContract: officerContractInstance, 
+        userAuthContract: userAuthContractInstance, 
+        tenderContract: tenderContractInstance 
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error initializing contracts:', errorMessage);
+      setError(`Failed to initialize contracts: ${errorMessage}`);
+      return null;
+    }
+  }, [account]);
+
+  // Connect to the user's wallet
+  // Connect to the user's wallet
   const connectWallet = useCallback(async (): Promise<boolean> => {
     try {
       if (!window.ethereum) {
-        setError('Please install MetaMask');
+        setError('Please install MetaMask or another Web3 provider');
         return false;
       }
 
       const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
       const accounts = await web3Provider.send('eth_requestAccounts', []);
       const web3Signer = web3Provider.getSigner();
+      const network = await web3Provider.getNetwork();
       
       setAccount(accounts[0]);
       setProvider(web3Provider);
       setSigner(web3Signer);
+      setChainId(network.chainId);
       setIsConnected(true);
       
       // Initialize contracts
+      const contracts = await initContracts(web3Provider);
+      if (!contracts) {
+        setError('Failed to initialize contracts');
+        return false;
+      }
+
+      // Fetch initial data
+      try {
+        const tenders = await fetchTenders();
+        setTenders(tenders);
+        
+        if (accounts[0]) {
+          const officers = await getAllOfficers();
+          setOfficers(officers);
+        }
+      } catch (err) {
+        console.error('Error fetching initial data:', err);
+        // Don't fail the connection if data fetch fails
+      }
+      
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error connecting wallet:', errorMessage);
+      setError(`Failed to connect wallet: ${errorMessage}`);
+      return false;
+    }
+  }, [fetchTenders, getAllOfficers, initContracts]);
+
+
+    try {
+      const signerInstance = provider.getSigner();
+      setSigner(signerInstance);
+
+      // Initialize officer management contract
+      const officerContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        signerInstance
+      );
+      setOfficerContract(officerContractInstance);
+
+      // Initialize user authentication contract
+      const userAuthContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.USER_AUTHENTICATION, // Fixed contract name to match CONTRACT_ADDRESSES
+        CONTRACT_ABI.USER_AUTHENTICATION, // Fixed contract name to match CONTRACT_ABI
+        signerInstance
+      );
+      setUserAuthContract(userAuthContractInstance);
+
+      // Initialize tender management contract
       const tenderContractInstance = new ethers.Contract(
         CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
         CONTRACT_ABI.TENDER_MANAGEMENT,
-        web3Signer
+        signerInstance
       );
       setTenderContract(tenderContractInstance);
-      return true;
+
+      // Check if user is an officer
+      try {
+        const isOfficer = await officerContractInstance.isOfficer(account);
+        setIsOfficerState(isOfficer);
+        if (isOfficer) {
+          const officerData = await officerContractInstance.getOfficer(account);
+          setCurrentOfficer({
+            id: officerData.id,
+            name: officerData.name,
+            email: officerData.email,
+            isActive: officerData.isActive,
+            walletAddress: account,
+            permissions: {
+              canCreate: officerData.canCreate,
+              canApprove: officerData.canApprove,
+              isActive: officerData.isActive
+            },
+            createdAt: new Date(officerData.createdAt.toNumber() * 1000).getTime()
+          });
+        }
+      } catch (err) {
+        console.error('Error checking officer status:', err);
+        setIsOfficerState(false);
+      }
+
+      return { 
+        officerContract: officerContractInstance, 
+        userAuthContract: userAuthContractInstance, 
+        tenderContract: tenderContractInstance 
+      };
     } catch (err) {
-      setError('Failed to connect wallet');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error initializing contracts:', errorMessage);
+      setError(`Failed to initialize contracts: ${errorMessage}`);
+      return null;
     }
-  }, []);
+  }, [account]);
 
   const disconnectWallet = useCallback(async (): Promise<void> => {
     setAccount(null);
@@ -523,13 +784,54 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [tenderContract, signer]);
 
+  // Helper to safely convert BigNumber to string
+  const safeBigNumber = (value: any, defaultValue = '0'): string => {
+    try {
+      if (value === undefined || value === null) return defaultValue;
+      if (ethers.BigNumber.isBigNumber(value)) {
+        return value.toString();
+      }
+      if (typeof value === 'string' && value.startsWith('0x')) {
+        return ethers.BigNumber.from(value).toString();
+      }
+      return String(value);
+    } catch (e) {
+      console.error('Error converting BigNumber:', e);
+      return defaultValue;
+    }
+  };
+
+  // Helper to safely parse timestamps
+  const safeTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)): number => {
+    try {
+      if (value === undefined || value === null) return defaultValue;
+      // If it's a BigNumber, convert to number
+      if (ethers.BigNumber.isBigNumber(value)) {
+        const num = value.toNumber();
+        return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+      }
+      // If it's a hex string, parse it
+      if (typeof value === 'string' && value.startsWith('0x')) {
+        const num = parseInt(value, 16);
+        return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+      }
+      // Otherwise, try to convert to number
+      const num = Number(value);
+      return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+    } catch (e) {
+      console.error('Error parsing timestamp:', e);
+      return defaultValue;
+    }
+  };
+
   const fetchTenders = useCallback(async (): Promise<FormattedTender[]> => {
     try {
       if (!tenderContract) {
         console.warn('Tender contract not initialized');
+        setTenders([]);
         return [];
       }
-      
+
       console.log('Fetching tenders from contract...');
       
       // First get all tender IDs
@@ -538,9 +840,36 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!tenderIds || tenderIds.length === 0) {
         console.log('No tenders found');
+        setTenders([]);
         return [];
       }
       
+      // Filter out any invalid or empty IDs and convert BigNumbers to strings
+      const validTenderIds = tenderIds
+        .filter((id: any) => id && id.toString() !== '0')
+        .map((id: any) => id.toString());
+      
+      if (validTenderIds.length === 0) {
+        console.log('No valid tender IDs found');
+        setTenders([]);
+        return [];
+      }
+      
+      // Helper function to safely convert values to numbers
+      const safeToNumber = (value: any, defaultValue = 0): number => {
+        try {
+          if (value === undefined || value === null) return defaultValue;
+          if (ethers.BigNumber.isBigNumber(value)) {
+            return value.toNumber();
+          }
+          const num = Number(value);
+          return isNaN(num) ? defaultValue : num;
+        } catch (e) {
+          console.error('Error converting to number:', e);
+          return defaultValue;
+        }
+      };
+
       // Create a provider for read-only operations
       const provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
       const readOnlyTenderContract = new ethers.Contract(
@@ -549,29 +878,48 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         provider
       );
       
-      // Fetch each tender by ID with better error handling
-      const contractTenders = await Promise.all(
-        tenderIds.map(async (id: string) => {
+      // Fetch each tender by ID with better error handling and filter out null values
+      const contractTenders = (await Promise.all(
+        validTenderIds.map(async (id: string) => {
           try {
+            // First check if the tender exists if the contract supports it
+            try {
+              if (typeof readOnlyTenderContract.doesTenderExist === 'function') {
+                const exists = await readOnlyTenderContract.doesTenderExist(id);
+                if (!exists) {
+                  console.warn(`Tender ${id} does not exist`);
+                  return null;
+                }
+              }
+            } catch (err) {
+              console.warn(`Error checking if tender ${id} exists:`, err);
+              // Continue anyway as some contracts might not have this method
+            }
+            
             // Use callStatic to avoid gas estimation issues and get raw data
             const result = await readOnlyTenderContract.callStatic.getTender(id);
             
-            // Convert status to TenderStatus
-            const statuses: TenderStatus[] = ['open', 'closed', 'awarded', 'disputed'];
-            let status: TenderStatus = 'open';
-            
-            if (result.status !== undefined) {
-              const statusValue = result.status.toString();
-              if (statuses.includes(statusValue as TenderStatus)) {
-                status = statusValue as TenderStatus;
-              } else if (!isNaN(parseInt(statusValue))) {
-                const statusIndex = parseInt(statusValue);
-                if (statusIndex >= 0 && statusIndex < statuses.length) {
-                  status = statuses[statusIndex];
-                }
-              }
-            }
-            
+            // If result is an array (happens with some contract ABIs)
+            const tenderData = Array.isArray(result) ? {
+              id: result[0],
+              title: result[1],
+              description: result[2],
+              estimatedValue: result[3],
+              deadline: result[4],
+              createdAt: result[5],
+              startDate: result[6],
+              endDate: result[7],
+              createdBy: result[9],
+              status: result[10],
+              department: result[11],
+              category: result[12],
+              location: result[13] || '',
+              bidCount: safeToNumber(result[14], 0),
+              criteria: Array.isArray(result[15]) ? result[15] : [],
+              documents: Array.isArray(result[16]) ? result[16] : [],
+              notes: '' // Add default empty notes field
+            } : result;
+
             // Helper to safely convert values to string
             const safeString = (value: any, defaultValue = ''): string => {
               try {
@@ -589,6 +937,9 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (ethers.BigNumber.isBigNumber(value)) {
                   return value.toString();
                 }
+                if (typeof value === 'string' && value.startsWith('0x')) {
+                  return ethers.BigNumber.from(value).toString();
+                }
                 return String(value);
               } catch (e) {
                 console.error('Error converting BigNumber:', e);
@@ -598,8 +949,19 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Helper to safely parse timestamps
             const safeTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)): number => {
+              if (value === undefined || value === null) return defaultValue;
               try {
-                if (value === undefined || value === null) return defaultValue;
+                // If it's a BigNumber, convert to number
+                if (ethers.BigNumber.isBigNumber(value)) {
+                  const num = value.toNumber();
+                  return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+                }
+                // If it's a hex string, parse it
+                if (typeof value === 'string' && value.startsWith('0x')) {
+                  const num = parseInt(value, 16);
+                  return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+                }
+                // Otherwise, try to convert to number
                 const strValue = safeBigNumber(value);
                 const numValue = parseInt(strValue);
                 return isNaN(numValue) ? defaultValue : Math.min(numValue, 2000000000);
@@ -608,55 +970,67 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
                 return defaultValue;
               }
             };
-            
-            const now = Math.floor(Date.now() / 1000);
-            const endDate = safeTimestamp(result.endDate, now + 86400);
-            const startDate = safeTimestamp(result.startDate, now);
-            const createdAt = safeTimestamp(result.createdAt, now);
-            
-            // Handle documents array
+
+            // Parse documents if they exist in the result
             let documents: Array<{ name: string; size: string; cid: string }> = [];
             try {
-              if (Array.isArray(result.documents)) {
-                documents = result.documents.map((doc: any) => {
-                  if (typeof doc === 'string') {
-                    return {
-                      name: doc.split('/').pop() || 'Document',
-                      size: '0',
-                      cid: doc
-                    };
-                  }
-                  return {
-                    name: safeString(doc.name, 'Document'),
-                    size: safeString(doc.size, '0'),
-                    cid: safeString(doc.cid, doc || '')
-                  };
-                });
+              if (result?.[16] !== undefined) {
+                const rawDocs = Array.isArray(result[16]) ? result[16] : [result[16]].filter(Boolean);
+                documents = rawDocs.map(doc => ({
+                  name: typeof doc === 'string' ? doc.split('/').pop() || 'Document' : 'Document',
+                  size: '0',
+                  cid: typeof doc === 'string' ? doc : ''
+                }));
+              } else if (result?.documents !== undefined) {
+                const rawDocs = Array.isArray(result.documents) ? result.documents : [result.documents].filter(Boolean);
+                documents = rawDocs.map(doc => ({
+                  name: typeof doc === 'string' ? doc.split('/').pop() || 'Document' : 'Document',
+                  size: '0',
+                  cid: typeof doc === 'string' ? doc : ''
+                }));
               }
             } catch (e) {
               console.error('Error parsing documents:', e);
+              documents = [];
             }
+
+            // Create the formatted tender object with all required properties
+            const budget = safeBigNumber(result?.[3] || result?.budget || 0, '0');
+            const deadline = safeTimestamp(result?.[4] || result?.deadline, 0);
+            const createdAt = safeTimestamp(result?.[5] || result?.createdAt, Math.floor(Date.now() / 1000));
+            const startDate = safeTimestamp(result?.[6] || result?.startDate, 0);
+            const endDate = safeTimestamp(result?.[7] || result?.endDate, 0);
             
-            return {
-              id: safeString(id),
-              title: safeString(result.title, 'Untitled Tender'),
-              description: safeString(result.description, ''),
-              budget: safeBigNumber(result.estimatedValue, '0'),
-              deadline: endDate,
+            const tender: FormattedTender = {
+              // Base Tender properties
+              id: id,
+              title: safeString(result?.[1] || result?.title, 'Untitled Tender'),
+              description: safeString(result?.[2] || result?.description, ''),
+              budget: budget,
+              deadline: deadline,
               createdAt: createdAt,
               startDate: startDate,
               endDate: endDate,
-              creator: safeString(result.creator || result.createdBy, ethers.constants.AddressZero),
-              createdBy: safeString(result.createdBy, 'Unknown'),
+              creator: safeString(result?.[8] || result?.creator, ''),
+              createdBy: safeString(result?.[9] || result?.createdBy, ''),
               status: status,
-              department: safeString(result.department, ''),
-              category: safeString(result.category, ''),
-              location: safeString(result.location, ''),
-              bidCount: 0, // This would need to be fetched separately
-              criteria: [], // This would need to be fetched separately
+              department: safeString(result?.[11] || result?.department, ''),
+              category: safeString(result?.[12] || result?.category, ''),
+              location: safeString(result?.[13] || result?.location, ''),
+              bidCount: safeToNumber(result?.[14] || result?.bidCount, 0),
+              criteria: Array.isArray(result?.[15] || result?.criteria) ? result[15] : [],
               documents: documents,
-              notes: ''
+              notes: safeString(result?.[17] || result?.notes, ''),
+              
+              // FormattedTender properties
+              formattedBudget: `${ethers.utils.formatUnits(budget, 'ether')} ETH`,
+              formattedDeadline: deadline ? new Date(Number(deadline) * 1000).toLocaleDateString() : 'N/A',
+              formattedCreatedAt: createdAt ? new Date(Number(createdAt) * 1000).toLocaleDateString() : 'N/A',
+              formattedStartDate: startDate ? new Date(Number(startDate) * 1000).toLocaleDateString() : 'N/A',
+              formattedEndDate: endDate ? new Date(Number(endDate) * 1000).toLocaleDateString() : 'N/A'
             };
+            
+            return tender;
           } catch (err) {
             console.error(`Error processing tender ${id}:`, err);
             return null;
@@ -665,43 +1039,15 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       );
       
       // Filter out any null entries and ensure type safety
-      return contractTenders.filter((t): t is Tender => t !== null);
+      const validTenders = contractTenders.filter((t): t is FormattedTender => t !== null);
       
-      // Format the contract tenders
-      const formattedTenders = contractTenders.map(tender => ({
-        ...tender,
-        budget: tender.budget.toString(), // Convert BigNumber to string
-        formattedBudget: ethers.utils.formatEther(tender.budget) + ' ETH',
-        formattedDeadline: new Date(tender.deadline * 1000).toLocaleDateString(),
-        formattedCreatedAt: new Date(tender.createdAt * 1000).toLocaleDateString(),
-        formattedStartDate: tender.startDate ? new Date(tender.startDate * 1000).toLocaleDateString() : undefined,
-        formattedEndDate: tender.endDate ? new Date(tender.endDate * 1000).toLocaleDateString() : undefined
-      }));
-      
-      setTenders(formattedTenders);
-      return formattedTenders;
+      setTenders(validTenders);
+      return validTenders;
     } catch (err) {
       console.error('Error fetching tenders:', err);
       setTenders([]);
       return [];
     }
-  }, [tenderContract]);
-
-  const fetchTenderById = useCallback(async (id: string): Promise<FormattedTender | null> => {
-    try {
-      if (!tenderContract) {
-        console.warn('Tender contract not initialized');
-        return null;
-      }
-      
-      console.log(`Fetching tender with ID: ${id}`);
-      
-      // Get tender from contract with callStatic to avoid gas estimation issues
-      let result;
-      try {
-        result = await tenderContract.callStatic.getTender(id);
-      } catch (err) {
-        console.error(`Error fetching tender ${id}:`, err);
         return null;
       }
       
@@ -714,16 +1060,33 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       const statuses: TenderStatus[] = ['open', 'closed', 'awarded', 'disputed'];
       let status: TenderStatus = 'open';
       
-      if (typeof result.status === 'number' && result.status >= 0 && result.status < statuses.length) {
-        status = statuses[result.status];
-      } else if (typeof result.status === 'string' && statuses.includes(result.status as TenderStatus)) {
-        status = result.status as TenderStatus;
+      try {
+        if (result?.status !== undefined) {
+          const statusValue = result.status;
+          if (typeof statusValue === 'number' && statusValue >= 0 && statusValue < statuses.length) {
+            status = statuses[statusValue];
+          } else if (typeof statusValue === 'string' && statuses.includes(statusValue as TenderStatus)) {
+            status = statusValue as TenderStatus;
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing status:', e);
       }
       
       // Safely parse BigNumber values
-      const parseBigNumber = (value: any, defaultValue = '0') => {
+      const parseBigNumber = (value: any, defaultValue = '0'): string => {
         try {
-          return value ? value.toString() : defaultValue;
+          if (!value) return defaultValue;
+          // If it's a BigNumber, convert to string directly
+          if (ethers.BigNumber.isBigNumber(value)) {
+            return value.toString();
+          }
+          // If it's a hex string, parse it
+          if (typeof value === 'string' && value.startsWith('0x')) {
+            return ethers.BigNumber.from(value).toString();
+          }
+          // Otherwise, try to convert to string
+          return String(value || defaultValue);
         } catch (e) {
           console.error('Error parsing BigNumber:', e);
           return defaultValue;
@@ -731,11 +1094,22 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       // Safely parse timestamp values
-      const parseTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)) => {
+      const parseTimestamp = (value: any, defaultValue = Math.floor(Date.now() / 1000)): number => {
         try {
           if (!value) return defaultValue;
-          const num = typeof value === 'object' && value.toString ? value.toString() : String(value);
-          return Math.min(Number(num) || defaultValue, 2000000000); // Cap at year 2033 to prevent overflow
+          // If it's a BigNumber, convert to number
+          if (ethers.BigNumber.isBigNumber(value)) {
+            const num = value.toNumber();
+            return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+          }
+          // If it's a hex string, parse it
+          if (typeof value === 'string' && value.startsWith('0x')) {
+            const num = parseInt(value, 16);
+            return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
+          }
+          // Otherwise, try to convert to number
+          const num = Number(value);
+          return isNaN(num) ? defaultValue : Math.min(num, 2000000000);
         } catch (e) {
           console.error('Error parsing timestamp:', e);
           return defaultValue;
@@ -743,46 +1117,59 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       const now = Math.floor(Date.now() / 1000);
-      const endDate = parseTimestamp(result.endDate, now + 86400);
-      const startDate = parseTimestamp(result.startDate, now);
-      const createdAt = parseTimestamp(result.createdAt, now);
+      const endDate = parseTimestamp(result?.endDate, now + 86400);
+      const startDate = parseTimestamp(result?.startDate, now);
+      const createdAt = parseTimestamp(result?.createdAt, now);
+      
+      // Ensure we have a valid tender ID
+      const tenderId = result?.id ? String(result.id) : '';
+      
+      // Parse documents safely
+      let documents: Array<{ name: string; size: string; cid: string }> = [];
+      try {
+        if (Array.isArray(result.documents)) {
+          documents = result.documents.map((doc: any) => ({
+            name: String((doc?.name || doc || '').toString().split('/').pop() || 'Document'),
+            size: '0',
+            cid: String(doc?.cid || doc || '')
+          }));
+        }
+      } catch (e) {
+        console.error('Error parsing documents:', e);
+      }
       
       // Map contract data to our Tender interface
       const tender: Tender = {
-        id: String(result.id || ''),
+        id: String(result.id || id || ''),
         title: String(result.title || ''),
         description: String(result.description || ''),
-        budget: parseBigNumber(result.estimatedValue, '0'),
+        budget: parseBigNumber(result.estimatedValue || result.budget, '0'),
         deadline: endDate,
         createdAt: createdAt,
         startDate: startDate,
         endDate: endDate,
-        creator: String(result.createdBy || ethers.constants.AddressZero),
-        createdBy: String(result.createdBy || 'Unknown'),
+        creator: String(result.creator || result.createdBy || ethers.constants.AddressZero),
+        createdBy: String(result.createdBy || result.creator || 'Unknown'),
         status: status,
         department: String(result.department || ''),
         category: String(result.category || ''),
         location: String(result.location || ''),
         bidCount: 0, // This would need to be fetched separately
         criteria: [], // This would need to be fetched separately
-        documents: Array.isArray(result.documents) 
-          ? result.documents.map((doc: any) => ({
-              name: String((doc.name || doc).split('/').pop() || 'Document'),
-              size: '0',
-              cid: String(doc.cid || doc || '')
-            }))
-          : [],
-        notes: ''
+        documents: documents,
+        notes: String(result.notes || '')
       };
 
-      const formattedTender = {
+      // Format the tender for display
+      const formattedTender: FormattedTender = {
         ...tender,
-        budget: tender.budget.toString(), // Convert BigNumber to string
-        formattedBudget: ethers.utils.formatEther(tender.budget) + ' ETH',
+        budget: tender.budget, // Already a string from parseBigNumber
+        formattedBudget: `${ethers.utils.formatUnits(tender.budget || '0', 'ether')} ETH`,
         formattedDeadline: new Date(tender.deadline * 1000).toLocaleDateString(),
         formattedCreatedAt: new Date(tender.createdAt * 1000).toLocaleDateString(),
-        formattedStartDate: tender.startDate ? new Date(tender.startDate * 1000).toLocaleDateString() : undefined,
-        formattedEndDate: tender.endDate ? new Date(tender.endDate * 1000).toLocaleDateString() : undefined
+        formattedStartDate: tender.startDate ? new Date(tender.startDate * 1000).toLocaleDateString() : 'N/A',
+        formattedEndDate: tender.endDate ? new Date(tender.endDate * 1000).toLocaleDateString() : 'N/A',
+        status: status
       };
 
       return formattedTender;
@@ -855,23 +1242,58 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const contractAddress = CONTRACT_ADDRESSES.TENDER_MANAGEMENT;
   const networkName = 'localhost';
 
+  // Check if connected to the correct network
+  const isCorrectNetwork = useMemo(() => {
+    if (!chainId) return false;
+    return chainId === TARGET_NETWORK.chainId;
+  }, [chainId]);
+
+  // Check if connected to the correct network
+  const isCorrectNetwork = useMemo(() => {
+    if (!chainId) return false;
+    return chainId === TARGET_NETWORK.chainId;
+  }, [chainId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const contextValue = useMemo<Web3ContextType>(() => ({
-    account,
+    // Connection state
+    account: account || null,
     isConnected,
     isLoading,
-    error,
-    chainId,
+    error: error || null,
+    chainId: chainId || 0,
     isCorrectNetwork,
-    provider,
-    signer,
-    officerContract,
-    userAuthContract,
-    tenderContract,
+    
+    // Provider and signer
+    provider: provider || undefined,
+    signer: signer || undefined,
+    
+    // Contract instances
+    officerContract: officerContract || undefined,
+    userAuthContract: userAuthContract || undefined,
+    tenderContract: tenderContract || undefined,
+    
+    // Data state
     tenders,
-    tender,
+    tender: currentTender || undefined,
     officers,
-    officer,
+    officer: currentOfficer || undefined,
     isOfficer: isOfficerState,
+    
+    // State setters and methods
+    setTender: setCurrentTender,
+    setOfficer: setCurrentOfficer,
+    setIsOfficer: setIsOfficerState,
+    setTenders,
+    setOfficers,
+    fetchTenders,
+    getAllOfficers,
     connectWallet,
     disconnectWallet,
     switchNetwork,
@@ -927,11 +1349,94 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     networkName
   ]);
 
+  // Create the context value
+  const contextValue: Web3ContextType = {
+    account,
+    isConnected,
+    isLoading,
+    error,
+    chainId,
+    isCorrectNetwork: chainId === TARGET_NETWORK.chainId,
+    provider,
+    signer,
+    officerContract,
+    userAuthContract,
+    tenderContract,
+    tenders,
+    tender: currentTender,
+    officers,
+    officer: currentOfficer,
+    isOfficer: isOfficerState,
+    connectWallet: useCallback(async () => {
+      // Implementation here
+      return false;
+    }, []),
+    disconnectWallet: useCallback(async () => {
+      // Implementation here
+    }, []),
+    switchNetwork: useCallback(async () => {
+      // Implementation here
+      return false;
+    }, []),
+    addOfficer: useCallback(async (username: string, name: string, email: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    updateOfficer: useCallback(async (walletAddress: string, name: string, username: string, email: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    removeOfficer: useCallback(async (walletAddress: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    getOfficer: useCallback(async (walletAddress: string) => {
+      // Implementation here
+      return null;
+    }, []),
+    getAllOfficers: useCallback(async () => {
+      // Implementation here
+      return [];
+    }, []),
+    createNewTender: useCallback(async (tender: TenderInput) => {
+      // Implementation here
+      return '';
+    }, []),
+    fetchTenders,
+    fetchTenderById: useCallback(async (id: string) => {
+      // Implementation here
+      return null;
+    }, []),
+    closeTender: useCallback(async (tenderId: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    awardTender: useCallback(async (tenderId: string, bidId: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    disputeTender: useCallback(async (tenderId: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    deleteTender: useCallback(async (tenderId: string) => {
+      // Implementation here
+      return false;
+    }, []),
+    fetchBidsForTender: useCallback(async (tenderId: string) => {
+      // Implementation here
+      return [];
+    }, []),
+    contractAddress: '',
+    networkName: ''
+  };
+
   return (
     <Web3Context.Provider value={contextValue}>
       {children}
     </Web3Context.Provider>
   );
+};
 };
 
 export const useWeb3 = () => {
