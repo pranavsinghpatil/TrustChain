@@ -26,27 +26,57 @@ const TenderDetails = () => {
   const [selectedBid, setSelectedBid] = useState<string | null>(null);
 
   const loadTenderData = async () => {
-    if (!id) return;
-    
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "No tender ID provided in the URL.",
+      });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       if (!isConnected) await connectWallet();
-      
       const tenderData = await fetchTenderById(id);
-      setTender(tenderData);
-      
+      if (!tenderData) {
+        toast({
+          title: "Tender Not Found",
+          description: `No tender found for ID: ${id}.`,
+        });
+        setTender(null);
+      } else {
+        setTender(tenderData);
+      }
       const bidsData = await fetchBidsForTender(id);
       setBids(bidsData);
     } catch (error) {
       console.error("Error loading tender details:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to load tender details. Please try again." 
+      toast({
+        title: "Error",
+        description: "Failed to load tender details. Please try again.",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Render a message if tender is not found
+  if (!loading && !tender) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950">
+        <NavBar />
+        <main className="flex flex-col items-center justify-center flex-1 w-full p-8">
+          <div className="bg-gray-900/70 p-8 rounded-lg shadow-lg border border-green-800 text-center">
+            <h1 className="text-3xl font-bold text-red-400 mb-4">Tender Not Found</h1>
+            <p className="text-gray-300 mb-6">The tender you are looking for does not exist or could not be loaded.</p>
+            <Button variant="secondary" onClick={() => navigate('/tenders')}>
+              Back to Tenders
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   useEffect(() => {
     loadTenderData();
