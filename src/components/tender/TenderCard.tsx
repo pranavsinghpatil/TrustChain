@@ -87,18 +87,22 @@ const TenderCard = ({ id, title, department, budget, deadline, status, bidCount 
       <div className="px-6 py-4 border-t border-green-800/30">
         <div className="flex justify-between w-full">
           <Button 
+            asChild
             variant="outline" 
             className="border-green-800 text-black bg-[rgba(80,252,149,0.8)] hover:bg-[rgba(80,252,149,0.9)] transition-all duration-300 min-w-[120px] h-10"
-            onClick={() => window.location.href = `/tenders/${id}`}
           >
-            View Details
+            <Link to={`/tenders/${id}`}>
+              View Details
+            </Link>
           </Button>
           {status === 'open' && (
-            <Button 
-              className="ml-2 bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white transition-all duration-300 min-w-[120px] h-10" 
-              onClick={() => window.location.href = `/tenders/${id}/bid`}
+            <Button
+              asChild
+              className="ml-2 bg-[rgba(59,130,246,0.8)] hover:bg-[rgba(59,130,246,0.9)] text-white transition-all duration-300 min-w-[120px] h-10"
             >
-              Submit Bid
+              <Link to={`/tenders/${id}/bid`}>
+                Submit Bid
+              </Link>
             </Button>
           )}
         </div>

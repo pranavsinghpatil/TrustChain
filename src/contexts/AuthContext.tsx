@@ -74,7 +74,9 @@ const defaultUsers: User[] = [
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   console.log('[AuthProvider] Initializing');
-  
+  // FIX: Call useWeb3 hook at the top level (per React rules)
+  const web3 = useWeb3();
+
   // IMPORTANT: We no longer clear localStorage/sessionStorage on load to preserve officer data
   useEffect(() => {
     try {
@@ -748,15 +750,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const syncOfficersFromBlockchain = async () => {
     console.log('[syncOfficersFromBlockchain] Starting sync');
-    setIsSyncingOfficers(true);
     try {
-      // First, load existing users from localStorage to preserve them
-      const existingUsers = loadUsers();
-      const existingOfficers = existingUsers.filter(user => user.role === 'officer');
-      console.log(`[syncOfficersFromBlockchain] Existing officers in localStorage: ${existingOfficers.length}`);
-      
-      // Also check tender_officers localStorage for any additional officers
-      let localStorageOfficers = [];
+      // Fetch officers from blockchain if available, else fallback to localStorage
+      let blockchainOfficers: any[] = [];
+      if (web3 && typeof web3.fetchAllOfficers === 'function') {
+        try {
+          blockchainOfficers = await web3.fetchAllOfficers();
+          console.log(`[syncOfficersFromBlockchain] Found ${blockchainOfficers.length} officers from blockchain`);
+        } catch (err) {
+          console.warn('[syncOfficersFromBlockchain] Error fetching officers from blockchain:', err);
+        }
+      }
+      // First get existing officers from localStorage
+      let localStorageOfficers: any[] = [];
       try {
         const storedOfficers = localStorage.getItem('tender_officers');
         if (storedOfficers) {
@@ -768,8 +774,16 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       }
       
       // Get officers from blockchain/localStorage
-      const officers = await getAllOfficers();
-      console.log("Fetched officers from blockchain:", officers);
+      let officers = [];
+      try {
+        // Use local storage for now since we're in development mode
+        console.log("Using local storage data for officers");
+        officers = localStorageOfficers;
+      } catch (error) {
+        console.error("Error fetching officers:", error);
+        // Fallback to local storage on error
+        officers = localStorageOfficers;
+      }
 
       // --- Ensure admin user always present ---
       const adminUser = {
