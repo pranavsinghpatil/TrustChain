@@ -122,7 +122,7 @@ const Index = () => {
     return () => {
       mounted = false;
     };
-  }, [isConnected, fetchTenders]); // Removed connectWallet from dependencies
+  }, [isConnected]); // Remove fetchTenders from dependencies to prevent infinite updates
 
   // Map tenders to the format expected by RecentTendersTable
   const recentTenders = tenders
