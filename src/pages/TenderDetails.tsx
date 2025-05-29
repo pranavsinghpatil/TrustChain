@@ -1,6 +1,38 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useWeb3, Tender, Bid } from "@/contexts/Web3Context";
+import { useWeb3 } from "@/contexts/Web3Context";
+import { ethers } from 'ethers';
+
+interface Bid {
+  bidder: string;
+  amount: string;
+  description: string;
+  status: string;
+  timestamp: number;
+}
+
+interface Tender {
+  id: string;
+  title: string;
+  description: string;
+  documentCid: string;
+  budget: string | ethers.BigNumber;
+  deadline: number | Date;
+  creator: string;
+  status: 'open' | 'closed' | 'awarded' | 'disputed' | number;
+  createdAt: number | Date;
+  department: string;
+  bidCount: number;
+  disputed: boolean;
+  winner: string;
+  criteria: string[];
+  documents: Array<{
+    name: string;
+    size: string;
+    cid: string;
+  }>;
+}
+
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import NavBar from "@/components/layout/NavBar";
@@ -19,7 +51,23 @@ const TenderDetails = () => {
   const { authState } = useAuth();
   const role = authState.user.role;
   
-  const [tender, setTender] = useState<Tender | null>(null);
+  const [tender, setTender] = useState<Tender>({
+    id: '',
+    title: '',
+    description: '',
+    documentCid: '',
+    budget: '0',
+    deadline: 0,
+    creator: '',
+    status: 'open',
+    createdAt: Math.floor(Date.now() / 1000),
+    department: 'General',
+    bidCount: 0,
+    disputed: false,
+    winner: '',
+    criteria: [],
+    documents: []
+  });
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -34,36 +82,70 @@ const TenderDetails = () => {
       setLoading(false);
       return;
     }
+    
     setLoading(true);
     try {
       if (!isConnected) await connectWallet();
-      const tenderData = await fetchTenderById(id);
+      
+      // Ensure id is a string when calling fetchTenderById
+      const tenderData = await fetchTenderById(id.toString());
       if (!tenderData) {
         toast({
           title: "Tender Not Found",
-          description: `No tender found for ID: ${id}.`,
+          description: `No tender found with ID: ${id}.`,
+          variant: "destructive"
         });
         setTender(null);
-      } else {
-        setTender(tenderData);
+        return;
       }
-      const bidsData = await fetchBidsForTender(id);
-      setBids(bidsData);
+      
+      // Ensure tender data has all required fields
+      const processedTender: Tender = {
+        ...tenderData,
+        id: tenderData.id?.toString() || id,
+        title: tenderData.title || 'Untitled Tender',
+        description: tenderData.description || '',
+        documentCid: tenderData.documentCid || '',
+        budget: tenderData.budget || '0',
+        deadline: tenderData.deadline || 0,
+        creator: tenderData.creator || '',
+        status: tenderData.status || 'open',
+        createdAt: tenderData.createdAt || Math.floor(Date.now() / 1000),
+        department: tenderData.department || 'General',
+        bidCount: tenderData.bidCount || 0,
+        disputed: tenderData.disputed || false,
+        winner: tenderData.winner,
+        criteria: Array.isArray(tenderData.criteria) ? tenderData.criteria : [],
+        documents: Array.isArray(tenderData.documents) ? tenderData.documents : []
+      };
+      
+      setTender(processedTender);
+      
+      // Fetch bids if needed
+      try {
+        const bidsData = await fetchBidsForTender(id.toString());
+        setBids(Array.isArray(bidsData) ? bidsData : []);
+      } catch (bidError) {
+        console.warn("Error fetching bids:", bidError);
+        setBids([]);
+      }
     } catch (error) {
       console.error("Error loading tender details:", error);
-      toast({
-        title: "Error",
+      toast({ 
+        title: "Error", 
         description: "Failed to load tender details. Please try again.",
+        variant: "destructive"
       });
+      setTender(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Render a message if tender is not found
+  // Handle tender not found state
   if (!loading && !tender) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
         <NavBar />
         <main className="flex flex-col items-center justify-center flex-1 w-full p-8">
           <div className="bg-gray-900/70 p-8 rounded-lg shadow-lg border border-green-800 text-center">
@@ -88,15 +170,17 @@ const TenderDetails = () => {
     
     try {
       if (!isConnected) await connectWallet();
-      await closeTender(tender.id);
+      await closeTender(tender.id.toString());
       toast({ 
         title: "Tender Closed", 
         description: "The tender has been successfully closed." 
       });
       
       // Refresh tender data
-      const updatedTender = await fetchTenderById(Number(id));
-      setTender(updatedTender);
+      const updatedTender = await fetchTenderById(id.toString());
+      if (updatedTender) {
+        setTender(updatedTender);
+      }
     } catch (error) {
       console.error("Error closing tender:", error);
       toast({ 
@@ -120,15 +204,17 @@ const TenderDetails = () => {
     setActionLoading(true);
     try {
       if (!isConnected) await connectWallet();
-      await awardTender(tender.id, selectedBid);
+      await awardTender(tender.id.toString(), selectedBid);
       toast({ 
         title: "Tender Awarded", 
         description: "The tender has been successfully awarded." 
       });
       
       // Refresh tender data
-      const updatedTender = await fetchTenderById(Number(id));
-      setTender(updatedTender);
+      const updatedTender = await fetchTenderById(id.toString());
+      if (updatedTender) {
+        setTender(updatedTender);
+      }
     } catch (error) {
       console.error("Error awarding tender:", error);
       toast({ 
@@ -146,15 +232,17 @@ const TenderDetails = () => {
     
     try {
       if (!isConnected) await connectWallet();
-      await disputeTender(tender.id);
+      await disputeTender(tender.id.toString());
       toast({ 
         title: "Dispute Filed", 
         description: "A dispute has been filed for this tender." 
       });
       
       // Refresh tender data
-      const updatedTender = await fetchTenderById(Number(id));
-      setTender(updatedTender);
+      const updatedTender = await fetchTenderById(id.toString());
+      if (updatedTender) {
+        setTender(updatedTender);
+      }
     } catch (error) {
       console.error("Error filing dispute:", error);
       toast({ 
@@ -167,55 +255,79 @@ const TenderDetails = () => {
   };
 
   // Generate timeline events based on tender data
-  const generateTimeline = (tender: any) => {
-    const timeline = [];
+  const generateTimeline = (tender: Tender) => {
+    type TimelineEvent = {
+      date: Date;
+      title: string;
+      description: string;
+      status: 'completed' | 'pending';
+    };
+
+    const timeline: TimelineEvent[] = [];
+    
+    // Helper function to safely create a Date object
+    const createDate = (timestamp: number | Date): Date => {
+      try {
+        if (timestamp instanceof Date) return timestamp;
+        return new Date(typeof timestamp === 'number' ? timestamp * 1000 : Date.now());
+      } catch (e) {
+        return new Date();
+      }
+    };
     
     // Add tender creation event
-    const createdDate = tender.createdAt instanceof Date ? 
-      tender.createdAt : 
-      new Date(typeof tender.createdAt === 'number' ? tender.createdAt * 1000 : Date.now());
+    const createdDate = createDate(tender.createdAt);
+    const creatorAddress = tender.creator || 'Unknown';
+    const creatorDisplay = creatorAddress.length > 10 
+      ? `${creatorAddress.slice(0, 6)}...${creatorAddress.slice(-4)}` 
+      : creatorAddress;
     
     timeline.push({
       date: createdDate,
       title: "Tender Created",
-      description: `Tender ${tender.id} was created by ${tender.creator ? `${tender.creator.slice(0, 6)}...${tender.creator.slice(-4)}` : 'Unknown'}`
+      description: `Tender ${tender.id || ''} was created by ${creatorDisplay}`,
+      status: 'completed'
     });
     
     // Add deadline event
-    const deadlineDate = tender.deadline instanceof Date ? 
-      tender.deadline : 
-      new Date(typeof tender.deadline === 'number' ? tender.deadline * 1000 : Date.now() + 86400000);
+    const deadlineDate = createDate(tender.deadline);
+    const currentTime = new Date().getTime();
+    const deadlineTime = deadlineDate.getTime();
+    const isDeadlinePassed = currentTime > deadlineTime;
     
     timeline.push({
       date: deadlineDate,
       title: "Submission Deadline",
-      description: `Deadline for submitting bids`
+      description: "Deadline for submitting bids",
+      status: isDeadlinePassed ? 'completed' : 'pending'
     });
     
-    // Add awarded event if tender is awarded
-    if (tender.status === 'awarded') {
+    // Add status-based events
+    const now = new Date();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    if (tender.status === 'awarded' || tender.status === 2) {
       timeline.push({
-        date: new Date(Date.now() - 86400000), // Mock date 1 day ago
+        date: new Date(now.getTime() - oneDay),
         title: "Tender Awarded",
-        description: `Tender was awarded`
+        description: tender.winner && typeof tender.winner === 'string' && tender.winner.length > 10
+          ? `Awarded to ${tender.winner.slice(0, 6)}...${tender.winner.slice(-4)}` 
+          : "Tender was awarded",
+        status: 'completed' as const
       });
-    }
-    
-    // Add closed event if tender is closed
-    if (tender.status === 'closed') {
+    } else if (tender.status === 'closed' || tender.status === 1) {
       timeline.push({
-        date: new Date(Date.now() - 172800000), // Mock date 2 days ago
+        date: new Date(now.getTime() - 2 * oneDay),
         title: "Tender Closed",
-        description: `Tender was closed without award`
+        description: "Tender was closed without award",
+        status: 'completed' as const
       });
-    }
-    
-    // Add disputed event if tender is disputed
-    if (tender.status === 'disputed') {
+    } else if (tender.status === 'disputed' || tender.status === 3 || tender.disputed) {
       timeline.push({
-        date: new Date(Date.now() - 259200000), // Mock date 3 days ago
+        date: new Date(now.getTime() - 3 * oneDay),
         title: "Dispute Filed",
-        description: `A dispute was filed for this tender`
+        description: "A dispute was filed for this tender",
+        status: 'completed' as const
       });
     }
     
@@ -250,7 +362,11 @@ const TenderDetails = () => {
 
   const timeline = generateTimeline(tender);
   const isCreator = account?.toLowerCase() === tender.creator.toLowerCase();
-  const canAward = isCreator && tender.status === 'open' && bids.length > 0 && Date.now() / 1000 > tender.deadline;
+  const deadlineTimestamp = tender.deadline instanceof Date ? 
+    Math.floor(tender.deadline.getTime() / 1000) : 
+    typeof tender.deadline === 'number' ? tender.deadline : 0;
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const canAward = isCreator && tender.status === 'open' && bids.length > 0 && currentTimestamp > deadlineTimestamp;
   const canClose = isCreator && tender.status === 'open';
   const canDispute = tender.status === 'awarded' && !tender.disputed && (role === 'bidder' || role === 'admin');
 
@@ -415,8 +531,11 @@ const TenderDetails = () => {
                                   <Clock className="h-4 w-4" />
                                 )}
                               </div>
-                              <p className="font-medium text-white">{item.event}</p>
-                              <p className="text-sm text-gray-400 mt-1">{item.date}</p>
+                              <div>
+                                <p className="font-medium text-white">{item.title}</p>
+                                <p className="text-sm text-gray-400 mt-1">{item.date.toLocaleDateString()}</p>
+                                <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -486,7 +605,13 @@ const TenderDetails = () => {
                     <CalendarDays className="h-5 w-5 mr-3 text-[rgba(80,252,149,0.8)]" />
                     <div>
                       <p className="text-sm text-gray-400">Published On</p>
-                      <p className="text-white">{new Date(tender.createdAt * 1000).toLocaleDateString()}</p>
+                      <p className="text-white">{
+                        new Date(
+                          (typeof tender.createdAt === 'number' ? tender.createdAt : 
+                          tender.createdAt instanceof Date ? tender.createdAt.getTime() / 1000 : 
+                          Date.now() / 1000) * 1000
+                        ).toLocaleDateString()
+                      }</p>
                     </div>
                   </div>
                   
