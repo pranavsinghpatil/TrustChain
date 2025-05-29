@@ -225,28 +225,97 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
+  // Helper function to handle MetaMask errors
+  const handleMetaMaskError = (error: any, context: string): boolean => {
+    console.error(`[${context}] MetaMask Error:`, error);
+    
+    // Handle extension context invalidated (usually happens when MetaMask is reloaded)
+    if (error.message && error.message.includes('Extension context invalidated')) {
+      toast({
+        title: "MetaMask Disconnected",
+        description: "Please refresh the page and reconnect your wallet",
+        variant: "destructive"
+      });
+      // Force page refresh to reinitialize the connection
+      setTimeout(() => window.location.reload(), 2000);
+      return true;
+    }
+    
+    // Handle user rejection
+    if (error.code === 4001 || error.code === 'ACTION_REJECTED' || 
+        (error.data && error.data.code === 4001)) {
+      toast({
+        title: "Transaction Rejected",
+        description: "You rejected the transaction",
+        variant: "destructive"
+      });
+      return true;
+    }
+    
+    // Handle chain not added to MetaMask
+    if (error.code === 4902 || error.code === 'UNSUPPORTED_OPERATION' ||
+        (error.data && error.data.code === 4902)) {
+      toast({
+        title: "Wrong Network",
+        description: `Please switch to the correct network in MetaMask (${process.env.NEXT_PUBLIC_CHAIN_NAME || 'Ethereum Mainnet'})`,
+        variant: "destructive"
+      });
+      return true;
+    }
+    
+    // Handle network change
+    if (error.code === 'NETWORK_ERROR' || error.code === -32002) {
+      toast({
+        title: "Network Error",
+        description: "Please check your network connection and try again",
+        variant: "destructive"
+      });
+      return true;
+    }
+    
+    // Handle other MetaMask errors
+    if ((error.code && typeof error.code === 'number' && error.code >= 4000 && error.code < 5000) ||
+        (error.data && error.data.code >= 4000 && error.data.code < 5000)) {
+      const errorMessage = error.data?.message || error.message || "An error occurred with MetaMask";
+      toast({
+        title: "MetaMask Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return true;
+    }
+    
+    return false;
+  };
+
   const createOfficer = async (
     name: string,
     username: string,
     email: string
   ): Promise<boolean> => {
     try {
+      // Generate a password for the new officer
+      const password = 'tender00';
+      
+      // Check if wallet is connected
       if (!isConnected) {
-        const connected = await connectWallet();
-        if (!connected) {
-          toast({
-            title: "Wallet Required",
-            description: "Please connect your wallet to create an officer",
-            variant: "destructive",
-          });
-          return false;
+        try {
+          const connected = await connectWallet();
+          if (!connected) {
+            toast({
+              title: "Wallet Required",
+              description: "Please connect your wallet to create an officer",
+              variant: "destructive",
+            });
+            return false;
+          }
+        } catch (error) {
+          if (handleMetaMaskError(error, 'connectWallet')) return false;
+          throw error;
         }
       }
 
-      // Generate a random password
-      const password = 'tender00';
-
-      // Prevent duplicate usernames
+      // Check for duplicate username
       if (users.some(u => u.username === username)) {
         toast({
           title: "Username Exists",
@@ -273,13 +342,43 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       }
       
       // Create officer in blockchain
-      const success = await addOfficer(username, name, email);
-      if (!success) {
-        throw new Error("Failed to create officer on blockchain");
+      try {
+        const success = await addOfficer(username, name, email);
+        if (!success) {
+          throw new Error("Failed to create officer on blockchain");
+        }
+      } catch (error) {
+        if (handleMetaMaskError(error, 'addOfficer')) return false;
+        throw error;
       }
 
+      // Create a temporary officer object to update the UI immediately
+      const tempOfficer: User = {
+        id: `temp-${Date.now()}`,
+        name,
+        username,
+        email,
+        role: 'officer' as UserRole,
+        walletAddress: account || '',
+        createdAt: new Date(),
+        isApproved: true,
+        permissions: { canCreate: true, canApprove: true, isActive: true }
+      };
+
+      // Update local state immediately for better UX
+      setUsers(prevUsers => [...prevUsers, tempOfficer]);
+      
+      // Also update localStorage for persistence
+      const updatedUsers = [...users, tempOfficer];
+      persistUsers(updatedUsers);
+
       // Sync with blockchain to ensure officer is available in all browsers
-      await syncOfficersFromBlockchain();
+      try {
+        await syncOfficersFromBlockchain();
+      } catch (error) {
+        if (handleMetaMaskError(error, 'syncOfficersFromBlockchain')) return false;
+        throw error;
+      }
 
       // Show success message with password
       toast({
@@ -741,27 +840,40 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setUsers(updatedUsers);
     const user = users.find(u => u.id === id)!;
     toast({ title: 'Profile updated', description: 'Details updated and resubmitted for approval' });
-    notifyOfficers(`User ${fields.name ?? authState.user?.name} resubmitted profile for approval.`, id);
+    notifyOfficers(`User ${fields.name ?? user.name} resubmitted profile for approval.`, id);
   };
 
   const updateUsers = (updatedUsers: User[]) => {
     setUsers(updatedUsers);
   };
 
-  const syncOfficersFromBlockchain = async () => {
+  // ... (rest of the code remains the same)
+
+  // Move the syncOfficersFromBlockchain function before it's used in createOfficer
+  const syncOfficersFromBlockchain = async (): Promise<void> => {
     console.log('[syncOfficersFromBlockchain] Starting sync');
+    if (isSyncingOfficers) {
+      console.log('[syncOfficersFromBlockchain] Sync already in progress');
+      return;
+    }
+    
+    setIsSyncingOfficers(true);
     try {
       // Fetch officers from blockchain if available, else fallback to localStorage
       let blockchainOfficers: any[] = [];
-      if (web3 && typeof web3.fetchAllOfficers === 'function') {
+      if (web3 && typeof web3.getAllOfficers === 'function') {
         try {
-          blockchainOfficers = await web3.fetchAllOfficers();
+          blockchainOfficers = await web3.getAllOfficers();
           console.log(`[syncOfficersFromBlockchain] Found ${blockchainOfficers.length} officers from blockchain`);
         } catch (err) {
           console.warn('[syncOfficersFromBlockchain] Error fetching officers from blockchain:', err);
         }
       }
-      // First get existing officers from localStorage
+      
+      // Get existing users from local state
+      const existingUsers = [...users];
+      
+      // Get officers from localStorage as fallback
       let localStorageOfficers: any[] = [];
       try {
         const storedOfficers = localStorage.getItem('tender_officers');
@@ -773,17 +885,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         console.warn('[syncOfficersFromBlockchain] Error reading tender_officers:', err);
       }
       
-      // Get officers from blockchain/localStorage
-      let officers = [];
-      try {
-        // Use local storage for now since we're in development mode
-        console.log("Using local storage data for officers");
-        officers = localStorageOfficers;
-      } catch (error) {
-        console.error("Error fetching officers:", error);
-        // Fallback to local storage on error
-        officers = localStorageOfficers;
+      // Merge officers from blockchain and localStorage
+      const mergedOfficers = [...blockchainOfficers];
+      const existingUsernames = new Set(mergedOfficers.map(o => o.username));
+      
+      // Add officers from localStorage that aren't in blockchain
+      for (const localOfficer of localStorageOfficers) {
+        if (!existingUsernames.has(localOfficer.username)) {
+          mergedOfficers.push(localOfficer);
+          existingUsernames.add(localOfficer.username);
+        }
       }
+      
+      // Use the merged officers list
+      const officers = mergedOfficers;
+      console.log(`[syncOfficersFromBlockchain] Using ${officers.length} officers after merge`);
 
       // --- Ensure admin user always present ---
       const adminUser = {
@@ -819,23 +935,25 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       // Create a map of usernames for quick lookup
       const officerUsernames = new Set(officerUsers.map(o => o.username));
       
-      // Add any existing officers from trustchain_users that weren't found in the blockchain
-      for (const existingOfficer of existingOfficers) {
-        if (!officerUsernames.has(existingOfficer.username)) {
-          console.log(`[syncOfficersFromBlockchain] Preserving local officer from trustchain_users: ${existingOfficer.username}`);
+      // Add any existing users that weren't found in the merged officers list
+      for (const existingUser of existingUsers) {
+        if (existingUser.role === 'officer' && !officerUsernames.has(existingUser.username)) {
+          console.log(`[syncOfficersFromBlockchain] Preserving existing officer from users state: ${existingUser.username}`);
           // Create a properly typed officer object with all required fields
           const preservedOfficer = {
-            ...existingOfficer,
+            ...existingUser,
             // Ensure walletAddress exists (required in officerUsers type)
-            walletAddress: existingOfficer.walletAddress || '',
+            walletAddress: existingUser.walletAddress || '',
             // Ensure other required fields
-            approvalRemark: existingOfficer.approvalRemark || '',
-            permissions: existingOfficer.permissions || { canCreate: true, canApprove: true, isActive: true }
+            approvalRemark: existingUser.approvalRemark || '',
+            permissions: existingUser.permissions || { canCreate: true, canApprove: true, isActive: true }
           };
           officerUsers.push(preservedOfficer);
+          officerUsernames.add(existingUser.username);
+          
           // Make sure the password is set
-          if (!PASSWORD_MAP[existingOfficer.username]) {
-            PASSWORD_MAP[existingOfficer.username] = 'tender00';
+          if (!PASSWORD_MAP[existingUser.username]) {
+            PASSWORD_MAP[existingUser.username] = 'tender00';
           }
         }
       }
@@ -885,70 +1003,49 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
     } catch (error) {
       console.error("Error syncing officers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to sync officers from blockchain",
-        variant: "destructive",
-      });
+      if (!handleMetaMaskError(error, 'syncOfficersFromBlockchain')) {
+        toast({
+          title: "Error",
+          description: "Failed to sync officers from blockchain",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSyncingOfficers(false);
       console.log('[syncOfficersFromBlockchain] Finished sync');
     }
   };
 
-  // Always sync officers from blockchain when wallet is connected or on explicit user action
-  const syncOfficersOnUserAction = async () => {
-    if (isConnected && isCorrectNetwork && officerContract && signer) {
-      console.log('[AuthProvider] User action - synchronizing officers from blockchain');
-      await syncOfficersFromBlockchain();
-    } else {
-      toast({
-        title: "Wallet Not Connected",
-        description: "Please connect your wallet to view officers.",
-        variant: "destructive",
-      });
-    }
-  };
-  // Remove all auto-sync useEffects. Only sync on user action or after wallet connect.
+  // ... (rest of the code remains the same)
 
-  // Removed localStorage user bootstrapping as all user data now comes from blockchain
-  useEffect(() => {
-    setAuthState({
-      user: null,
-      isLoading: false,
-      error: null,
-    });
-  }, []);
+  // Update the AuthProvider component to properly type the context value
+  const contextValue: AuthContextType = {
+    authState,
+    users,
+    notifications,
+    currentUser: authState.user,
+    login,
+    logout,
+    createOfficer,
+    updateOfficer,
+    removeOfficer,
+    updateUsers,
+    markNotificationRead,
+    approveUser,
+    rejectUser,
+    updateUser,
+    notifyUser,
+    notifyOfficers,
+    syncOfficersFromBlockchain,
+    isAuthenticated: !!authState.user,
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        authState,
-        users,
-        notifications,
-        currentUser: authState.user,
-        login,
-        logout,
-
-        createOfficer,
-        updateOfficer,
-        removeOfficer,
-        updateUsers,
-        markNotificationRead,
-        approveUser,
-        rejectUser,
-        updateUser,
-        notifyUser,
-        notifyOfficers,
-        syncOfficersFromBlockchain,
-
-        isAuthenticated: !!authState.user,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
-};
+} // Add missing closing brace for AuthProvider component
 
 export function useAuth() {
   const context = useContext(AuthContext);

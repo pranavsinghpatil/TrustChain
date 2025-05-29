@@ -1,160 +1,98 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ethers, BigNumber, Contract, providers, Signer } from 'ethers';
-import { useToast } from '@/components/ui/use-toast';
-import type { FC, ReactNode } from 'react';
+// @refresh reset
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo } from "react";
+import { ethers } from 'ethers';
+import { Web3Provider } from '@ethersproject/providers';
+import { useToast } from "@/components/ui/use-toast";
+import { CONTRACT_ADDRESSES, CONTRACT_ABI } from "@/config/contracts";
+import { TARGET_NETWORK } from "@/config/network";
+import { UserRole } from "@/types/auth";
 
-// Extend Window interface to include ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      isMetaMask?: boolean;
-      request: (args: { method: string; params?: any[] }) => Promise<any>;
-      on: (eventName: string, handler: (accounts: string[]) => void) => void;
-      removeListener: (eventName: string, handler: (accounts: string[]) => void) => void;
-      removeAllListeners: (eventName: string) => void;
-    };
+// Simulated blockchain data store
+const localStorageKeys = {
+  officers: 'tender_officers',
+  tenders: 'tender_tenders',
+  bids: 'tender_bids',
+  documents: 'tender_documents'
+};
+
+// Ensure localStorage has the correct keys on initialization
+if (typeof window !== 'undefined') {
+  // Initialize officers storage if it doesn't exist
+  if (!localStorage.getItem(localStorageKeys.officers)) {
+    localStorage.setItem(localStorageKeys.officers, '[]');
+    console.log('[Web3Context] Initialized empty officers array in localStorage');
+  }
+  
+  // Make sure window.officerTempStore is initialized
+  if (!(window as any).officerTempStore) {
+    try {
+      const storedOfficers = localStorage.getItem(localStorageKeys.officers);
+      (window as any).officerTempStore = storedOfficers ? JSON.parse(storedOfficers) : [];
+      console.log('[Web3Context] Initialized officerTempStore from localStorage');
+    } catch (err) {
+      console.warn('[Web3Context] Error initializing officerTempStore:', err);
+      (window as any).officerTempStore = [];
+    }
   }
 }
 
-// Contract ABIs
-export const TENDER_CONTRACT_ABI = [
-  // Events
-  'event TenderCreated(uint256 indexed id, address indexed creator, string title, uint256 deadline)',
-  'event TenderUpdated(uint256 indexed id, string title, string description, uint256 budget, uint256 deadline)',
-  'event TenderClosed(uint256 indexed id)',
-  'event TenderAwarded(uint256 indexed id, address indexed winner)',
-  'event TenderDisputed(uint256 indexed id, address indexed reporter, string reason)',
-  'event BidPlaced(uint256 indexed tenderId, uint256 indexed bidId, address indexed bidder, uint256 amount)',
-  'event BidUpdated(uint256 indexed tenderId, uint256 indexed bidId, uint256 amount)',
-  'event BidWithdrawn(uint256 indexed tenderId, uint256 indexed bidId)',
-  'event BidAwarded(uint256 indexed tenderId, uint256 indexed bidId)',
-  'event BidRejected(uint256 indexed tenderId, uint256 indexed bidId)',
-  
-  // Functions
-  'function tenderCount() view returns (uint256)',
-  'function tenders(uint256) view returns (uint256 id, address creator, string title, string description, uint256 budget, uint256 deadline, uint256 createdAt, uint256 startDate, uint256 endDate, string status, uint256 bidCount, bool isActive, address winner)',
-  'function createTender(string title, string description, uint256 budget, uint256 deadline, uint256 startDate, uint256 endDate, string department, string category, string location, string[] criteria, string notes) returns (uint256)',
-  'function updateTender(uint256 id, string title, string description, uint256 budget, uint256 deadline, uint256 startDate, uint256 endDate, string department, string category, string location, string[] criteria, string notes) returns (bool)',
-  'function closeTender(uint256 id) returns (bool)',
-  'function awardTender(uint256 tenderId, uint256 bidId) returns (bool)',
-  'function disputeTender(uint256 id, string reason) returns (bool)',
-  'function deleteTender(uint256 id) returns (bool)',
-  'function createBid(uint256 tenderId, uint256 amount, string description) returns (uint256)',
-  'function updateBid(uint256 tenderId, uint256 bidId, uint256 amount, string description) returns (bool)',
-  'function withdrawBid(uint256 tenderId, uint256 bidId) returns (bool)',
-  'function getBidsForTender(uint256 tenderId) view returns (uint256[] memory)'
-];
+// Proper typing for window.ethereum
+interface EthereumProvider {
+  isMetaMask?: boolean;
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
+  on: (eventName: string, handler: (accounts: string[]) => void) => void;
+  removeListener: (eventName: string, handler: (accounts: string[]) => void) => void;
+  removeAllListeners: (eventName: string) => void;
+}
 
-export const OFFICER_CONTRACT_ABI = [
-  // Events
-  'event OfficerAdded(address indexed officer, string name, string email)',
-  'event OfficerUpdated(address indexed officer, string name, string email, bool isActive)',
-  'event OfficerRemoved(address indexed officer)',
-  
-  // Functions
-  'function isOfficer(address account) view returns (bool)',
-  'function officers(address) view returns (string name, string email, bool isActive, uint256 createdAt, uint256 updatedAt)',
-  'function addOfficer(address walletAddress, string name, string email) returns (bool)',
-  'function updateOfficer(address walletAddress, string name, string email, bool isActive) returns (bool)',
-  'function removeOfficer(address walletAddress) returns (bool)',
-  'function getOfficers() view returns (address[] memory)'
-];
-
-export const USER_AUTH_ABI = [
-  // Events
-  'event UserRegistered(address indexed user, string name, string email)',
-  'event UserUpdated(address indexed user, string name, string email)',
-  
-  // Functions
-  'function registerUser(string name, string email) returns (bool)',
-  'function updateUser(string name, string email) returns (bool)',
-  'function users(address) view returns (string name, string email, uint256 createdAt)'
-];
-
-// Contract Addresses
-export const CONTRACT_ADDRESSES = {
-  TENDER_MANAGEMENT: process.env.NEXT_PUBLIC_TENDER_CONTRACT_ADDRESS || '0x1234...',
-  OFFICER_MANAGEMENT: process.env.NEXT_PUBLIC_OFFICER_CONTRACT_ADDRESS || '0x5678...',
-  USER_AUTH: process.env.NEXT_PUBLIC_USER_AUTH_ADDRESS || '0x9abc...',
-};
-
-// Local storage keys
-const TENDERS_STORAGE_KEY = 'local_tenders';
-const OFFICERS_STORAGE_KEY = 'local_officers';
-const BIDS_STORAGE_KEY = 'local_bids';
-
-// Helper functions for local storage
-const getLocalTenders = (): FormattedTender[] => {
-  try {
-    const tenders = localStorage.getItem(TENDERS_STORAGE_KEY);
-    return tenders ? JSON.parse(tenders) : [];
-  } catch (error) {
-    console.error('Error getting tenders from local storage:', error);
-    return [];
+declare global {
+  interface Window {
+    ethereum?: EthereumProvider;
   }
-};
+}
 
-const saveLocalTenders = (tenders: FormattedTender[]) => {
-  try {
-    localStorage.setItem(TENDERS_STORAGE_KEY, JSON.stringify(tenders));
-  } catch (error) {
-    console.error('Error saving tenders to local storage:', error);
-  }
-};
+// Define proper types for contract return values
+export interface OfficerPermissions {
+  canCreate: boolean;
+  canApprove: boolean;
+  isActive: boolean;
+}
 
-const getLocalOfficers = (): Officer[] => {
-  try {
-    const officers = localStorage.getItem(OFFICERS_STORAGE_KEY);
-    return officers ? JSON.parse(officers) : [];
-  } catch (error) {
-    console.error('Error getting officers from local storage:', error);
-    return [];
-  }
-};
-
-const saveLocalOfficers = (officers: Officer[]) => {
-  try {
-    localStorage.setItem(OFFICERS_STORAGE_KEY, JSON.stringify(officers));
-  } catch (error) {
-    console.error('Error saving officers to local storage:', error);
-  }
-};
-
-const getLocalBids = (): Record<string, Bid[]> => {
-  try {
-    const bids = localStorage.getItem(BIDS_STORAGE_KEY);
-    return bids ? JSON.parse(bids) : {};
-  } catch (error) {
-    console.error('Error getting bids from local storage:', error);
-    return {};
-  }
-};
-
-const saveLocalBids = (bids: Record<string, Bid[]>) => {
-  try {
-    localStorage.setItem(BIDS_STORAGE_KEY, JSON.stringify(bids));
-  } catch (error) {
-    console.error('Error saving bids to local storage:', error);
-  }
-};
-
-// Network Configuration
-export const TARGET_NETWORK = {
-  chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '1', 10),
-  name: process.env.NEXT_PUBLIC_NETWORK_NAME || 'Mainnet',
-};
-
-// Types
-export type TenderStatus = 'draft' | 'published' | 'in_progress' | 'completed' | 'cancelled' | 'disputed' | 'evaluation' | 'awarded';
-export type BidStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
-
-// Interfaces
-export interface Document {
+export interface Officer {
+  id: string;
   name: string;
-  size: string;
-  cid: string;
-  url: string;
-  type: string;
+  username: string;
+  email: string;
+  isActive: boolean;
+  walletAddress: string;
+  password?: string; // Add password field for local storage
+  permissions: OfficerPermissions;
+  createdAt: Date;
+}
+
+export interface Tender {
+  id: string;
+  title: string;
+  description: string;
+  documentCid: string;
+  budget: ethers.BigNumber;
+  deadline: ethers.BigNumber;
+  creator: string;
+  status: number;
+  createdAt: ethers.BigNumber;
+}
+
+// Convert raw contract data to typed object
+export interface FormattedTender {
+  id: string;
+  title: string;
+  description: string;
+  documentCid: string;
+  budget: string;
+  deadline: Date;
+  creator: string;
+  status: number;
+  createdAt: Date;
 }
 
 export interface Bid {
@@ -162,80 +100,11 @@ export interface Bid {
   bidder: string;
   amount: string;
   description: string;
-  status: BidStatus;
-  createdAt: number;
+  status: string;
+  timestamp: number;
 }
 
-export interface OfficerPermissions {
-  canCreate: boolean;
-  canApprove: boolean;
-  isActive?: boolean;
-}
-
-export interface Officer {
-  id: string;
-  name: string;
-  email: string;
-  isActive: boolean;
-  walletAddress: string;
-  username: string;
-  updatedAt: number;
-  permissions: OfficerPermissions;
-  createdAt: number;
-  position?: string;
-  department?: string;
-}
-
-export interface TenderInput {
-  title: string;
-  description: string;
-  budget: string;
-  deadline: number;
-  startDate: number;
-  endDate: number;
-  department: string;
-  category: string;
-  location: string;
-  criteria: string[];
-  documents: Document[];
-  notes: string;
-}
-
-export interface TenderBase {
-  id: string;
-  title: string;
-  description: string;
-  budget: string;
-  deadline: number;
-  createdAt: number;
-  startDate: number;
-  endDate: number;
-  creator: string;
-  createdBy: string;
-  status: TenderStatus;
-  department: string;
-  category: string;
-  location: string;
-  bidCount: number;
-  criteria: string[];
-  documents: Document[];
-  notes: string;
-  bids: Bid[];
-  isActive: boolean;
-  winner: string;
-}
-
-export interface FormattedTender extends TenderBase {
-  formattedBudget: string;
-  formattedDeadline: string;
-  formattedCreatedAt: string;
-  formattedStartDate: string;
-  formattedEndDate: string;
-}
-
-export type Tender = FormattedTender;
-
-export interface Web3ContextType {
+interface Web3ContextType {
   account: string | null;
   isConnected: boolean;
   isLoading: boolean;
@@ -243,11 +112,12 @@ export interface Web3ContextType {
   networkName: string | null;
   chainId: number | null;
   isCorrectNetwork: boolean;
-  provider: providers.Web3Provider | null;
-  signer: Signer | null;
-  tenderContract: Contract | null;
-  officerContract: Contract | null;
-  userAuthContract: Contract | null;
+  provider: ethers.providers.Web3Provider | null;
+  signer: ethers.Signer | null;
+  tenderContract: ethers.Contract | null;
+  officerContract: ethers.Contract | null;
+  userAuthContract: ethers.Contract | null;
+  contractAddress: string | null;
   tenders: FormattedTender[];
   officers: Officer[];
   currentTender: FormattedTender | null;
@@ -258,866 +128,1080 @@ export interface Web3ContextType {
   switchNetwork: () => Promise<boolean>;
   fetchTenders: () => Promise<FormattedTender[]>;
   fetchTenderById: (id: string) => Promise<FormattedTender | null>;
-  createTender: (tender: Omit<TenderBase, 'id' | 'createdAt' | 'status' | 'bidCount' | 'bids' | 'isActive' | 'winner'>) => Promise<string>;
-  updateTender: (id: string, updates: Partial<TenderBase>) => Promise<boolean>;
+  fetchBidsForTender: (tenderId: string) => Promise<Bid[]>;
   closeTender: (tenderId: string) => Promise<boolean>;
   awardTender: (tenderId: string, bidId: string) => Promise<boolean>;
   disputeTender: (tenderId: string) => Promise<boolean>;
-  deleteTender: (tenderId: string) => Promise<boolean>;
-  createBid: (tenderId: string, amount: string, description: string) => Promise<boolean>;
-  updateBid: (tenderId: string, bidId: string, updates: { amount?: string; description?: string }) => Promise<boolean>;
-  withdrawBid: (tenderId: string, bidId: string) => Promise<boolean>;
-  fetchBidsForTender: (tenderId: string) => Promise<Bid[]>;
-  addOfficer: (walletAddress: string, name: string, email: string) => Promise<boolean>;
-  updateOfficer: (walletAddress: string, updates: { name?: string; email?: string; isActive?: boolean }) => Promise<boolean>;
+  addOfficer: (username: string, name: string, email: string) => Promise<boolean>;
+  updateOfficer: (walletAddress: string, name: string, username: string, email: string) => Promise<boolean>;
   removeOfficer: (walletAddress: string) => Promise<boolean>;
-  fetchOfficer: (walletAddress: string) => Promise<Officer | null>;
-  fetchAllOfficers: () => Promise<Officer[]>;
-  formatDate: (date: Date | number | BigNumber) => string;
-  parseBigNumber: (value: BigNumber) => string;
-  parseTimestamp: (timestamp: BigNumber) => Date;
+  getOfficer: (walletAddress: string) => Promise<Officer | null>;
+  getAllOfficers: () => Promise<Officer[]>;
+  createNewTender: (data: { title: string; description: string; department: string; budget: string; deadline: number; criteria: string[]; documents: { name: string; size: string }[] }) => Promise<string>;
 }
 
-// Create the context with default values
-const Web3Context = createContext<Web3ContextType>({
-  account: null,
-  isConnected: false,
-  isLoading: true,
-  error: null,
-  networkName: null,
-  chainId: null,
-  isCorrectNetwork: false,
-  provider: null,
-  signer: null,
-  tenderContract: null,
-  officerContract: null,
-  userAuthContract: null,
-  tenders: [],
-  officers: [],
-  currentTender: null,
-  currentOfficer: null,
-  isOfficer: false,
-  connectWallet: async () => false,
-  disconnectWallet: async () => {},
-  switchNetwork: async () => false,
-  fetchTenders: async () => [],
-  fetchTenderById: async () => null,
-  createTender: async () => '',
-  updateTender: async () => false,
-  closeTender: async () => false,
-  awardTender: async () => false,
-  disputeTender: async () => false,
-  deleteTender: async () => false,
-  createBid: async () => false,
-  updateBid: async () => false,
-  withdrawBid: async () => false,
-  fetchBidsForTender: async () => [],
-  addOfficer: async () => false,
-  updateOfficer: async () => false,
-  removeOfficer: async () => false,
-  fetchOfficer: async () => null,
-  fetchAllOfficers: async () => [],
-  formatDate: () => '',
-  parseBigNumber: (value: BigNumber) => value.toString(),
-  parseTimestamp: (timestamp: BigNumber) => new Date(timestamp.toNumber() * 1000),
-});
+interface Web3ProviderProps {
+  children: ReactNode;
+}
 
-// Context hooks for accessing Web3 context
-export const useWeb3Context = () => {
+const Web3Context = createContext<Web3ContextType | undefined>(undefined);
+
+const useWeb3 = () => {
   const context = useContext(Web3Context);
-  if (!context) {
-    throw new Error('useWeb3Context must be used within a Web3Provider');
-  }
+  if (!context) throw new Error("useWeb3 must be used within Web3Provider");
   return context;
 };
 
-// Alias for backward compatibility - this is the hook imported by AuthContext
-export const useWeb3 = useWeb3Context;
-
-// Main provider component
-export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // State management
+const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
   const [account, setAccount] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [networkName, setNetworkName] = useState<string | null>(null);
+  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [isCorrectNetwork, setIsCorrectNetwork] = useState<boolean>(false);
-  const [provider, setProvider] = useState<providers.Web3Provider | null>(null);
-  const [signer, setSigner] = useState<Signer | null>(null);
-  const [tenderContract, setTenderContract] = useState<Contract | null>(null);
-  const [officerContract, setOfficerContract] = useState<Contract | null>(null);
-  const [userAuthContract, setUserAuthContract] = useState<Contract | null>(null);
-  const [tenders, setTenders] = useState<FormattedTender[]>([]);
-  const [officers, setOfficers] = useState<Officer[]>([]);
-  const [currentTender, setCurrentTender] = useState<FormattedTender | null>(null);
-  const [currentOfficer, setCurrentOfficer] = useState<Officer | null>(null);
-  const [isOfficerState, setIsOfficerState] = useState<boolean>(false);
+  const [officerContract, setOfficerContract] = useState<ethers.Contract | null>(null);
+  const [userAuthContract, setUserAuthContract] = useState<ethers.Contract | null>(null);
+  const [tenderContract, setTenderContract] = useState<ethers.Contract | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const isConnecting = useRef(false);
+  const connectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const formatDate = useCallback((date: Date | number | BigNumber): string => {
-    const timestamp = date instanceof BigNumber
-      ? date.toNumber()
-      : date instanceof Date
-        ? Math.floor(date.getTime() / 1000)
-        : Math.floor((new Date(date)).getTime() / 1000);
-    return new Date(timestamp * 1000).toISOString();
-  }, []);
-
-  const parseBigNumber = useCallback((value: BigNumber): string => {
-    return value.toString();
-  }, []);
-
-  const parseTimestamp = useCallback((timestamp: BigNumber): Date => {
-    return new Date(timestamp.toNumber() * 1000);
-  }, []);
-
-  const formatTender = useCallback((tenderData: any): FormattedTender | null => {
-    if (!tenderData) return null;
-    const now = Math.floor(Date.now() / 1000);
-    const deadline = typeof tenderData.deadline?.toNumber === 'function' 
-      ? tenderData.deadline.toNumber() 
-      : typeof tenderData.deadline === 'number' 
-        ? tenderData.deadline 
-        : now + 86400;
-    
-    return {
-      ...tenderData,
-      id: tenderData.id?.toString() || '',
-      budget: tenderData.budget?.toString() || '0',
-      deadline: deadline,
-      createdAt: typeof tenderData.createdAt?.toNumber === 'function' ? tenderData.createdAt.toNumber() : now,
-      startDate: typeof tenderData.startDate?.toNumber === 'function' ? tenderData.startDate.toNumber() : now,
-      endDate: typeof tenderData.endDate?.toNumber === 'function' ? tenderData.endDate.toNumber() : now + 86400 * 30,
-      creator: tenderData.creator || '',
-      createdBy: tenderData.createdBy || '',
-      status: tenderData.status || 'draft',
-      department: tenderData.department || '',
-      category: tenderData.category || '',
-      location: tenderData.location || '',
-      bidCount: typeof tenderData.bidCount?.toNumber === 'function' ? tenderData.bidCount.toNumber() : 0,
-      criteria: Array.isArray(tenderData.criteria) ? tenderData.criteria : [],
-      documents: Array.isArray(tenderData.documents) ? tenderData.documents.map((doc: any) => ({
-        name: doc.name || '',
-        size: doc.size?.toString() || '0',
-        cid: doc.cid || '',
-        url: doc.url || '',
-        type: doc.type || 'application/octet-stream'
-      })) : [],
-      notes: tenderData.notes || '',
-      bids: Array.isArray(tenderData.bids) ? tenderData.bids.map((bid: any) => ({
-        id: bid.id?.toString() || '',
-        bidder: bid.bidder || '',
-        amount: bid.amount?.toString() || '0',
-        description: bid.description || '',
-        createdAt: bid.createdAt?.toNumber() || now,
-        status: bid.status || 'pending'
-      })) : [],
-      isActive: typeof tenderData.isActive === 'boolean' ? tenderData.isActive : true,
-      winner: tenderData.winner || '',
-      formattedBudget: ethers.utils.formatEther(tenderData.budget?.toString() || '0'),
-      formattedDeadline: new Date(deadline * 1000).toLocaleString(),
-      formattedCreatedAt: new Date(
-        (typeof tenderData.createdAt?.toNumber === 'function' 
-          ? tenderData.createdAt.toNumber() 
-          : now) * 1000
-      ).toLocaleString(),
-      formattedStartDate: new Date(
-        (typeof tenderData.startDate?.toNumber === 'function' 
-          ? tenderData.startDate.toNumber() 
-          : now) * 1000
-      ).toLocaleString(),
-      formattedEndDate: new Date(
-        (typeof tenderData.endDate?.toNumber === 'function' 
-          ? tenderData.endDate.toNumber() 
-          : now + 86400 * 30) * 1000
-      ).toLocaleString(),
-    };
-  }, []);
-
-  const fetchOfficer = useCallback(async (walletAddress: string): Promise<Officer | null> => {
-    if (!officerContract) return null;
+  // RPC provider for read-only operations
+  const rpcProvider = useMemo(() => {
     try {
-      const officer = await officerContract.getOfficer(walletAddress);
-      return {
-        id: walletAddress,
-        name: officer.name,
-        email: officer.email,
-        isActive: officer.isActive,
-        walletAddress,
-        username: officer.username,
-        updatedAt: officer.updatedAt?.toNumber() || Math.floor(Date.now() / 1000),
-        permissions: {
-          canCreate: officer.permissions?.canCreate || false,
-          canApprove: officer.permissions?.canApprove || false,
-        },
-        createdAt: officer.createdAt?.toNumber() || Math.floor(Date.now() / 1000)
-      };
-    } catch (err) {
-      console.error('Error fetching officer:', err);
+      return new ethers.providers.JsonRpcProvider(TARGET_NETWORK.rpcUrl);
+    } catch (error) {
+      console.error("Error creating RPC provider:", error);
       return null;
     }
-  }, [officerContract]);
-
-  const checkIfOfficer = useCallback(async (address: string): Promise<boolean> => {
-    if (!officerContract) return false;
-    try {
-      return await officerContract.isOfficer(address);
-    } catch (err) {
-      console.error('Error checking officer status:', err);
-      return false;
-    }
-  }, [officerContract]);
-
-  const connectWallet = useCallback(async () => {
-    if (!window.ethereum) {
-      toast({
-        title: 'MetaMask not detected',
-        description: 'Please install MetaMask to connect your wallet',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    try {
-      // Always show MetaMask popup to request account access
-      // This creates a realistic flow even in development mode
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      if (accounts.length === 0) {
-        toast({
-          title: 'No accounts found',
-          description: 'Please create an account in MetaMask',
-          variant: 'destructive',
-        });
-        return false;
-      }
-      
-      // Show success toast when wallet is connected
-      toast({
-        title: 'Wallet Connected',
-        description: `Connected to account ${accounts[0].substring(0, 6)}...${accounts[0].substring(accounts[0].length - 4)}`,
-      });
-
-      // Get chain ID from ethereum provider
-      let chainIdHex = '0x1'; // Default to mainnet
-      try {
-        // Safely access chainId property
-        chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
-      } catch (chainError) {
-        console.warn('Error getting chain ID:', chainError);
-      }
-      
-      // Create provider with ENS disabled to prevent errors
-      const web3Provider = new providers.Web3Provider(window.ethereum, {
-        name: 'custom-network',
-        chainId: parseInt(chainIdHex, 16)
-      });
-      
-      const signer = web3Provider.getSigner();
-      const chainId = parseInt(chainIdHex, 16);
-
-      setAccount(accounts[0]);
-      setIsConnected(true);
-      setChainId(chainId);
-      setNetworkName('custom-network');
-      setIsCorrectNetwork(chainId === TARGET_NETWORK.chainId);
-      setProvider(web3Provider);
-      setSigner(signer);
-
-      // Initialize contracts with real addresses if not in development mode
-      let tenderContractInstance = null;
-      let officerContractInstance = null;
-      let userAuthContractInstance = null;
-      
-      // Check if we're in development mode (using placeholder addresses)
-      const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
-      
-      if (!isDev) {
-        // Only try to connect to real contracts if not in development mode
-        try {
-          tenderContractInstance = new Contract(
-            CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
-            TENDER_CONTRACT_ABI,
-            signer
-          );
-
-          officerContractInstance = new Contract(
-            CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
-            OFFICER_CONTRACT_ABI,
-            signer
-          );
-
-          userAuthContractInstance = new Contract(
-            CONTRACT_ADDRESSES.USER_AUTH,
-            USER_AUTH_ABI,
-            signer
-          );
-        } catch (contractError) {
-          console.error('Error initializing contracts:', contractError);
-        }
-      }
-
-      setTenderContract(tenderContractInstance);
-      setOfficerContract(officerContractInstance);
-      setUserAuthContract(userAuthContractInstance);
-
-      // Check if connected account is an officer
-      try {
-        if (officerContractInstance) {
-          const isOfficer = await officerContractInstance.isOfficer(accounts[0]);
-          setIsOfficerState(isOfficer);
-        }
-      } catch (officerErr) {
-        console.warn('Error checking officer status:', officerErr);
-        setIsOfficerState(false);
-      }
-
-      return true;
-    } catch (err) {
-      console.error('Error connecting wallet:', err);
-      setError('Failed to connect wallet');
-      return false;
-    }
-  }, [toast]);
-
-  const disconnectWallet = useCallback(async () => {
-    setAccount(null);
-    setIsConnected(false);
-    setProvider(null);
-    setSigner(null);
-    setTenderContract(null);
-    setOfficerContract(null);
-    setUserAuthContract(null);
-    setTenders([]);
-    setOfficers([]);
-    setCurrentTender(null);
-    setCurrentOfficer(null);
-    setIsOfficerState(false);
   }, []);
 
-  const switchNetwork = useCallback(async () => {
-    if (!window.ethereum) return false;
+  // Read-only contract instances
+  const rpcOfficerContract = useMemo(() => {
+    if (!rpcProvider) return null;
     try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${TARGET_NETWORK.chainId.toString(16)}` }],
-      });
-      return true;
-    } catch (switchError) {
-      console.error('Error switching network:', switchError);
-      return false;
+      return new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        rpcProvider
+      );
+    } catch (error) {
+      console.error("Error creating RPC officer contract:", error);
+      return null;
     }
+  }, [rpcProvider]);
+
+  const rpcTenderContract = useMemo(() => {
+    if (!rpcProvider) return null;
+    try {
+      return new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        rpcProvider
+      );
+    } catch (error) {
+      console.error("Error creating RPC tender contract:", error);
+      return null;
+    }
+  }, [rpcProvider]);
+
+  // Keep references to event handlers for proper cleanup
+  const accountsChangedRef = useRef<(...args: any[]) => void>(() => {});
+  const chainChangedRef = useRef<(...args: any[]) => void>(() => {});
+  const disconnectRef = useRef<() => void>(() => {});
+
+  // Setup read-only contract for fetching tenders before wallet connect
+  useEffect(() => {
+    const rpc = new ethers.providers.JsonRpcProvider(TARGET_NETWORK.rpcUrl);
+    const readOnlyTender = new ethers.Contract(
+      CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+      CONTRACT_ABI.TENDER_MANAGEMENT,
+      rpc
+    );
+    setTenderContract(readOnlyTender);
   }, []);
 
-  // Create context value with all the required methods and state
-  // Define the fetchTenders function outside of the context value to avoid reference issues
-  const fetchTendersImpl = async () => {
-    try {
-      // Check if we're in development mode
-      const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
-      
-      if (isDev) {
-        // Use local storage for development mode
-        const localTenders = getLocalTenders();
-        setTenders(localTenders);
-        return localTenders;
-      } else if (tenderContract) {
-        // For production with real contracts
-        const tenderCount = await tenderContract.tenderCount();
-        const tenders = [];
-        for (let i = 1; i <= tenderCount; i++) {
-          const tender = await tenderContract.tenders(i);
-          if (tender.id.toString() !== '0') {
-            tenders.push(formatTender(tender));
-          }
-        }
-        const formattedTenders = tenders.filter((t): t is FormattedTender => t !== null);
-        setTenders(formattedTenders);
-        return formattedTenders;
-      }
-      return [];
-    } catch (err) {
-      console.error('Error fetching tenders:', err);
-      // Return empty array on error
-      return [];
-    }
-  };
-
-  const contextValue = useMemo<Web3ContextType>(() => ({
-    account,
-    isConnected,
-    isLoading,
-    error,
-    networkName,
-    chainId,
-    isCorrectNetwork,
-    provider,
-    signer,
-    tenderContract,
-    officerContract,
-    userAuthContract,
-    tenders,
-    officers,
-    currentTender,
-    currentOfficer,
-    isOfficer: isOfficerState,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    fetchTenders: fetchTendersImpl,
-    
-    // Add the missing createNewTender function
-    createNewTender: async (tenderData: Omit<TenderBase, 'id' | 'createdAt' | 'status' | 'bidCount' | 'bids' | 'isActive' | 'winner'>) => {
-      try {
-        // Check if we're in development mode
-        const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
-        
-        if (isDev) {
-          // Use local storage for development mode
-          const localTenders = getLocalTenders();
-          
-          // Create a new tender with a unique ID
-          const newTender: FormattedTender = {
-            ...tenderData,
-            id: Date.now().toString(),
-            createdAt: Date.now(),
-            status: 'open' as TenderStatus, // Cast to TenderStatus
-            bidCount: 0,
-            bids: [],
-            isActive: true,
-            winner: '',
-            creator: account || '',
-            createdBy: account || '',
-            formattedBudget: `${parseFloat(tenderData.budget).toLocaleString()} ETH`,
-            formattedDeadline: new Date(tenderData.deadline).toLocaleDateString(),
-            formattedCreatedAt: new Date().toLocaleDateString(),
-            formattedStartDate: new Date(tenderData.startDate).toLocaleDateString(),
-            formattedEndDate: new Date(tenderData.deadline).toLocaleDateString()
-          };
-          
-          // Add to local storage
-          localTenders.push(newTender);
-          saveLocalTenders(localTenders);
-          setTenders(localTenders);
-          
-          return newTender.id;
-        } else if (tenderContract) {
-          // For production with real contracts
-          const tx = await tenderContract.createTender(
-            tenderData.title,
-            tenderData.description,
-            ethers.utils.parseEther(tenderData.budget),
-            Math.floor(tenderData.deadline / 1000),
-            Math.floor(tenderData.startDate / 1000),
-            Math.floor(tenderData.endDate / 1000),
-            tenderData.department,
-            tenderData.category,
-            tenderData.location,
-            tenderData.criteria,
-            tenderData.notes
-          );
-          
-          const receipt = await tx.wait();
-          const event = receipt.events?.find(e => e.event === 'TenderCreated');
-          const tenderId = event?.args?.id.toString() || '';
-          
-          // Refresh tenders list after creating a tender
-          await fetchTendersImpl();
-          
-          return tenderId;
-        }
-        
-        throw new Error('No contract available');
-      } catch (err) {
-        console.error('Error creating tender:', err);
-        throw err;
-      }
-    },
-    // Fetch a tender by its ID (string from URL). Handles string/number conversion and robust error checking.
-    fetchTenderById: async (id: string) => {
-      if (!tenderContract) {
-        console.warn('[fetchTenderById] Tender contract not initialized');
-        return null;
-      }
-      try {
-        // Convert string ID to number if possible (for numeric contract index)
-        let contractId: any = id;
-        if (/^\d+$/.test(id)) {
-          contractId = Number(id);
-        } else if (id.startsWith('tender-')) {
-          // If your IDs are custom (e.g., 'tender-123456'), extract the numeric part
-          const match = id.match(/tender-(\d+)/);
-          if (match && match[1]) {
-            contractId = Number(match[1]);
-          } else {
-            console.warn(`[fetchTenderById] Invalid tender ID format: ${id}`);
-            return null;
-          }
-        }
-        // Fetch from contract
-        const tender = await tenderContract.getTender(contractId);
-        // Check if the returned tender is valid (id not zero/empty)
-        if (!tender || (tender.id && tender.id.toString() === '0')) {
-          console.warn(`[fetchTenderById] Tender not found for ID: ${id} (contract index: ${contractId})`);
-          return null;
-        }
-        const formattedTender = formatTender(tender);
-        setCurrentTender(formattedTender);
-        return formattedTender;
-      } catch (err) {
-        console.error(`[fetchTenderById] Error fetching tender for ID ${id}:`, err);
-        return null;
-      }
-    },
-    createTender: async (tender) => {
-      if (!tenderContract) return '';
-      try {
-        const tx = await tenderContract.createTender(
-          tender.title,
-          tender.description,
-          ethers.utils.parseEther(tender.budget),
-          tender.deadline,
-          {
-            value: ethers.utils.parseEther('0.01') // Example: 0.01 ETH deposit
-          }
-        );
-        await tx.wait();
-        return tx.hash;
-      } catch (err) {
-        console.error('Error creating tender:', err);
-        return '';
-      }
-    },
-    updateTender: async (id, updates) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.updateTender(
-          id,
-          updates.title || '',
-          updates.description || '',
-          updates.budget ? ethers.utils.parseEther(updates.budget) : 0,
-          updates.deadline || 0
-        );
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error updating tender:', err);
-        return false;
-      }
-    },
-    closeTender: async (tenderId) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.closeTender(tenderId);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error closing tender:', err);
-        return false;
-      }
-    },
-    awardTender: async (tenderId, bidId) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.awardTender(tenderId, bidId);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error awarding tender:', err);
-        return false;
-      }
-    },
-    disputeTender: async (tenderId) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.disputeTender(tenderId);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error disputing tender:', err);
-        return false;
-      }
-    },
-    deleteTender: async (tenderId) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.deleteTender(tenderId);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error deleting tender:', err);
-        return false;
-      }
-    },
-    createBid: async (tenderId, amount, description) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.createBid(
-          tenderId,
-          description,
-          { value: ethers.utils.parseEther(amount) }
-        );
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error creating bid:', err);
-        return false;
-      }
-    },
-    updateBid: async (tenderId, bidId, updates) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.updateBid(
-          tenderId,
-          bidId,
-          updates.amount ? ethers.utils.parseEther(updates.amount) : 0,
-          updates.description || ''
-        );
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error updating bid:', err);
-        return false;
-      }
-    },
-    withdrawBid: async (tenderId, bidId) => {
-      if (!tenderContract) return false;
-      try {
-        const tx = await tenderContract.withdrawBid(tenderId, bidId);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error withdrawing bid:', err);
-        return false;
-      }
-    },
-    fetchBidsForTender: async (tenderId: string) => {
-      if (!tenderContract) return [];
-      try {
-        const bidIds = await tenderContract.getBidsForTender(tenderId);
-        const bids = await Promise.all(
-          bidIds.map(async (bidId: BigNumber) => {
-            const bid = await tenderContract.getBid(bidId);
-            return {
-              id: bidId.toString(),
-              bidder: bid.bidder,
-              amount: bid.amount.toString(),
-              description: bid.description,
-              status: bid.status,
-              createdAt: bid.createdAt.toNumber()
-            };
-          })
-        );
-        return bids;
-      } catch (err) {
-        console.error('Error fetching bids:', err);
-        return [];
-      }
-    },
-    addOfficer: async (walletAddress, name, email) => {
-      if (!officerContract) return false;
-      try {
-        const tx = await officerContract.addOfficer(walletAddress, name, email);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error adding officer:', err);
-        return false;
-      }
-    },
-    updateOfficer: async (walletAddress, updates) => {
-      if (!officerContract) return false;
-      try {
-        const tx = await officerContract.updateOfficer(
-          walletAddress,
-          updates.name || '',
-          updates.email || '',
-          updates.isActive ?? true
-        );
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error updating officer:', err);
-        return false;
-      }
-    },
-    removeOfficer: async (walletAddress) => {
-      if (!officerContract) return false;
-      try {
-        const tx = await officerContract.removeOfficer(walletAddress);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error removing officer:', err);
-        return false;
-      }
-    },
-    fetchOfficer: async (walletAddress) => {
-      if (!officerContract) return null;
-      try {
-        const officer = await officerContract.getOfficer(walletAddress);
-        return {
-          id: walletAddress,
-          name: officer.name,
-          email: officer.email,
-          isActive: officer.isActive,
-          walletAddress,
-          username: officer.username,
-          updatedAt: officer.updatedAt?.toNumber() || Math.floor(Date.now() / 1000),
-          permissions: {
-            canCreate: officer.permissions?.canCreate || false,
-            canApprove: officer.permissions?.canApprove || false,
-          },
-          createdAt: officer.createdAt?.toNumber() || Math.floor(Date.now() / 1000)
-        };
-      } catch (err) {
-        console.error('Error fetching officer:', err);
-        return null;
-      }
-    },
-    fetchAllOfficers: async () => {
-      if (!officerContract) return [];
-      try {
-        const officerAddresses = await officerContract.getAllOfficers();
-        const officers = await Promise.all(
-          officerAddresses.map(async (address: string) => {
-            const officer = await officerContract.getOfficer(address);
-            return {
-              id: address,
-              name: officer.name,
-              email: officer.email,
-              isActive: officer.isActive,
-              walletAddress: address,
-              username: officer.username,
-              updatedAt: officer.updatedAt?.toNumber() || Math.floor(Date.now() / 1000),
-              permissions: {
-                canCreate: officer.permissions?.canCreate || false,
-                canApprove: officer.permissions?.canApprove || false,
-              },
-              createdAt: officer.createdAt?.toNumber() || Math.floor(Date.now() / 1000)
-            };
-          })
-        );
-        setOfficers(officers);
-        return officers;
-      } catch (err) {
-        console.error('Error fetching officers:', err);
-        return [];
-      }
-    },
-    formatDate,
-    parseBigNumber,
-    parseTimestamp
-  }), [
-    account,
-    isConnected,
-    isLoading,
-    error,
-    networkName,
-    chainId,
-    isCorrectNetwork,
-    provider,
-    signer,
-    tenderContract,
-    officerContract,
-    userAuthContract,
-    tenders,
-    officers,
-    currentTender,
-    currentOfficer,
-    isOfficerState,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    formatDate,
-    parseBigNumber,
-    parseTimestamp,
-    formatTender
-  ]);
-
-  // Initialize contracts on mount
+  // Initialize provider and check connection on mount
   useEffect(() => {
     const init = async () => {
-      if (window.ethereum && account) {
+      if (window.ethereum) {
         try {
-          const web3Provider = new providers.Web3Provider(window.ethereum);
-          const signer = web3Provider.getSigner();
-          
-          let tenderContractInstance;
-          let officerContractInstance;
-          let userAuthContractInstance;
-          
-          // Check if we're in development mode (using placeholder addresses)
-          const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
-          
-          if (isDev) {
-            // Use local storage for development mode instead of mock contracts
-            console.log('Using local storage for development mode');
-            // We don't need to create contract instances in development mode
-            // The functions will use local storage directly
-          } else {
-            // Use real contracts for production
-            try {
-              tenderContractInstance = new Contract(
-                CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
-                TENDER_CONTRACT_ABI,
-                signer
-              );
+          // Request account access
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          console.log("[Web3Init] Ethereum accounts accessed successfully");
 
-              officerContractInstance = new Contract(
-                CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
-                OFFICER_CONTRACT_ABI,
-                signer
-              );
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          console.log("[Web3Init] Web3 Provider initialized", provider);
 
-              userAuthContractInstance = new Contract(
-                CONTRACT_ADDRESSES.USER_AUTH,
-                USER_AUTH_ABI,
-                signer
-              );
-            } catch (error) {
-              console.error('Error creating contract instances:', error);
-            }
-          }
+          const network = await provider.getNetwork();
+          console.log("[Web3Init] Connected to network:", network);
 
-          setProvider(web3Provider);
+          const signer = provider.getSigner();
+          console.log("[Web3Init] Signer obtained");
+
+          const address = await signer.getAddress();
+          console.log("[Web3Init] Connected account address:", address);
+
+          setProvider(provider);
           setSigner(signer);
-          setTenderContract(tenderContractInstance);
-          setOfficerContract(officerContractInstance);
-          setUserAuthContract(userAuthContractInstance);
-          setIsLoading(false);
+          setAccount(address);
+          setIsConnected(true);
 
-          // Check if connected account is an officer
-          try {
-            if (officerContractInstance) {
-              const isOfficer = await officerContractInstance.isOfficer(account);
-              setIsOfficerState(isOfficer);
-            }
-          } catch (officerErr) {
-            console.warn('Error checking officer status:', officerErr);
-            setIsOfficerState(false);
-          }
-        } catch (err) {
-          console.error('Error initializing contracts:', err);
-          setError('Failed to initialize contracts');
-          setIsLoading(false);
+          // Load contracts after provider is ready
+          await loadContracts(provider, signer);
+        } catch (error) {
+          console.error("[Web3Init] Error initializing Web3 provider:", error);
+          setError(error.message || "Failed to initialize Web3 provider");
         }
       } else {
-        setIsLoading(false);
+        console.error("[Web3Init] MetaMask not detected");
+        setError("MetaMask not detected. Please install MetaMask.");
       }
     };
 
     init();
-  }, [account]);
+
+    // Add a longer delay before setting up listeners to avoid MetaMask async errors
+    setTimeout(() => {
+      // Listen for account or network changes with error handling
+      if (window.ethereum) {
+        try {
+          window.ethereum.on("accountsChanged", handleAccountsChanged);
+          window.ethereum.on("chainChanged", handleChainChanged);
+          console.log("[Web3Init] Event listeners set up successfully");
+        } catch (listenerError) {
+          console.error("[Web3Init] Error setting up event listeners:", listenerError);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      if (window.ethereum) {
+        try {
+          window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+          window.ethereum.removeListener("chainChanged", handleChainChanged);
+          console.log("[Web3Init] Event listeners removed successfully");
+        } catch (listenerError) {
+          console.error("[Web3Init] Error removing event listeners:", listenerError);
+        }
+      }
+    };
+  }, []);
+
+  const handleDisconnect = async () => {
+    await disconnectWallet();
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected",
+      variant: "destructive",
+    });
+  };
+
+  const handleWalletConnection = async (web3Provider: ethers.providers.Web3Provider, address: string) => {
+    try {
+      const web3Signer = web3Provider.getSigner();
+      setSigner(web3Signer);
+      setAccount(address);
+      setIsConnected(true);
+
+      const network = await web3Provider.getNetwork();
+      setChainId(network.chainId);
+      setIsCorrectNetwork(network.chainId === TARGET_NETWORK.chainId);
+
+      // Initialize contracts
+      const officerContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        web3Signer
+      );
+      console.debug('[Web3Context] officerContract initialized at', CONTRACT_ADDRESSES.OFFICER_MANAGEMENT);
+      setOfficerContract(officerContractInstance);
+
+      const userAuthContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.USER_AUTHENTICATION,
+        CONTRACT_ABI.USER_AUTHENTICATION,
+        web3Signer
+      );
+      setUserAuthContract(userAuthContractInstance);
+
+      const tenderContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        web3Signer
+      );
+      setTenderContract(tenderContractInstance);
+
+      // Store connection state
+      localStorage.setItem("walletConnected", "true");
+      setError(null);
+    } catch (error) {
+      console.error("Error in handleWalletConnection:", error);
+      throw error;
+    }
+  };
+
+  const handleAccountsChanged = (...args: any[]) => {
+    const accounts = args[0];
+    if (Array.isArray(accounts) && accounts.length === 0) {
+      handleDisconnect();
+    } else if (Array.isArray(accounts) && accounts[0]) {
+      setAccount(accounts[0]);
+      setIsConnected(true);
+    }
+  };
+
+  const handleChainChanged = (...args: any[]) => {
+    // Force a page refresh when a network change is detected
+    window.location.reload();
+  };
+
+  const connectWallet = async (): Promise<boolean> => {
+    console.log('[connectWallet] Attempting to connect wallet');
+    if (isConnecting.current) {
+      console.log('[connectWallet] Already connecting, skipping');
+      return false; // Prevent multiple requests
+    }
+
+    if (typeof window.ethereum === 'undefined') {
+      const errorMsg = "MetaMask is not installed. Please install MetaMask to use this application.";
+      setError(errorMsg);
+      console.error(errorMsg);
+      toast({
+        title: "Wallet Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    isConnecting.current = true;
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      console.log('[connectWallet] Requesting accounts directly from ethereum provider');
+      
+      // First try the direct ethereum request method which is more reliable for triggering the popup
+      let accounts;
+      try {
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        console.log('[connectWallet] Accounts received:', accounts);
+      } catch (requestError) {
+        console.error('[connectWallet] Direct request failed:', requestError);
+        
+        // Fall back to provider method
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        accounts = await web3Provider.send("eth_requestAccounts", []);
+        console.log('[connectWallet] Accounts from provider:', accounts);
+      }
+
+      if (!accounts || accounts.length === 0) {
+        const errorMsg = "No accounts found. Please check MetaMask and approve the connection.";
+        setError(errorMsg);
+        toast({
+          title: "Wallet Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const address = accounts[0];
+      console.log('[connectWallet] Connected address:', address);
+      
+      // Initialize provider after successful connection
+      const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+      handleWalletConnection(web3Provider, address);
+      
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+      });
+      
+      return true;
+    } catch (error: any) {
+      const errorMsg = error.message || "Failed to connect wallet";
+      setError(errorMsg);
+      console.error("[connectWallet] Error connecting wallet:", error);
+      toast({
+        title: "Wallet Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      isConnecting.current = false;
+      setIsLoading(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    try {
+      setAccount(null);
+      setIsConnected(false);
+      setProvider(null);
+      setSigner(null);
+      setChainId(null);
+      setIsCorrectNetwork(false);
+      setOfficerContract(null);
+      setUserAuthContract(null);
+      setTenderContract(null);
+      setError(null);
+      
+      localStorage.removeItem("walletConnected");
+      
+      toast({
+        title: "Wallet Disconnected",
+        description: "Your wallet has been disconnected",
+      });
+    } catch (error: any) {
+      console.error("Error disconnecting wallet:", error);
+      setError(error.message || "Failed to disconnect wallet");
+    }
+  };
+
+  // Switch to the target network
+  const switchNetwork = async (): Promise<boolean> => {
+    try {
+      if (!window.ethereum) return false;
+      
+      try {
+        // Try to switch to the network
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${TARGET_NETWORK.chainId.toString(16)}` }],
+        });
+        return true;
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: `0x${TARGET_NETWORK.chainId.toString(16)}`,
+                  chainName: TARGET_NETWORK.name,
+                  rpcUrls: [TARGET_NETWORK.rpcUrl],
+                  nativeCurrency: TARGET_NETWORK.nativeCurrency,
+                },
+              ],
+            });
+            return true;
+          } catch (addError) {
+            console.error("Error adding network:", addError);
+            return false;
+          }
+        }
+        console.error("Error switching network:", switchError);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error in switchNetwork:", error);
+      return false;
+    }
+  };
+
+  // Smart contract interaction functions
+  
+  // Add an officer to the blockchain
+  const addOfficer = async (username: string, name: string, email: string): Promise<boolean> => {
+    // Force wallet connection first
+    if (!isConnected || !account) {
+      console.log('[addOfficer] Not connected, attempting to connect wallet first');
+      const connected = await connectWallet();
+      if (!connected) {
+        toast({
+          title: "Wallet Required",
+          description: "Please connect your wallet to create an officer",
+          variant: "destructive",
+        });
+        return false;
+      }
+      // Wait a moment for connection to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    try {
+      console.log('[addOfficer] called with:', { username, name, email });
+      console.log('[addOfficer] account:', account);
+      console.log('[addOfficer] signer:', signer);
+      console.log('[addOfficer] officerContract:', officerContract);
+
+      if (!officerContract || !signer) {
+        const connected = await connectWallet();
+        console.log('[addOfficer] connectWallet called, connected:', connected, 'officerContract:', officerContract, 'signer:', signer);
+        if (!connected || !officerContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+
+      if (!account) {
+        throw new Error("No wallet account connected");
+      }
+
+      // Check if officer with this username already exists
+      const officers = await getAllOfficers();
+      const existingOfficer = officers.find(officer => officer.username === username);
+      if (existingOfficer) {
+        console.error("Officer with this username already exists");
+        return false;
+      }
+
+      // Generate a unique ID for the officer
+      const id = `officer-${Date.now()}`;
+      
+      try {
+        // Add officer to contract with all required parameters
+        const tx = await officerContract.addOfficer(account, id, name, username, email);
+        console.log('[addOfficer] Transaction sent:', tx.hash);
+        
+        // Wait for transaction confirmation with timeout
+        const receipt = await Promise.race([
+          tx.wait(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Transaction timeout')), 30000)
+          )
+        ]);
+        
+        console.log('[addOfficer] Transaction confirmed:', receipt.transactionHash);
+      } catch (err) {
+        console.error('[addOfficer] Transaction failed:', err);
+        throw new Error(`Failed to add officer: ${err.message}`);
+      }
+
+      // Store officer credentials in multiple places for cross-browser access
+      const defaultPassword = 'tender00';
+      
+      // 1. Store in sessionStorage (current browser only)
+      try {
+        sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+          username,
+          password: defaultPassword
+        }));
+        console.log(`[addOfficer] Stored credentials for ${username} in sessionStorage`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in sessionStorage:`, err);
+      }
+      
+      // 2. Store in localStorage.officers (shared across browsers)
+      try {
+        const newOfficer: Officer = {
+          id,
+          name,
+          username,
+          email,
+          password: defaultPassword,
+          isActive: true,
+          walletAddress: account,
+          permissions: {
+            canCreate: true,
+            canApprove: true,
+            isActive: true
+          },
+          createdAt: new Date()
+        };
+        
+        const localOfficers = JSON.parse(localStorage.getItem(localStorageKeys.officers) || '[]');
+        localOfficers.push(newOfficer);
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+        (window as any).officerTempStore = localOfficers;
+        console.log(`[addOfficer] Stored officer in localStorage.officers: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in localStorage.officers:`, err);
+      }
+      
+      // 3. Store in trustchain_users (shared across browsers)
+      try {
+        const storedUsers = localStorage.getItem('trustchain_users') || '[]';
+        const users = JSON.parse(storedUsers);
+        users.push({
+          id,
+          name,
+          username,
+          email,
+          role: 'officer',
+          walletAddress: account,
+          createdAt: new Date(),
+          isApproved: true,
+          permissions: {
+            canCreate: true,
+            canApprove: true,
+            isActive: true
+          }
+        });
+        localStorage.setItem('trustchain_users', JSON.stringify(users));
+        console.log(`[addOfficer] Stored officer in trustchain_users: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in trustchain_users:`, err);
+      }
+      
+      // 4. Store password in trustchain_passwords (shared across browsers)
+      try {
+        const storedPasswords = localStorage.getItem('trustchain_passwords') || '{}';
+        const passwords = JSON.parse(storedPasswords);
+        passwords[username] = defaultPassword;
+        localStorage.setItem('trustchain_passwords', JSON.stringify(passwords));
+        console.log(`[addOfficer] Stored password in trustchain_passwords: ${username}`);
+      } catch (err) {
+        console.warn(`[addOfficer] Error storing in trustchain_passwords:`, err);
+      }
+
+      toast({
+        title: "Success",
+        description: `Officer ${username} added successfully. Password: tender00`,
+      });
+
+      // Attempt to refresh officers list after creation
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        window.dispatchEvent(new Event('officerCreated'));
+      }
+
+      return true;
+    } catch (error: any) {
+      // Check if the error is because the officer already exists
+      if (error.message && error.message.includes('Officer already exists')) {
+        console.log('[addOfficer] Officer already exists error caught');
+        
+        // Store officer credentials for login anyway
+        try {
+          sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+            username,
+            password: 'tender00'
+          }));
+          console.log(`[addOfficer] Stored credentials for existing officer ${username}`);
+          
+          toast({
+            title: "Officer Already Exists",
+            description: `Using existing officer. Password: tender00`,
+          });
+          
+          // Return true to indicate success - we're treating this as a successful operation
+          return true;
+        } catch (err) {
+          console.warn(`[addOfficer] Error storing credentials:`, err);
+        }
+      }
+      
+      console.error("Error adding officer:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add officer",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const updateOfficer = async (walletAddress: string, name: string, username: string, email: string): Promise<boolean> => {
+    try {
+      // Ensure wallet connected
+      if (!officerContract || !signer) {
+        const connected = await connectWallet();
+        if (!connected || !officerContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+
+      // Update officer in contract
+      const tx = await officerContract.updateOfficer(walletAddress, name, username, email);
+      await tx.wait();
+
+      toast({
+        title: "Success",
+        description: `Officer ${username} updated successfully`,
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error("Error updating officer:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update officer",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const removeOfficer = async (walletAddress: string): Promise<boolean> => {
+    try {
+      // Ensure wallet connected
+      if (!officerContract || !signer) {
+        const connected = await connectWallet();
+        if (!connected || !officerContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+
+      // Remove officer from contract
+      const tx = await officerContract.removeOfficer(walletAddress);
+      await tx.wait();
+
+      toast({
+        title: "Success",
+        description: "Officer removed successfully",
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error("Error removing officer:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove officer",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const getOfficer = async (walletAddress: string): Promise<Officer | null> => {
+    if (!officerContract) {
+      console.error("Officer contract not initialized");
+      return null;
+    }
+    try {
+      try {
+        // Get raw contract data without any conversion
+        const rawData = await officerContract['getOfficer(address)'].staticCall(walletAddress);
+        
+        // Handle each field with extreme safety
+        let id = typeof rawData[0] === 'string' ? rawData[0] : `officer-${walletAddress.slice(2, 8)}`;
+        let name = typeof rawData[1] === 'string' ? rawData[1] : 'Officer';
+        let username = typeof rawData[2] === 'string' ? rawData[2] : `user-${walletAddress.slice(2, 6)}`;
+        let email = typeof rawData[3] === 'string' ? rawData[3] : `${username}@org.com`;
+        let isActive = Boolean(rawData[4]);
+        
+        // Handle timestamp as string only - NEVER convert to number
+        let createdAt = rawData[5]?.toString() || Date.now().toString();
+        
+        console.log('[Officer Data] Processed safely:', {
+          id, name, username, email, isActive
+        });
+        
+        return {
+          id,
+          walletAddress,
+          name,
+          username,
+          email,
+          isActive,
+          permissions: {
+            canCreate: isActive,
+            canApprove: isActive,
+            isActive
+          },
+          createdAt: new Date(parseInt(createdAt, 10))
+        };
+      } catch (err) {
+        // Create minimal viable officer data
+        let id = `officer-${walletAddress.slice(2, 8)}`;
+        let name = 'Officer';
+        let username = `user-${walletAddress.slice(2, 6)}`;
+        let email = `${username}@org.com`;
+        let isActive = true;
+        let createdAt = Date.now().toString();
+        
+        console.warn('[Officer Recovery] Created fallback data for:', walletAddress);
+        
+        return {
+          id,
+          walletAddress,
+          name,
+          username,
+          email,
+          isActive,
+          permissions: {
+            canCreate: isActive,
+            canApprove: isActive,
+            isActive
+          },
+          createdAt: new Date(parseInt(createdAt, 10))
+        };
+      }
+    } catch (error) {
+      console.error("[getOfficer] Error getting officer (outer):", error);
+      return null;
+    }
+  };
+
+  const getAllOfficers = async (): Promise<Officer[]> => {
+    // First try to get officers from all possible localStorage sources
+    let localOfficers: Officer[] = [];
+    let officersFound = false;
+    
+    // Check all possible localStorage keys that might contain officers
+    const keysToCheck = [
+      localStorageKeys.officers,
+      'trustchain_users',
+      'tender_officers'
+    ];
+    
+    for (const key of keysToCheck) {
+      try {
+        const storedData = localStorage.getItem(key);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          if (Array.isArray(parsed)) {
+            // Filter to only include items that look like officers
+            const officers = parsed.filter((item: any) => 
+              item.username && 
+              (item.role === 'officer' || item.permissions)
+            );
+            
+            if (officers.length > 0) {
+              console.log(`[getAllOfficers] Found ${officers.length} officers in localStorage key: ${key}`);
+              
+              // Add any officers not already in localOfficers
+              const existingUsernames = new Set(localOfficers.map(o => o.username));
+              for (const officer of officers) {
+                if (!existingUsernames.has(officer.username)) {
+                  // Ensure the officer has all required fields
+                  const completeOfficer: Officer = {
+                    id: officer.id || `officer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: officer.name || officer.username,
+                    username: officer.username,
+                    email: officer.email || `${officer.username}@example.com`,
+                    walletAddress: officer.walletAddress || '',
+                    isActive: officer.isActive || true,
+                    password: officer.password || 'tender00',
+                    permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true },
+                    createdAt: officer.createdAt ? new Date(officer.createdAt) : new Date()
+                  };
+                  
+                  localOfficers.push(completeOfficer);
+                  existingUsernames.add(officer.username);
+                  officersFound = true;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[getAllOfficers] Error reading from ${key}:`, err);
+      }
+    }
+    
+    // Also check window.officerTempStore as a backup
+    try {
+      if ((window as any).officerTempStore && Array.isArray((window as any).officerTempStore)) {
+        const tempStoreOfficers = (window as any).officerTempStore;
+        if (tempStoreOfficers.length > 0) {
+          console.log(`[getAllOfficers] Found ${tempStoreOfficers.length} officers in officerTempStore`);
+          
+          // Add any officers not already in localOfficers
+          const existingUsernames = new Set(localOfficers.map(o => o.username));
+          for (const officer of tempStoreOfficers) {
+            if (officer.username && !existingUsernames.has(officer.username)) {
+              localOfficers.push(officer);
+              existingUsernames.add(officer.username);
+              officersFound = true;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[getAllOfficers] Error reading from officerTempStore:', err);
+    }
+    
+    // If officers were found, save the combined list back to localStorage
+    if (officersFound) {
+      try {
+        localStorage.setItem(localStorageKeys.officers, JSON.stringify(localOfficers));
+        (window as any).officerTempStore = localOfficers;
+        console.log(`[getAllOfficers] Saved ${localOfficers.length} officers to localStorage and officerTempStore`);
+      } catch (err) {
+        console.warn('[getAllOfficers] Error saving officers to localStorage:', err);
+      }
+    }
+
+    // If we have local officers and no contract, return them
+    if (localOfficers.length > 0 && !officerContract) {
+      console.log(`[getAllOfficers] Returning ${localOfficers.length} officers from localStorage (no contract)`);
+      return localOfficers;
+    }
+
+    // Try to get officers from blockchain if contract is available
+    if (!officerContract) {
+      console.warn("Officer contract not initialized, using only localStorage officers");
+      return localOfficers;
+    }
+
+    try {
+      // Get all officer addresses first
+      const officerAddresses = await officerContract.getAllOfficerAddresses();
+      const officers: Officer[] = [];
+      const usernamesFromContract = new Set<string>();
+
+      // Get details for each officer from contract
+      for (const address of officerAddresses) {
+        try {
+          let id = "", name = "", username = "", email = "", isActive = false;
+          let createdAt = '0';
+          try {
+            // Get raw contract data
+            const rawData = await officerContract['getOfficer(address)'].staticCall(address);
+            id = typeof rawData[0] === 'string' ? rawData[0] : '';
+            name = typeof rawData[1] === 'string' ? rawData[1] : '';
+            username = typeof rawData[2] === 'string' ? rawData[2] : '';
+            email = typeof rawData[3] === 'string' ? rawData[3] : '';
+            isActive = Boolean(rawData[4]);
+            createdAt = rawData[5]?.toString() || Date.now().toString();
+
+            // Only add if username and id are present
+            if (!id || !username) {
+              console.warn(`[getAllOfficers] Skipping officer with missing id/username: ${address}`);
+              continue;
+            }
+
+            const officer: Officer = {
+              id,
+              walletAddress: address,
+              name,
+              username,
+              email,
+              isActive,
+              permissions: {
+                canCreate: isActive,
+                canApprove: isActive,
+                isActive: isActive
+              },
+              createdAt: new Date(parseInt(createdAt, 10))
+            };
+            officers.push(officer);
+            usernamesFromContract.add(username);
+            
+            // Store officer credentials in both sessionStorage and localStorage for cross-browser access
+            console.log(`[getAllOfficers] Successfully added officer from contract: ${username} (${id})`);
+            try {
+              // Store in sessionStorage for current browser
+              sessionStorage.setItem(`officer_${username}`, JSON.stringify({
+                username,
+                password: 'tender00'
+              }));
+              
+              // Also update the PASSWORD_MAP which is stored in localStorage
+              const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
+              passwordMap[username] = 'tender00';
+              localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
+              
+              console.log(`[getAllOfficers] Stored credentials for ${username} in both storages`);
+            } catch (err) {
+              console.warn(`[getAllOfficers] Failed to store officer credentials:`, err);
+            }
+          } catch (err) {
+            // If contract call fails, skip this officer
+            console.warn('[Officer Recovery] Skipping officer due to contract data error:', address);
+            continue;
+          }
+        } catch (err) {
+          console.error(`[getAllOfficers] Error processing officer ${address}:`, err);
+        }
+      }
+      
+      // Add any officers from localStorage that weren't found in the contract
+      for (const localOfficer of localOfficers) {
+        if (!usernamesFromContract.has(localOfficer.username)) {
+          console.log(`[getAllOfficers] Adding officer from localStorage: ${localOfficer.username}`);
+          // Make sure the officer has password field for login
+          if (!localOfficer.password) {
+            localOfficer.password = 'tender00';
+          }
+          officers.push(localOfficer);
+        }
+      }
+      
+      // Update localStorage with the combined list
+      // IMPORTANT: Always update localStorage, even if officers list is empty
+      // This prevents data loss when the application restarts
+      localStorage.setItem(localStorageKeys.officers, JSON.stringify(officers));
+      (window as any).officerTempStore = officers;
+      
+      // Also ensure we persist the officers to the trustchain_users localStorage
+      // This provides additional redundancy for officer data
+      try {
+        const trustchainUsers = JSON.parse(localStorage.getItem('trustchain_users') || '[]');
+        const adminUser = trustchainUsers.find((u: any) => u.username === 'admin');
+        
+        // Convert officers to the format expected by trustchain_users
+        const officerUsers = officers.map((officer: Officer) => ({
+          id: officer.id,
+          name: officer.name,
+          username: officer.username,
+          email: officer.email,
+          role: 'officer' as UserRole,
+          walletAddress: officer.walletAddress,
+          createdAt: officer.createdAt,
+          isApproved: officer.permissions?.isActive || true,
+          approvalRemark: '',
+          permissions: officer.permissions || { canCreate: true, canApprove: true, isActive: true }
+        }));
+        
+        // Create updated users list with admin + officers
+        const updatedUsers = adminUser ? [adminUser, ...officerUsers] : officerUsers;
+        localStorage.setItem('trustchain_users', JSON.stringify(updatedUsers));
+        
+        // Also update password map
+        const passwordMap = JSON.parse(localStorage.getItem('trustchain_passwords') || '{}');
+        for (const officer of officers) {
+          passwordMap[officer.username] = officer.password || 'tender00';
+        }
+        localStorage.setItem('trustchain_passwords', JSON.stringify(passwordMap));
+        
+        console.log(`[getAllOfficers] Updated trustchain_users with ${officerUsers.length} officers`);
+      } catch (err) {
+        console.warn('[getAllOfficers] Error updating trustchain_users:', err);
+      }
+      
+      console.log(`[getAllOfficers] Retrieved ${officers.length} officers successfully`);
+      return officers;
+    } catch (error) {
+      console.error("Error getting officers from contract:", error);
+      // Fallback to localStorage if contract call fails
+      console.log(`[getAllOfficers] Falling back to ${localOfficers.length} officers from localStorage`);
+      return localOfficers;
+    }
+  };
+
+  const fetchTenders = async (): Promise<FormattedTender[]> => {
+    try {
+      if (!tenderContract) {
+        console.warn("[fetchTenders] No tender contract available, returning empty list");
+        return [];
+      }
+      // Check if contract is properly initialized by calling a simple method
+      try {
+        await tenderContract.address; // Basic check to see if contract object is valid
+      } catch (contractError) {
+        console.error("[fetchTenders] Contract object invalid, skipping blockchain call:", contractError);
+        return [];
+      }
+      let tenderIds = [];
+      try {
+        tenderIds = await tenderContract.getAllTenderIds();
+        console.log("[fetchTenders] Retrieved tender IDs:", tenderIds);
+      } catch (idError) {
+        console.error("[fetchTenders] Failed to get tender IDs, falling back to empty list:", idError);
+        return [];
+      }
+      const tenders = await Promise.all(
+        tenderIds.map(async (id) => {
+          try {
+            const tender = await tenderContract.tenders(id);
+            const highestBid = await tenderContract.getHighestBid(id);
+            return {
+              id: id.toNumber(),
+              title: tender.title,
+              description: tender.description,
+              documentCid: tender.documentCid,
+              budget: ethers.utils.formatEther(tender.budget),
+              deadline: new Date(tender.deadline.toNumber() * 1000),
+              creator: tender.creator || "",
+              status: tender.status || "",
+              createdAt: tender.createdAt ? new Date(tender.createdAt.toNumber() * 1000) : new Date(),
+              isActive: tender.isActive,
+              highestBid: highestBid ? ethers.utils.formatEther(highestBid.amount) : "0",
+              highestBidder: highestBid ? highestBid.bidder : "",
+            };
+          } catch (tenderError) {
+            console.error(`[fetchTenders] Error fetching tender ID ${id}:`, tenderError);
+            return null;
+          }
+        })
+      );
+      // Filter out any null results from failed tender fetches
+      return tenders.filter(tender => tender !== null);
+    } catch (error) {
+      console.error("[fetchTenders] General error fetching tenders (fallback to empty):", error);
+      return [];
+    }
+  };
+
+  const createNewTender = async (data: { title: string; description: string; department: string; budget: string; deadline: number; criteria: string[]; documents: { name: string; size: string }[] }): Promise<string> => {
+    try {
+      // Ensure wallet connected
+      if (!tenderContract || !signer) {
+        const connected = await connectWallet();
+        if (!connected || !tenderContract) {
+          throw new Error("Contract or signer not initialized. Please connect your wallet first.");
+        }
+      }
+      const { title, description, department, budget, deadline } = data;
+      // Generate a simple ID
+      const id = `${Date.now()}`;
+      const documentCid = ""; // Replace with real CID after IPFS upload
+      const budgetWei = ethers.utils.parseEther(budget);
+      const tx = await tenderContract.createTender(id, title, description, documentCid, budgetWei, deadline);
+      await tx.wait();
+      toast({ title: "Tender Created", description: `Tender ${id} created successfully` });
+      return id;
+    } catch (error: any) {
+      console.error("Error creating tender:", error);
+      toast({ title: "Error", description: error.message || "Failed to create tender", variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const loadContracts = async (provider: ethers.providers.Web3Provider, signer: ethers.Signer) => {
+    try {
+      // Initialize contracts
+      const officerContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.OFFICER_MANAGEMENT,
+        CONTRACT_ABI.OFFICER_MANAGEMENT,
+        signer
+      );
+      console.debug('[Web3Context] officerContract initialized at', CONTRACT_ADDRESSES.OFFICER_MANAGEMENT);
+      setOfficerContract(officerContractInstance);
+
+      const userAuthContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.USER_AUTHENTICATION,
+        CONTRACT_ABI.USER_AUTHENTICATION,
+        signer
+      );
+      setUserAuthContract(userAuthContractInstance);
+
+      const tenderContractInstance = new ethers.Contract(
+        CONTRACT_ADDRESSES.TENDER_MANAGEMENT,
+        CONTRACT_ABI.TENDER_MANAGEMENT,
+        signer
+      );
+      setTenderContract(tenderContractInstance);
+    } catch (error) {
+      console.error("Error loading contracts:", error);
+      setError(error.message || "Failed to load contracts");
+    }
+  };
+
+  const value: Web3ContextType = {
+    account,
+    isConnected,
+    connectWallet,
+    disconnectWallet,
+    isLoading,
+    error,
+    chainId,
+    isCorrectNetwork,
+    switchNetwork,
+    officerContract,
+    userAuthContract,
+    tenderContract,
+    provider,
+    signer,
+    addOfficer,
+    updateOfficer,
+    removeOfficer,
+    getOfficer,
+    getAllOfficers,
+    createNewTender,
+    fetchTenders,
+  };
 
   return (
-    <Web3Context.Provider value={contextValue}>
+    <Web3Context.Provider value={value}>
       {children}
     </Web3Context.Provider>
   );
 };
 
-// Export the context for advanced use cases
-export { Web3Context };
+export { useWeb3, Web3ProviderComponent as Web3Provider };
