@@ -24,16 +24,9 @@ const TenderForm = () => {
   const [description, setDescription] = useState("");
   const [department, setDepartment] = useState("");
   const [budget, setBudget] = useState("");
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date()); // Default to now
-  const [endDate, setEndDate] = useState<Date | undefined>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 7); // Default to 7 days from now
-    return date;
-  });
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [criteria, setCriteria] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState("");
-  const [location, setLocation] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -49,19 +42,10 @@ const TenderForm = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     
-    if (!startDate || !endDate) {
+    if (!date) {
       toast({
         title: "Error",
-        description: "Please select both start and end dates",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (startDate >= endDate) {
-      toast({
-        title: "Error",
-        description: "Start date must be before end date",
+        description: "Please select a deadline date",
         variant: "destructive",
       });
       return;
@@ -73,6 +57,9 @@ const TenderForm = () => {
       if (!isConnected) {
         await connectWallet();
       }
+      
+      // Convert deadline to Unix timestamp (seconds)
+      const deadlineTimestamp = Math.floor(date.getTime() / 1000);
       
       // Format criteria as an array
       const criteriaArray = criteria
@@ -94,12 +81,9 @@ const TenderForm = () => {
         description,
         department,
         budget,
-        startDate: startDate.getTime(),
-        deadline: endDate.getTime(),
+        deadline: deadlineTimestamp,
         criteria: criteriaArray,
-        documents,
-        category,
-        location
+        documents
       });
       
       toast({
@@ -142,158 +126,65 @@ const TenderForm = () => {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="department" className="text-white">Department</Label>
-                <Select 
-                  value={department} 
-                  onValueChange={setDepartment}
-                  required
-                >
-                  <SelectTrigger className="w-full bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-green-800/30">
-                    <SelectItem value="public_works">Public Works</SelectItem>
-                    <SelectItem value="health">Health</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="transportation">Transportation</SelectItem>
-                    <SelectItem value="finance">Finance</SelectItem>
-                    <SelectItem value="urban_development">Urban Development</SelectItem>
-                    <SelectItem value="environment">Environment</SelectItem>
-                    <SelectItem value="information_technology">Information Technology</SelectItem>
-                    <SelectItem value="tourism">Tourism</SelectItem>
-                    <SelectItem value="agriculture">Agriculture</SelectItem>
-                    <SelectItem value="energy">Energy</SelectItem>
-                    <SelectItem value="defense">Defense</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category" className="text-white">Category</Label>
-                <Select 
-                  value={category} 
-                  onValueChange={setCategory}
-                >
-                  <SelectTrigger className="w-full bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-green-800/30">
-                    <SelectItem value="construction">Construction</SelectItem>
-                    <SelectItem value="it_services">IT Services</SelectItem>
-                    <SelectItem value="consulting">Consulting</SelectItem>
-                    <SelectItem value="supplies">Supplies</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="training">Training</SelectItem>
-                    <SelectItem value="research">Research</SelectItem>
-                    <SelectItem value="design">Design</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
-                    <SelectItem value="logistics">Logistics</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-white">Location</Label>
+            <div>
+              <Label htmlFor="department" className="text-white">Department</Label>
               <Select 
-                value={location} 
-                onValueChange={setLocation}
+                value={department}
+                onValueChange={val => setDepartment(val)}
               >
-                <SelectTrigger className="w-full bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]">
-                  <SelectValue placeholder="Select location" />
+                <SelectTrigger className="mt-1.5 bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]">
+                  <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-800 border-green-800/30">
-                  <SelectItem value="delhi">Delhi</SelectItem>
-                  <SelectItem value="mumbai">Mumbai</SelectItem>
-                  <SelectItem value="bengaluru">Bengaluru</SelectItem>
-                  <SelectItem value="hyderabad">Hyderabad</SelectItem>
-                  <SelectItem value="chennai">Chennai</SelectItem>
-                  <SelectItem value="kolkata">Kolkata</SelectItem>
-                  <SelectItem value="pune">Pune</SelectItem>
-                  <SelectItem value="ahmedabad">Ahmedabad</SelectItem>
-                  <SelectItem value="jaipur">Jaipur</SelectItem>
-                  <SelectItem value="lucknow">Lucknow</SelectItem>
-                  <SelectItem value="remote">Remote</SelectItem>
-                  <SelectItem value="multiple">Multiple Locations</SelectItem>
+                  <SelectItem value="healthcare">Healthcare</SelectItem>
+                  <SelectItem value="infrastructure">Infrastructure</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="energy">Energy</SelectItem>
+                  <SelectItem value="municipal">Municipal</SelectItem>
+                  <SelectItem value="technology">Technology</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div>
-              <Label htmlFor="budget" className="text-white">Budget (₹)</Label>
-              <Input 
-                id="budget" 
-                type="number" 
-                value={budget}
-                onChange={e => setBudget(e.target.value)}
-                placeholder="Enter budget amount" 
-                required 
-                className="mt-1.5 bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]"
-                min="1000"
-              />
-            </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : <span>Pick start date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setStartDate(date);
-                          // If end date is before the new start date, update it too
-                          if (endDate && date > endDate) {
-                            const newEndDate = new Date(date);
-                            newEndDate.setDate(date.getDate() + 1);
-                            setEndDate(newEndDate);
-                          }
-                        }
-                      }}
-                      fromDate={new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div>
+                <Label htmlFor="budget" className="text-white">Budget (₹)</Label>
+                <Input 
+                  id="budget" 
+                  type="number" 
+                  value={budget}
+                  onChange={e => setBudget(e.target.value)}
+                  placeholder="Enter budget amount" 
+                  required 
+                  className="mt-1.5 bg-gray-800/50 border-green-800/30 text-white focus:border-[rgba(80,252,149,0.5)]"
+                  min="1000"
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
+              
+              <div>
+                <Label className="text-white">Deadline</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
-                      variant="outline"
+                      variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
+                        "w-full mt-1.5 justify-start text-left font-normal bg-gray-800/50 border-green-800/30 text-white hover:bg-gray-700/50 hover:border-[rgba(80,252,149,0.5)]",
+                        !date && "text-gray-400"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP") : <span>Pick end date</span>}
+                      {date ? format(date, "PPP") : <span>Select deadline</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent className="w-auto p-0 bg-gray-800 border-green-800/30">
                     <Calendar
                       mode="single"
-                      selected={endDate}
-                      onSelect={(date) => date && setEndDate(date)}
-                      fromDate={startDate ? new Date(startDate.getTime() + 86400000) : new Date()}
+                      selected={date}
+                      onSelect={setDate}
                       initialFocus
+                      disabled={(date) => date < new Date()}
+                      className="bg-gray-800 text-white"
                     />
                   </PopoverContent>
                 </Popover>

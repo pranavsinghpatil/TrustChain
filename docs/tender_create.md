@@ -2,4 +2,4 @@ You can now create tenders in development mode without needing real blockchain c
 
 When you're ready to deploy to production with real contracts, the code will automatically switch to using the blockchain contracts instead of localStorage.
 
-This approach gives you the best of both worlds - easy development without blockchain dependencies, and seamless transition to real blockchain interactions when needed.
+This approach gives you the best of both worlds - easy development without blockchain dependencies, and seamless transition to real blockchain interactions when needed. 
