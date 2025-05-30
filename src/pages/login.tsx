@@ -29,17 +29,43 @@ const Login = () => {
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
 
-    // Handle login
-    const success = await login(username, password);
-    if (success) {
-      navigate("/");
-    } else {
-      // Show error message
+    try {
+      setIsConnecting(true);
+      
+      // First connect wallet if not already connected
+      if (!isConnected) {
+        const walletConnected = await connectWallet();
+        if (!walletConnected) {
+          toast({
+            title: "Wallet Connection Required",
+            description: "Please connect your wallet to continue",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      // Handle login
+      const success = await login(username, password);
+      if (success) {
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${username}!`,
+          variant: "default",
+        });
+        navigate("/");
+      } else {
+        throw new Error("Invalid username or password");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Login Failed",
-        description: "Invalid username or password",
+        description: error.message || "An error occurred during login",
         variant: "destructive",
       });
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -214,18 +240,20 @@ const Login = () => {
           
           <CardContent>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-              <TabsList className="grid w-full grid-cols-2 bg-[#1B1B1B]/80 border-b border-green-400/20">
+              <TabsList className="grid w-full grid-cols-2 bg-black/20 border border-white/10">
                 <TabsTrigger 
-                  value="login"
-                  className="data-[state=active]:bg-[#1B1B1B] data-[state=active]:text-green-400 data-[state=active]:border-t data-[state=active]:border-x border-green-400/30 rounded-b-none"
+                  value="login" 
+                  className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400 data-[state=active]:shadow-sm hover:bg-white/5 transition-colors"
+                  onClick={() => setActiveTab("login")}
                 >
-                  Login
+                  Sign In
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="register"
-                  className="data-[state=active]:bg-[#1B1B1B] data-[state=active]:text-green-400 data-[state=active]:border-t data-[state=active]:border-x border-green-400/30 rounded-b-none"
+                  value="register" 
+                  className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 data-[state=active]:shadow-sm hover:bg-white/5 transition-colors"
+                  onClick={() => setActiveTab("register")}
                 >
-                  Register
+                  Create Account
                 </TabsTrigger>
               </TabsList>
               
@@ -265,29 +293,64 @@ const Login = () => {
                       </div>
                     </div>
                     
-                    {/* Connect Wallet Button */}
-                    {!isConnected ? (
-                      <Button
-                        onClick={connectWallet}
-                        variant="outline"
-                        size="sm"
-                        className="w-full flex items-center justify-center gap-2 border-none text-green-400 bg-transparent hover:bg-gray-700"
-                      >
-                        <Wallet className="h-4 w-4" />
-                        Connect Wallet
-                      </Button>
-                    ) : (
-                      <span className="w-full text-center text-xs font-mono border border-[rgba(80,252,149,0.4)] text-[rgba(80,252,149,0.8)] rounded-full px-3 py-1">
-                        {account?.slice(0, 6)}...{account?.slice(-4)}
-                      </span>
-                    )}
-                    
-                    <Button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white hover:from-green-500 hover:to-blue-600"
-                      disabled={authState.isLoading}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className={`w-full bg-transparent border ${isConnected ? 'border-green-500/50 text-green-400' : 'border-white/20 text-white'} hover:bg-white/10 hover:text-white mt-4 py-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg group relative overflow-hidden`}
+                      onClick={async () => {
+                        try {
+                          setIsConnecting(true);
+                          const connected = await connectWallet();
+                          if (connected) {
+                            toast({
+                              title: "Wallet Connected",
+                              description: `Connected to ${account?.substring(0, 6)}...${account?.substring(account.length - 4)}`,
+                            });
+                          }
+                        } catch (error: any) {
+                          console.error("Error connecting wallet:", error);
+                          toast({
+                            title: "Connection Error",
+                            description: error.message || "Failed to connect wallet. Please try again.",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setIsConnecting(false);
+                        }
+                      }}
+                      disabled={isConnecting}
                     >
-                      {authState.isLoading ? "Signing in..." : "Sign in"}
+                      {isConnecting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Connecting...</span>
+                        </div>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <Wallet className="h-4 w-4" />
+                          {isConnected ? 'Wallet Connected' : 'Connect Wallet'}
+                        </span>
+                      )}
+                      <span className={`absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-30 transition-opacity ${isConnecting ? 'opacity-30' : ''}`}></span>  
+                    </Button>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg group relative overflow-hidden"
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Connecting...</span>
+                        </div>
+                      ) : (
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          Sign In
+                        </span>
+                      )}
+                      <span className={`absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-30 transition-opacity ${isConnecting ? 'opacity-30' : ''}`}></span>
                     </Button>
                     
                     <div className="mt-4 text-center">

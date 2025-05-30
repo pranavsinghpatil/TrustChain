@@ -364,6 +364,7 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
       return false; // Prevent multiple requests
     }
 
+    // Check if we need to handle extension context invalidation
     if (typeof window.ethereum === 'undefined') {
       const errorMsg = "MetaMask is not installed. Please install MetaMask to use this application.";
       setError(errorMsg);
@@ -383,20 +384,50 @@ const Web3ProviderComponent = ({ children }: Web3ProviderProps) => {
     try {
       console.log('[connectWallet] Requesting accounts directly from ethereum provider');
       
-      // First try the direct ethereum request method which is more reliable for triggering the popup
-      let accounts;
+      // First check if we're in a valid context
       try {
-        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        console.log('[connectWallet] Accounts received:', accounts);
-      } catch (requestError) {
-        console.error('[connectWallet] Direct request failed:', requestError);
+        // Test if we can access ethereum methods
+        await window.ethereum.request({ method: 'eth_accounts' });
         
-        // Fall back to provider method
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-        accounts = await web3Provider.send("eth_requestAccounts", []);
-        console.log('[connectWallet] Accounts from provider:', accounts);
+        // Try the direct ethereum request method which is more reliable for triggering the popup
+        try {
+          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          console.log('[connectWallet] Accounts received:', accounts);
+        } catch (requestError) {
+          console.error('[connectWallet] Direct request failed:', requestError);
+          
+          // Handle extension context invalidation in the fallback as well
+          if (requestError.message && requestError.message.includes('Extension context invalidated')) {
+            console.log('[connectWallet] Extension context invalidated in fallback, reloading page');
+            toast({
+              title: "Wallet Connection",
+              description: "Please refresh the page to reconnect your wallet",
+              variant: "default",
+            });
+            window.location.reload();
+            return false;
+          }
+          
+          // Fall back to provider method
+          const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+          accounts = await web3Provider.send("eth_requestAccounts", []);
+          console.log('[connectWallet] Accounts from provider:', accounts);
+        }
+      } catch (error) {
+        console.error('[connectWallet] Error checking ethereum context:', error);
+        if (error.message && error.message.includes('Extension context invalidated')) {
+          console.log('[connectWallet] Extension context invalidated, reloading page');
+          toast({
+            title: "Wallet Connection",
+            description: "Please refresh the page to reconnect your wallet",
+            variant: "default",
+          });
+          window.location.reload();
+          return false;
+        }
+        throw error;
       }
-
+      
       if (!accounts || accounts.length === 0) {
         const errorMsg = "No accounts found. Please check MetaMask and approve the connection.";
         setError(errorMsg);
