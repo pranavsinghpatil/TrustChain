@@ -1,128 +1,163 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Smart Tender/Contract Management System Using Blockchain</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
- <script LANGUAGE="Javascript" >
-function validate(){
-	var x=document.forms["f1"]["username"].value;
-	var y=document.forms["f1"]["password"].value;
-	var c=document.forms["f1"]["contact"].value;
-	var e=document.forms["f1"]["email"].value;
-	var cname=document.forms["f1"]["cname"].value;
-	var a=document.forms["f1"]["address"].value;
-	if(x == null || x==""){
-		window.alert("Username must be enter");
-		document.f1.username.focus();
-		return false;
-	}
-	if(y == null || y==""){
-		window.alert("Password must be enter");
-		document.f1.password.focus();
-		return false;
-	}
-	if(c == null || c==""){
-		window.alert("Contact No must be enter");
-		document.f1.contact.focus();
-		return false;
-	}
-	if(isNaN(c)){
-		window.alert("Please enter valid contact number");
-		document.f1.contact.focus();
-		return false;
-	}
-	if(e == null || e==""){
-		window.alert("Email ID must be enter");
-		document.f1.email.focus();
-		return false;
-	}
-	var filter = /^([a-zA-Z0-9_\.\-])+\@(gmail+\.)+(com)+$/;
-	if (!filter.test(e)) {
-		window.alert('enter a valid email address');
-		document.f1.email.focus();
-		return false;
-	}
-	if(cname == null || cname==""){
-		window.alert("Company Name must be enter");
-		document.f1.address.focus();
-		return false;
-	}
-	if(a == null || a==""){
-		window.alert("Company Address must be enter");
-		document.f1.address.focus();
-		return false;
-	}
-	return true;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bidder Registration - Smart Contract Management System</title>
+    <link href="{% static 'modern.css' %}" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<script>
+function validate() {
+  const username = document.forms["registerForm"]["username"].value;
+  const password = document.forms["registerForm"]["password"].value;
+  const contact = document.forms["registerForm"]["contact"].value;
+  const email = document.forms["registerForm"]["email"].value;
+  const companyName = document.forms["registerForm"]["cname"].value;
+  const address = document.forms["registerForm"]["address"].value;
+  
+  if (username === null || username === "") {
+    window.alert("Please enter your username");
+    document.registerForm.username.focus();
+    return false;
+  }
+  
+  if (password === null || password === "") {
+    window.alert("Please enter your password");
+    document.registerForm.password.focus();
+    return false;
+  }
+  
+  if (contact === null || contact === "") {
+    window.alert("Please enter your contact number");
+    document.registerForm.contact.focus();
+    return false;
+  }
+  
+  if (isNaN(contact)) {
+    window.alert("Please enter a valid contact number");
+    document.registerForm.contact.focus();
+    return false;
+  }
+  
+  if (email === null || email === "") {
+    window.alert("Please enter your email address");
+    document.registerForm.email.focus();
+    return false;
+  }
+  
+  // Modified email validation to accept common email domains
+  const emailFilter = /^([a-zA-Z0-9_\.-]+)@([a-zA-Z0-9-]+)(\.[a-zA-Z0-9-]+)+$/;
+  if (!emailFilter.test(email)) {
+    window.alert('Please enter a valid email address');
+    document.registerForm.email.focus();
+    return false;
+  }
+  
+  if (companyName === null || companyName === "") {
+    window.alert("Please enter your company name");
+    document.registerForm.cname.focus();
+    return false;
+  }
+  
+  if (address === null || address === "") {
+    window.alert("Please enter your company address");
+    document.registerForm.address.focus();
+    return false;
+  }
+  
+  return true;
 }
-		
-	
-	</script>
+</script>
 </head>
 <body>
 <div id="wrapper">
   <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    <div class="container">
+      <div id="logo">
+        <h1>Smart Tender/Contract Management System</h1>
+        <p>Powered by Blockchain Technology</p>
+      </div>
     </div>
-   
+  </div>
   
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="{% url 'TenderLogin' %}"><i class="fas fa-user-shield"></i> Tender Officer Login</a></li>
+        <li><a href="{% url 'BidderLogin' %}"><i class="fas fa-user"></i> Bidder Login</a></li>
+        <li><a href="{% url 'Register' %}" class="active"><i class="fas fa-user-plus"></i> New Bidder Signup</a></li>
+      </ul>
     </div>
   </div>
-  <div id="menu">
-     <ul>
-      <li><a href="{% url 'index' %}">Home</a></li>
-      <li><a href="{% url 'TenderLogin' %}">Tender Officer Login</a></li>
-	  <li><a href="{% url 'BidderLogin' %}">Bidder Login</a></li>
-      <li><a href="{% url 'Register' %}">New Bidder Signup Here</a></li>
-      
-   </ul>
+  
+  <div id="page">
+    <div class="container">
+      <div class="row">
+        <div class="card" style="max-width: 700px; margin: 0 auto;">
+          <div class="card-header">
+            <h3 class="text-center"><i class="fas fa-user-plus"></i> Register as a Bidder</h3>
+          </div>
+          <div class="card-body">
+            {% if data %}
+              <div class="alert-message mb-3">{{ data|safe }}</div>
+            {% endif %}
+            
+            <form name="registerForm" method="post" action="{% url 'Signup' %}" onsubmit="return validate()">
+              {% csrf_token %}
+              
+              <div class="form-group">
+                <label for="username"><i class="fas fa-user"></i> Username</label>
+                <input type="text" name="username" id="username" class="form-control" placeholder="Choose a username">
+              </div>
+              
+              <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> Password</label>
+                <input type="password" name="password" id="password" class="form-control" placeholder="Choose a password">
+              </div>
+              
+              <div class="form-group">
+                <label for="contact"><i class="fas fa-phone"></i> Contact Number</label>
+                <input type="text" name="contact" id="contact" class="form-control" placeholder="Your contact number">
+              </div>
+              
+              <div class="form-group">
+                <label for="email"><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" name="email" id="email" class="form-control" placeholder="Your email address">
+              </div>
+              
+              <div class="form-group">
+                <label for="cname"><i class="fas fa-building"></i> Company Name</label>
+                <input type="text" name="cname" id="cname" class="form-control" placeholder="Your company name">
+              </div>
+              
+              <div class="form-group">
+                <label for="address"><i class="fas fa-map-marker-alt"></i> Company Address</label>
+                <input type="text" name="address" id="address" class="form-control" placeholder="Your company address">
+              </div>
+              
+              <div class="form-group text-center">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-user-plus"></i> Register
+                </button>
+              </div>
+              
+              <div class="form-group text-center">
+                <p>Already have an account? <a href="{% url 'BidderLogin' %}">Login here</a></p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="entry">
-   <br/><br/><br/>
-	<font size="" color="white"><center>{{ data|safe }}</center></font>
-	 <br>
-	 <center><font size="3" color="white">New Bidder Signup Screen</font></center>
-	<form name="f1" method="post" action={% url 'Signup' %} OnSubmit="return validate()">
-	{% csrf_token %}
-	<br><br>
-	<TABLE align=center width="35%" class="notepad">
-		<TR><TH align="left"><font size="" color="white">Username
-		<TD>&nbsp;&nbsp;<Input type=text name="username" value='' class="form-control" size="30">
-		<div id='nameid'></div>
-		</TD>
-		</TR>
-		
-		<TR><TH align="left"><font size="" color="white">Password
-		<TD>&nbsp;&nbsp;<Input type='password' name="password"  value='' size="30">
-		</TR>
-		
-		<TR><TH align="left"><font size="" color="white">Contact No
-		<TD>&nbsp;&nbsp;<Input type='text' size= "15" name="contact"  value='' size="15">
-		</TR>
-
-		<TR><TH align="left"><font size="" color="white">Email ID
-		<TD>&nbsp;&nbsp;<Input type='text' size="25" name="email"  size="35">
-		</TR>
-
-		<TR><TH align="left"><font size="" color="white">Company&nbsp;Name
-		<TD>&nbsp;&nbsp;<Input type='text' size="35" name="cname" size="40">
-		</TR>
-
-		<TR><TH align="left"><font size="" color="white">Company&nbsp;Address
-		<TD>&nbsp;&nbsp;<Input type='text' size="50" name="address"  size="40">
-		</TR>
-
-		  <TR>
-				 <TD></TD>
-			<TD>	
-		  <input type="submit" value="Register">
-		 
-		  </TABLE>
-		
-</form>
-</div>
+  
+  <div id="footer">
+    <div class="container">
+      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
+    </div>
+  </div>
 
 </body>
 </html>

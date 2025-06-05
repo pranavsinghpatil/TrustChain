@@ -1,0 +1,108 @@
+{% load static %}
+<html>
+<head>
+<title>Smart Tender/Contract Management System Using Blockchain</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+ <script LANGUAGE="Javascript" >
+function validate(){
+	var x=document.forms["f1"]["t1"].value;
+	var y=document.forms["f1"]["t2"].value;
+	var open=document.forms["f1"]["t3"].value;
+	var close=document.forms["f1"]["t4"].value;
+	var amt=document.forms["f1"]["t5"].value;
+	if(x == null || x==""){
+		window.alert("tender title must be enter");
+		document.f1.t1.focus();
+		return false;
+	}
+	if(y == null || y==""){
+		window.alert("Description must be enter");
+		document.f1.t2.focus();
+		return false;
+	}
+	if(open == null || open==""){
+		window.alert("Open date must be choosen");
+		document.f1.t3.focus();
+		return false;
+	}
+	if(close == null || close==""){
+		window.alert("Close must be choosen");
+		document.f1.t4.focus();
+		return false;
+	}
+	if(amt == null || amt==""){
+		window.alert("Amount must be enter");
+		document.f1.t5.focus();
+		return false;
+	}
+	return true;
+}
+</script>
+<script language="javascript" type="text/javascript" src="{% static 'datetimepicker.js' %}">
+</script>
+
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div id="logo">
+      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
+	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    </div>
+   
+  
+    </div>
+  </div>
+  <div id="menu">
+    <ul>
+      <li><a href="{% url 'CreateTender' %}">Create Tender Notification</a></li>
+      <li><a href="{% url 'EvaluateTender' %}">Evaluate Tender & Negotiation</a></li>
+	  <li><a href="{% url 'WinnerSelection' %}">Winner Selection</a></li>
+      <li><a href="{% url 'index' %}">Logout</a></li>
+      
+   </ul>
+  </div>
+  <div class="entry">
+   <br/><br/><br/>
+	<font size="" color="white"><center>{{ data|safe }}</center></font>
+	 <br>
+	 <center><font size="3" color="white">Create Tender Screen</font></center>
+	<form name="f1" method="post" action={% url 'CreateTenderAction' %} OnSubmit="return validate()">
+	{% csrf_token %}
+	<br><br>
+	<TABLE align=center width="35%" class="notepad">
+		<TR><TH align="left"><font size="" color="white">Tender&nbsp;Title
+		<TD><Input type=text name="t1" size="40"></div>
+		</TD>
+		</TR>
+		
+		<TR><TH align="left"><font size="" color="white">Tender&nbsp;Description
+		<TD>&nbsp;&nbsp;<Input type='text' name="t2" size="80">
+		</TR>
+
+		<tr><TH><font size="" color="white">Open</td><td>
+<input name="t3" type="Text" id="demo" maxlength="25" size="20" class="c2" ><a href="javascript:NewCal('demo','ddmmyyyy',false,24)"><img src="{% static 'cal.gif' %}" width="16" height="16" border="0" alt="Pick a date"></a>
+	  		<span class="descriptions"></span>
+</td></tr>
+
+<tr><TH><font size="" color="white">Close</td><td>
+<input name="t4" type="Text" id="demo1" maxlength="25" size="20" class="c2" ><a href="javascript:NewCal('demo1','ddmmyyyy',false,24)"><img src="{% static 'cal.gif' %}" width="16" height="16" border="0" alt="Pick a date"></a>
+	  		<span class="descriptions"></span>
+</td></tr>
+<TR><TH align="left"><font size="" color="white">Tender&nbsp;Amount
+		<TD>&nbsp;&nbsp;<Input type='text' name="t5" size="30">
+		</TR>
+
+		  <TR>
+				 <TD></TD>
+			<TD>	
+		  <input type="submit" value="Create Tender">
+		 
+		  </TABLE>
+		
+</form>
+</div>
+
+</body>
+</html>

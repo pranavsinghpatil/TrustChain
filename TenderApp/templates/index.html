@@ -1,54 +1,130 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Blockchain Based E-Tendering System</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustChain - Blockchain Tender Management</title>
+    <link href="{% static 'dark-theme.css' %}" rel="stylesheet" type="text/css">
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
 <div id="wrapper">
   <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
-    </div>
-   
-  
+    <div class="container">
+      <div id="logo">
+        <h1>Smart Tender/Contract Management System</h1>
+        <p>Powered by Blockchain Technology</p>
+      </div>
     </div>
   </div>
+  
   <div id="menu">
-    <ul>
-      <li><a href="{% url 'index' %}">Home</a></li>
-      <li><a href="{% url 'TenderLogin' %}">Tender Officer Login</a></li>
-	  <li><a href="{% url 'BidderLogin' %}">Bidder Login</a></li>
-      <li><a href="{% url 'Register' %}">New Bidder Signup Here</a></li>
-      
-   </ul>
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="{% url 'TenderLogin' %}"><i class="fas fa-user-shield"></i> Tender Officer Login</a></li>
+        <li><a href="{% url 'BidderLogin' %}"><i class="fas fa-user"></i> Bidder Login</a></li>
+        <li><a href="{% url 'Register' %}"><i class="fas fa-user-plus"></i> New Bidder Signup</a></li>
+      </ul>
+    </div>
   </div>
   <div id="page">
-   <div id="content">
-      <div class="post">
-        <div class="title">
-          <h2>Blockchain Based Tendering System </h2>
-         </div>
-        <div class="entry">
-		 <br/><br/><br/>
-{{ data }}
-	 
-	 <br>
-          <p><img src="{% static 'images/images.jpg' %}" alt="" width="890" height="200" class="left" /><p></p><font size="4" color="white">
-          <center><br/>About Tender System </center></font></p>
-          <p><font size="" color="white">The main objective of this project is To ensure the complete tender management process is
-		  secure and efficient we make use of block chain technology to solve tender management issues. </p>
+    <div class="container">
+      <div id="content" class="animated">
+        <div class="post">
+          <div class="title">
+            <span class="blockchain-badge"><i class="fas fa-cube"></i> Blockchain Powered</span>
+            <h2>Smart Tender Management System</h2>
           </div>
-        
+          <div class="entry">
+            {% if data %}
+              <div class="alert-message">{{ data }}</div>
+            {% endif %}
+            
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6">
+                    <img src="{% static 'images/images.jpg' %}" alt="Blockchain Technology" class="img-fluid rounded" style="width: 100%; max-height: 250px; object-fit: cover;">
+                  </div>
+                  <div class="col-md-6">
+                    <h3 class="mb-3">About Our Tender System</h3>
+                    <p>The Smart Tender/Contract Management System leverages blockchain technology to ensure a secure, transparent, and efficient tender management process.</p>
+                    <p>Our platform provides a trustworthy environment for both Tender Officers and Bidders, eliminating fraud and ensuring fairness in the tendering process.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <div class="card tender-card">
+                  <div class="card-body">
+                    <i class="fas fa-shield-alt fa-3x mb-3" style="color: var(--secondary);"></i>
+                    <h3>Enhanced Security</h3>
+                    <p>All tender data is securely stored on a blockchain, ensuring immutability and preventing unauthorized alterations.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card tender-card">
+                  <div class="card-body">
+                    <i class="fas fa-eye fa-3x mb-3" style="color: var(--secondary);"></i>
+                    <h3>Full Transparency</h3>
+                    <p>Every action in the tender process is recorded on the blockchain, providing a transparent audit trail for all stakeholders.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card tender-card">
+                  <div class="card-body">
+                    <i class="fas fa-handshake fa-3x mb-3" style="color: var(--secondary);"></i>
+                    <h3>Fair Bidding</h3>
+                    <p>Our system ensures a level playing field for all bidders with transparent evaluation criteria and secure bidding process.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-     
-       
-       
     </div>
-    
   </div>
 
+  <div id="footer">
+    <div class="container">
+      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
+      <div class="social-links">
+        <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add JavaScript for interactive features -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add animation classes to elements when they come into view
+      const animateOnScroll = function() {
+        const elements = document.querySelectorAll('.card, .post');
+        elements.forEach(element => {
+          const position = element.getBoundingClientRect();
+          // If element is in viewport
+          if(position.top < window.innerHeight && position.bottom >= 0) {
+            element.classList.add('animated');
+          }
+        });
+      };
+      
+      // Run once on page load
+      animateOnScroll();
+      
+      // Run on scroll
+      window.addEventListener('scroll', animateOnScroll);
+    });
+  </script>
 </body>
 </html>

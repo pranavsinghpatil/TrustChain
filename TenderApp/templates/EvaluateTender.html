@@ -1,51 +1,62 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Smart Tender/Contract Management System Using Blockchain</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluate Tenders - Smart Contract Management System</title>
+    <link href="{% static 'modern.css' %}" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
 <div id="wrapper">
   <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
-    </div>
-   
-  
-    </div>
-  </div>
-  <div id="menu">
-    <ul>
-      <li><a href="{% url 'CreateTender' %}">Create Tender Notification</a></li>
-      <li><a href="{% url 'EvaluateTender' %}">Evaluate Tender & Negotiation</a></li>
-	  <li><a href="{% url 'WinnerSelection' %}">Winner Selection</a></li>
-      <li><a href="{% url 'index' %}">Logout</a></li>
-      
-   </ul>
-  </div>
-  <div id="page">
-   <div id="content">
-      <div class="post">
-        <div class="title">
-          <h2>Blockchain Based E-Tendering System</h2>
-         </div>
-        <div class="entry">
-		 <br/><br/><br/>
-<font size="" color="white"><center>{{ data|safe }}</center></font>
-	 
-	 <br>
-          <p><img src="{% static 'images/images.jpg' %}" alt="" width="890" height="200" class="left" /><p></p><font size="4" color="white">
-          
-          </div>
-        
+    <div class="container">
+      <div id="logo">
+        <h1>Smart Tender/Contract Management System</h1>
+        <p>Powered by Blockchain Technology</p>
       </div>
-     
-       
-       
     </div>
-    
+  </div>
+  
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-medical"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}" class="active"><i class="fas fa-balance-scale"></i> Evaluate Tenders</a></li>
+        <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+  
+  <div id="page">
+    <div class="container">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="text-center"><i class="fas fa-balance-scale"></i> Evaluate Tenders</h3>
+        </div>
+        <div class="card-body">
+          {% if data %}
+            <div class="alert-message mb-3">{{ data|safe }}</div>
+          {% endif %}
+          
+          <div class="tender-showcase">
+            <img src="{% static 'images/images.jpg' %}" alt="Blockchain Tender" class="img-fluid mb-4">
+            <div class="blockchain-stats">
+              <h4><i class="fas fa-shield-alt"></i> Secured by Blockchain Technology</h4>
+              <p>All tender evaluations are securely recorded on the blockchain, ensuring transparency and immutability of the tender process.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="footer">
+    <div class="container">
+      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
+    </div>
   </div>
 
 </body>

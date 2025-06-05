@@ -1,108 +1,157 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Smart Tender/Contract Management System Using Blockchain</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
- <script LANGUAGE="Javascript" >
-function validate(){
-	var x=document.forms["f1"]["t1"].value;
-	var y=document.forms["f1"]["t2"].value;
-	var open=document.forms["f1"]["t3"].value;
-	var close=document.forms["f1"]["t4"].value;
-	var amt=document.forms["f1"]["t5"].value;
-	if(x == null || x==""){
-		window.alert("tender title must be enter");
-		document.f1.t1.focus();
-		return false;
-	}
-	if(y == null || y==""){
-		window.alert("Description must be enter");
-		document.f1.t2.focus();
-		return false;
-	}
-	if(open == null || open==""){
-		window.alert("Open date must be choosen");
-		document.f1.t3.focus();
-		return false;
-	}
-	if(close == null || close==""){
-		window.alert("Close must be choosen");
-		document.f1.t4.focus();
-		return false;
-	}
-	if(amt == null || amt==""){
-		window.alert("Amount must be enter");
-		document.f1.t5.focus();
-		return false;
-	}
-	return true;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Tender - Smart Contract Management System</title>
+    <link href="{% static 'modern.css' %}" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<script>
+function validate() {
+  const title = document.forms["tenderForm"]["t1"].value;
+  const description = document.forms["tenderForm"]["t2"].value;
+  const openDate = document.forms["tenderForm"]["t3"].value;
+  const closeDate = document.forms["tenderForm"]["t4"].value;
+  const amount = document.forms["tenderForm"]["t5"].value;
+  
+  if (title === null || title === "") {
+    window.alert("Please enter the tender title");
+    document.tenderForm.tenderTitle.focus();
+    return false;
+  }
+  
+  if (description === null || description === "") {
+    window.alert("Please enter the tender description");
+    document.tenderForm.tenderDescription.focus();
+    return false;
+  }
+  
+  if (openDate === null || openDate === "") {
+    window.alert("Please select the open date");
+    document.tenderForm.openDate.focus();
+    return false;
+  }
+  
+  if (closeDate === null || closeDate === "") {
+    window.alert("Please select the close date");
+    document.tenderForm.closeDate.focus();
+    return false;
+  }
+  
+  if (amount === null || amount === "") {
+    window.alert("Please enter the tender amount");
+    document.tenderForm.tenderAmount.focus();
+    return false;
+  }
+  
+  return true;
 }
 </script>
-<script language="javascript" type="text/javascript" src="{% static 'datetimepicker.js' %}">
-</script>
+<!-- Keep the date picker script -->
+<script type="text/javascript" src="{% static 'datetimepicker.js' %}"></script>
 
 </head>
 <body>
 <div id="wrapper">
   <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    <div class="container">
+      <div id="logo">
+        <h1>Smart Tender/Contract Management System</h1>
+        <p>Powered by Blockchain Technology</p>
+      </div>
     </div>
-   
+  </div>
   
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'CreateTender' %}" class="active"><i class="fas fa-file-medical"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-balance-scale"></i> Evaluate Tenders</a></li>
+        <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
     </div>
   </div>
-  <div id="menu">
-    <ul>
-      <li><a href="{% url 'CreateTender' %}">Create Tender Notification</a></li>
-      <li><a href="{% url 'EvaluateTender' %}">Evaluate Tender & Negotiation</a></li>
-	  <li><a href="{% url 'WinnerSelection' %}">Winner Selection</a></li>
-      <li><a href="{% url 'index' %}">Logout</a></li>
-      
-   </ul>
+  
+  <div id="page">
+    <div class="container">
+      <div class="row">
+        <div class="card" style="max-width: 800px; margin: 0 auto;">
+          <div class="card-header">
+            <h3 class="text-center"><i class="fas fa-file-medical"></i> Create New Tender</h3>
+          </div>
+          <div class="card-body">
+            {% if data %}
+              <div class="alert-message mb-3">{{ data|safe }}</div>
+            {% endif %}
+            
+            <form name="tenderForm" method="post" action="{% url 'CreateTenderAction' %}" onsubmit="return validate()">
+              {% csrf_token %}
+              
+              <div class="form-group">
+                <label for="t1"><i class="fas fa-heading"></i> Tender Title</label>
+                <input type="text" name="t1" id="t1" class="form-control" placeholder="Enter tender title">
+              </div>
+              
+              <div class="form-group">
+                <label for="t2"><i class="fas fa-align-left"></i> Tender Description</label>
+                <textarea name="t2" id="t2" class="form-control" rows="3" placeholder="Enter detailed description of the tender"></textarea>
+              </div>
+              
+              <div class="form-group row">
+                <div class="col-md-6">
+                  <label for="t3"><i class="fas fa-calendar-plus"></i> Open Date</label>
+                  <div class="input-group">
+                    <input type="text" name="t3" id="demo" class="form-control" placeholder="Select open date" maxlength="25">
+                    <div class="input-group-append">
+                      <a href="javascript:NewCal('demo','ddmmyyyy',false,24)" class="btn-outline-secondary">
+                        <i class="fas fa-calendar"></i>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="t4"><i class="fas fa-calendar-times"></i> Close Date</label>
+                  <div class="input-group">
+                    <input type="text" name="t4" id="demo1" class="form-control" placeholder="Select close date" maxlength="25">
+                    <div class="input-group-append">
+                      <a href="javascript:NewCal('demo1','ddmmyyyy',false,24)" class="btn-outline-secondary">
+                        <i class="fas fa-calendar"></i>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="t5"><i class="fas fa-coins"></i> Tender Amount</label>
+                <div class="input-group">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">₹</span>
+                  </div>
+                  <input type="text" name="t5" id="t5" class="form-control" placeholder="Enter tender amount">
+                </div>
+              </div>
+              
+              <div class="form-group text-center mt-4">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-plus-circle"></i> Create Tender
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="entry">
-   <br/><br/><br/>
-	<font size="" color="white"><center>{{ data|safe }}</center></font>
-	 <br>
-	 <center><font size="3" color="white">Create Tender Screen</font></center>
-	<form name="f1" method="post" action={% url 'CreateTenderAction' %} OnSubmit="return validate()">
-	{% csrf_token %}
-	<br><br>
-	<TABLE align=center width="35%" class="notepad">
-		<TR><TH align="left"><font size="" color="white">Tender&nbsp;Title
-		<TD><Input type=text name="t1" size="40"></div>
-		</TD>
-		</TR>
-		
-		<TR><TH align="left"><font size="" color="white">Tender&nbsp;Description
-		<TD>&nbsp;&nbsp;<Input type='text' name="t2" size="80">
-		</TR>
-
-		<tr><TH><font size="" color="white">Open</td><td>
-<input name="t3" type="Text" id="demo" maxlength="25" size="20" class="c2" ><a href="javascript:NewCal('demo','ddmmyyyy',false,24)"><img src="{% static 'cal.gif' %}" width="16" height="16" border="0" alt="Pick a date"></a>
-	  		<span class="descriptions"></span>
-</td></tr>
-
-<tr><TH><font size="" color="white">Close</td><td>
-<input name="t4" type="Text" id="demo1" maxlength="25" size="20" class="c2" ><a href="javascript:NewCal('demo1','ddmmyyyy',false,24)"><img src="{% static 'cal.gif' %}" width="16" height="16" border="0" alt="Pick a date"></a>
-	  		<span class="descriptions"></span>
-</td></tr>
-<TR><TH align="left"><font size="" color="white">Tender&nbsp;Amount
-		<TD>&nbsp;&nbsp;<Input type='text' name="t5" size="30">
-		</TR>
-
-		  <TR>
-				 <TD></TD>
-			<TD>	
-		  <input type="submit" value="Create Tender">
-		 
-		  </TABLE>
-		
-</form>
-</div>
+  
+  <div id="footer">
+    <div class="container">
+      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
+    </div>
+  </div>
 
 </body>
 </html>

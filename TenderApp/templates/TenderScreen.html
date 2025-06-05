@@ -1,52 +1,79 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Smart Tender/Contract Management System Using Blockchain</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustChain - Tender Officer Dashboard</title>
+    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-<div id="wrapper">
-  <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
-    </div>
-   
-  
-    </div>
-  </div>
-  <div id="menu">
-    <ul>
-      <li><a href="{% url 'CreateTender' %}">Create Tender Notification</a></li>
-      <li><a href="{% url 'EvaluateTender' %}">Evaluate Tender & Negotiation</a></li>
-	  <li><a href="{% url 'WinnerSelection' %}">Winner Selection</a></li>
-      <li><a href="{% url 'index' %}">Logout</a></li>
-      
-   </ul>
-  </div>
-  <div id="page">
-   <div id="content">
-      <div class="post">
-        <div class="title">
-          <h2>Smart Tender/Contract Management System Using Blockchain</h2>
-         </div>
-        <div class="entry">
-		 <br/>
-<font size="" color="white"><center>{{ data }}</center>
-	 
-	
-          <p><img src="{% static 'images/images.jpg' %}" alt="" width="890" height="200" class="left" /><p></p><font size="4" color="white">
-          
-          </div>
-        
-      </div>
-     
-       
-       
-    </div>
-    
-  </div>
+<body class="bg-dark">
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="container py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-gradient p-2 rounded">
+                        <i class="fas fa-handshake text-black"></i>
+                    </div>
+                    <h1 class="text-primary text-2xl font-bold">TrustChain</h1>
+                </div>
+                <div class="flex gap-4">
+                    <a href="{% url 'CreateTender' %}" class="nav-link">
+                        <i class="fas fa-file-medical"></i> Create Tender
+                    </a>
+                    <a href="{% url 'EvaluateTender' %}" class="nav-link">
+                        <i class="fas fa-balance-scale"></i> Evaluate Tenders
+                    </a>
+                    <a href="{% url 'WinnerSelection' %}" class="nav-link">
+                        <i class="fas fa-trophy"></i> Winner Selection
+                    </a>
+                    <a href="{% url 'index' %}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
+    <!-- Main Content -->
+    <main class="container py-8">
+        <div class="glass-card animate-fadeIn">
+            <div class="flex items-center gap-2 mb-6">
+                <i class="fas fa-user-shield text-primary text-2xl"></i>
+                <h2 class="text-primary text-2xl font-bold">Tender Officer Dashboard</h2>
+            </div>
+
+            {% if data %}
+            <div class="glass-card mb-6">
+                {{ data }}
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card">
+                    <img src="{% static 'images/images.jpg' %}" alt="Blockchain Tender" class="w-full rounded mb-4">
+                </div>
+                <div class="glass-card">
+                    <h3 class="text-primary text-xl font-bold mb-4">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        Secured by Blockchain
+                    </h3>
+                    <p class="text-muted mb-4">
+                        All tender operations are securely recorded on the blockchain, ensuring transparency 
+                        and immutability of the tender process.
+                    </p>
+                    <p class="text-muted">
+                        Use the navigation menu above to create new tenders, evaluate submissions, 
+                        and select winning bids.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    {% include 'includes/footer.html' %}
 </body>
 </html>

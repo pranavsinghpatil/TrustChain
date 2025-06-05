@@ -1,0 +1,86 @@
+<!-- TrustChain Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <!-- Company Info -->
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <div class="bg-gradient p-2 rounded">
+            <i class="fas fa-handshake text-black"></i>
+          </div>
+          <h3 class="text-primary text-xl font-bold">TrustChain</h3>
+        </div>
+        <p class="text-muted mb-4">
+          Revolutionizing government procurement through blockchain technology.
+          Ensuring transparency, security, and efficiency.
+        </p>
+      </div>
+
+      <!-- Quick Links -->
+      <div>
+        <h4 class="footer-title">Quick Links</h4>
+        <ul class="space-y-2">
+          <li><a href="{% url 'home' %}" class="footer-link">Home</a></li>
+          <li><a href="{% url 'tender_login' %}" class="footer-link">Tender Login</a></li>
+          <li><a href="{% url 'bidder_login' %}" class="footer-link">Bidder Login</a></li>
+          <li><a href="#" class="footer-link">Documentation</a></li>
+          <li><a href="#" class="footer-link">Support</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact Us -->
+      <div>
+        <h4 class="footer-title">Contact Us</h4>
+        <ul class="space-y-2">
+          <li class="flex items-center gap-2">
+            <i class="fas fa-envelope text-primary"></i>
+            <a href="mailto:contact@trustchain.gov" class="footer-link">contact@trustchain.gov</a>
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fas fa-phone text-primary"></i>
+            <a href="tel:+1234567890" class="footer-link">+1 (234) 567-890</a>
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fas fa-map-marker-alt text-primary"></i>
+            <span class="text-muted">Government Technology Center<br>New Delhi, India</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Connect With Us -->
+      <div>
+        <h4 class="footer-title">Connect With Us</h4>
+        <div class="social-links mb-4">
+          <a href="#" class="social-link twitter" aria-label="Twitter">
+            <i class="fab fa-twitter"></i>
+          </a>
+          <a href="#" class="social-link github" aria-label="GitHub">
+            <i class="fab fa-github"></i>
+          </a>
+          <a href="#" class="social-link linkedin" aria-label="LinkedIn">
+            <i class="fab fa-linkedin"></i>
+          </a>
+          <a href="#" class="social-link instagram" aria-label="Instagram">
+            <i class="fab fa-instagram"></i>
+          </a>
+        </div>
+        <div class="github-stats bg-dark p-3 rounded">
+          <a href="https://github.com/trustchain/tender" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-primary hover:text-primary-light">
+            <i class="fab fa-github"></i>
+            <span>Star us on GitHub</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copyright -->
+    <div class="border-t border-primary mt-8 pt-8 text-center text-muted">
+      <p>&copy; {% now "Y" %} TrustChain. All rights reserved.</p>
+      <p class="mt-2">
+        <a href="#" class="footer-link">Privacy Policy</a>
+        <span class="mx-2">•</span>
+        <a href="#" class="footer-link">Terms of Service</a>
+      </p>
+    </div>
+  </div>
+</footer>

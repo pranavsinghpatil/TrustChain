@@ -1,0 +1,52 @@
+{% load static %}
+<html>
+<head>
+<title>Smart Tender/Contract Management System Using Blockchain</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div id="logo">
+      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
+	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
+    </div>
+   
+  
+    </div>
+  </div>
+  <div id="menu">
+    <ul>
+      <li><a href="{% url 'BidTender' %}">Bid Tender</a></li>
+      <li><a href="{% url 'ViewTender' %}">View Tender Status</a></li>
+	  <li><a href="{% url 'index' %}">Logout</a></li>
+      
+   </ul>
+  </div>
+  <div id="page">
+   <div id="content">
+      <div class="post">
+        <div class="title">
+          <h2>Smart Tender/Contract Management System Using Blockchain</h2>
+         </div>
+        <div class="entry">
+		 <br/><br/><br/>
+	 
+	 <br>
+          <p><img src="{% static 'images/images.jpg' %}" alt="" width="890" height="200" class="left" /><p></p><font size="4" color="white">
+
+		  {{ data|safe }}
+          
+          </div>
+        
+      </div>
+     
+       
+       
+    </div>
+    
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,549 @@
+/* Modern UI for Blockchain Tender System */
+:root {
+  --primary: #2c3e50;
+  --secondary: #3498db;
+  --accent: #e74c3c;
+  --success: #2ecc71;
+  --light: #ecf0f1;
+  --dark: #2c3e50;
+  --text-light: #f5f5f5;
+  --text-dark: #34495e;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-light);
+  line-height: 1.6;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--light);
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+h2:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--secondary);
+}
+
+p {
+  margin-bottom: 1.5rem;
+  line-height: 1.8;
+}
+
+a {
+  color: var(--secondary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* Layout */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+/* Header */
+#wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#header {
+  padding: 1.5rem 0;
+  background: rgba(26, 37, 47, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#logo {
+  text-align: center;
+  padding: 0 20px;
+}
+
+#logo h1 {
+  font-size: 2.2rem;
+  margin: 0;
+  background: linear-gradient(to right, #3498db, #e74c3c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+#logo p {
+  color: var(--light);
+  opacity: 0.8;
+}
+
+/* Navigation */
+#menu {
+  background: rgba(52, 73, 94, 0.95);
+  padding: 0.8rem 0;
+  margin-bottom: 2rem;
+  box-shadow: var(--box-shadow);
+}
+
+#menu ul {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+#menu li {
+  margin: 0 5px;
+}
+
+#menu a {
+  display: block;
+  padding: 10px 20px;
+  color: var(--light);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+#menu a:hover {
+  background: var(--secondary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Page content */
+#page {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+#content {
+  width: 100%;
+}
+
+.post {
+  background: rgba(44, 62, 80, 0.7);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--box-shadow);
+  transition: var(--transition);
+}
+
+.post:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.title {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(236, 240, 241, 0.1);
+  padding-bottom: 1rem;
+}
+
+.title h2 {
+  color: var(--secondary);
+}
+
+.entry {
+  padding-top: 1rem;
+}
+
+/* Forms */
+form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px solid rgba(236, 240, 241, 0.3);
+  border-radius: var(--border-radius);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-light);
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+button,
+input[type="submit"] {
+  background: var(--secondary);
+  border: none;
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: var(--transition);
+  box-shadow: var(--box-shadow);
+}
+
+button:hover,
+input[type="submit"]:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid rgba(236, 240, 241, 0.1);
+}
+
+th {
+  background: rgba(52, 73, 94, 0.8);
+  color: var(--text-light);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Card UI */
+.card {
+  background: rgba(44, 62, 80, 0.7);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  box-shadow: var(--box-shadow);
+}
+
+.card-header {
+  padding: 1.5rem;
+  background: rgba(52, 73, 94, 0.8);
+  border-bottom: 1px solid rgba(236, 240, 241, 0.1);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-footer {
+  padding: 1rem 1.5rem;
+  background: rgba(52, 73, 94, 0.5);
+  border-top: 1px solid rgba(236, 240, 241, 0.1);
+}
+
+/* Tender-specific styling */
+.tender-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: var(--transition);
+}
+
+.tender-card:hover {
+  transform: translateY(-5px);
+}
+
+.tender-header {
+  color: var(--secondary);
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tender-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: rgba(236, 240, 241, 0.6);
+}
+
+.tender-action {
+  margin-top: auto;
+  text-align: right;
+}
+
+.tender-amount {
+  font-size: 1.5rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* Blockchain visualization */
+.blockchain-block {
+  background: rgba(52, 73, 94, 0.8);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.blockchain-block::after {
+  content: '↓';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--secondary);
+  font-size: 1.5rem;
+}
+
+.blockchain-block:last-child::after {
+  display: none;
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(236, 240, 241, 0.1);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.block-hash {
+  font-family: monospace;
+  word-break: break-all;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+/* Utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-3 {
+  margin-top: 1.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 1.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 30px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-primary {
+  background: var(--secondary);
+  color: white;
+}
+
+.badge-success {
+  background: var(--success);
+  color: white;
+}
+
+.badge-danger {
+  background: var(--accent);
+  color: white;
+}
+
+/* Footer */
+#footer {
+  background: rgba(26, 37, 47, 0.9);
+  padding: 1.5rem 0;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+#footer p {
+  margin: 0;
+  color: rgba(236, 240, 241, 0.6);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animated {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  #menu ul {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  #menu li {
+    margin: 5px 0;
+  }
+  
+  .title h2 {
+    font-size: 1.5rem;
+  }
+  
+  #logo h1 {
+    font-size: 1.8rem;
+  }
+}
+
+/* Custom Classes for Blockchain Tender System */
+.blockchain-badge {
+  background: linear-gradient(to right, #3498db, #e74c3c);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(236, 240, 241, 0.3);
+  border-radius: 50%;
+  border-top: 4px solid var(--secondary);
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Override old styles */
+.notepad {
+  background: rgba(44, 62, 80, 0.7);
+  border-radius: var(--border-radius);
+  border: none;
+  box-shadow: var(--box-shadow);
+  width: 100%;
+  max-width: 500px;
+}
+
+marquee {
+  display: none; /* Hide outdated marquee tags */
+}
+
+/* Custom modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+}
+
+.modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: var(--dark);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  max-width: 500px;
+  width: 100%;
+  transform: translateY(-20px);
+  transition: all 0.3s;
+}
+
+.modal.show .modal-content {
+  transform: translateY(0);
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.5rem;
+  cursor: pointer;
+}

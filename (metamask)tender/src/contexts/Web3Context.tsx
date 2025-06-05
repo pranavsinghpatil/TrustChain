@@ -71,11 +71,28 @@ export const USER_AUTH_ABI = [
   'function users(address) view returns (string name, string email, uint256 createdAt)'
 ];
 
-// Contract Addresses
+// Contract Addresses - Using actual hardhat test network addresses
 export const CONTRACT_ADDRESSES = {
-  TENDER_MANAGEMENT: process.env.NEXT_PUBLIC_TENDER_CONTRACT_ADDRESS || '0x1234...',
-  OFFICER_MANAGEMENT: process.env.NEXT_PUBLIC_OFFICER_CONTRACT_ADDRESS || '0x5678...',
-  USER_AUTH: process.env.NEXT_PUBLIC_USER_AUTH_ADDRESS || '0x9abc...',
+  TENDER_MANAGEMENT: process.env.NEXT_PUBLIC_TENDER_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+  OFFICER_MANAGEMENT: process.env.NEXT_PUBLIC_OFFICER_CONTRACT_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+  USER_AUTH: process.env.NEXT_PUBLIC_USER_AUTH_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+};
+
+// Flag to force development mode (set to false to use real blockchain interactions)
+const FORCE_DEV_MODE = false;
+
+// Network configuration
+const REQUIRED_CHAIN_ID = 31337; // Hardhat local network
+const NETWORK_CONFIG = {
+  chainId: `0x${REQUIRED_CHAIN_ID.toString(16)}`, // '0x7A69' for Hardhat
+  chainName: 'Hardhat Local Network',
+  nativeCurrency: {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18
+  },
+  rpcUrls: ['http://localhost:8545'],
+  blockExplorerUrls: []
 };
 
 // Local storage keys
@@ -279,50 +296,9 @@ export interface Web3ContextType {
 }
 
 // Create the context with default values
-const Web3Context = createContext<Web3ContextType>({
-  account: null,
-  isConnected: false,
-  isLoading: true,
-  error: null,
-  networkName: null,
-  chainId: null,
-  isCorrectNetwork: false,
-  provider: null,
-  signer: null,
-  tenderContract: null,
-  officerContract: null,
-  userAuthContract: null,
-  tenders: [],
-  officers: [],
-  currentTender: null,
-  currentOfficer: null,
-  isOfficer: false,
-  connectWallet: async () => false,
-  disconnectWallet: async () => {},
-  switchNetwork: async () => false,
-  fetchTenders: async () => [],
-  fetchTenderById: async () => null,
-  createTender: async () => '',
-  updateTender: async () => false,
-  closeTender: async () => false,
-  awardTender: async () => false,
-  disputeTender: async () => false,
-  deleteTender: async () => false,
-  createBid: async () => false,
-  updateBid: async () => false,
-  withdrawBid: async () => false,
-  fetchBidsForTender: async () => [],
-  addOfficer: async () => false,
-  updateOfficer: async () => false,
-  removeOfficer: async () => false,
-  fetchOfficer: async () => null,
-  fetchAllOfficers: async () => [],
-  formatDate: () => '',
-  parseBigNumber: (value: BigNumber) => value.toString(),
-  parseTimestamp: (timestamp: BigNumber) => new Date(timestamp.toNumber() * 1000),
-});
+const Web3Context = createContext<Web3ContextType | null>(null);
 
-// Context hooks for accessing Web3 context
+// Custom hook to use the Web3 context
 export const useWeb3Context = () => {
   const context = useContext(Web3Context);
   if (!context) {
@@ -330,9 +306,6 @@ export const useWeb3Context = () => {
   }
   return context;
 };
-
-// Alias for backward compatibility - this is the hook imported by AuthContext
-export const useWeb3 = useWeb3Context;
 
 // Main provider component
 export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -505,14 +478,28 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         // Safely access chainId property
         chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+        console.log('[connectWallet] Current chain ID:', chainIdHex, 'Required:', `0x${REQUIRED_CHAIN_ID.toString(16)}`);
+        
+        // Check if we're on the correct network
+        const currentChainId = parseInt(chainIdHex, 16);
+        setIsCorrectNetwork(currentChainId === REQUIRED_CHAIN_ID);
+        
+        if (currentChainId !== REQUIRED_CHAIN_ID) {
+          console.log('[connectWallet] Wrong network detected. Current:', currentChainId, 'Required:', REQUIRED_CHAIN_ID);
+          toast({
+            title: 'Wrong Network',
+            description: `Please switch to Hardhat network (Chain ID: ${REQUIRED_CHAIN_ID})`,
+            variant: 'destructive',
+          });
+        }
       } catch (chainError) {
         console.warn('Error getting chain ID:', chainError);
       }
       
       // Create provider with ENS disabled to prevent errors
       const web3Provider = new providers.Web3Provider(window.ethereum, {
-        name: 'custom-network',
-        chainId: parseInt(chainIdHex, 16)
+        name: 'Hardhat-Network',
+        chainId: REQUIRED_CHAIN_ID
       });
       
       const signer = web3Provider.getSigner();
@@ -531,8 +518,8 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       let officerContractInstance = null;
       let userAuthContractInstance = null;
       
-      // Check if we're in development mode (using placeholder addresses)
-      const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
+      // Check if we're in development mode
+      const isDev = FORCE_DEV_MODE || false; // Set to false to always use blockchain
       
       if (!isDev) {
         // Only try to connect to real contracts if not in development mode
@@ -597,26 +584,300 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOfficerState(false);
   }, []);
 
-  const switchNetwork = useCallback(async () => {
-    if (!window.ethereum) return false;
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${TARGET_NETWORK.chainId.toString(16)}` }],
+  // Network switching function
+  const switchNetwork = useCallback(async (): Promise<boolean> => {
+    console.log('[switchNetwork] Attempting to switch to Hardhat network');
+    if (!window.ethereum) {
+      console.error('[switchNetwork] No ethereum provider found');
+      toast({
+        title: 'No Ethereum Provider',
+        description: 'MetaMask not detected. Please install MetaMask extension.',
+        variant: 'destructive',
       });
-      return true;
-    } catch (switchError) {
-      console.error('Error switching network:', switchError);
       return false;
     }
-  }, []);
+    
+    try {
+      // First try to switch to the network
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${REQUIRED_CHAIN_ID.toString(16)}` }],
+      });
+      
+      console.log('[switchNetwork] Successfully switched to Hardhat network');
+      setIsCorrectNetwork(true);
+      
+      toast({
+        title: 'Network Switched',
+        description: 'Successfully connected to Hardhat network',
+      });
+      
+      return true;
+    } catch (switchError: any) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902 || 
+          (switchError.message && switchError.message.includes('Unrecognized chain ID'))) {
+        console.log('[switchNetwork] Network not found, attempting to add it');
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [NETWORK_CONFIG],
+          });
+          
+          // Check if the switch was successful
+          const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+          const currentChainId = parseInt(chainIdHex, 16);
+          const success = currentChainId === REQUIRED_CHAIN_ID;
+          
+          setIsCorrectNetwork(success);
+          
+          if (success) {
+            console.log('[switchNetwork] Successfully added and switched to Hardhat network');
+            toast({
+              title: 'Network Added',
+              description: 'Successfully connected to Hardhat network',
+            });
+            return true;
+          } else {
+            console.error('[switchNetwork] Failed to switch to Hardhat network after adding');
+            toast({
+              title: 'Network Switch Failed',
+              description: 'Please manually switch to Hardhat network in MetaMask',
+              variant: 'destructive',
+            });
+            return false;
+          }
+        } catch (addError) {
+          console.error('[switchNetwork] Error adding network:', addError);
+          toast({
+            title: 'Network Add Failed',
+            description: 'Failed to add Hardhat network to MetaMask',
+            variant: 'destructive',
+          });
+          return false;
+        }
+      } else {
+        console.error('[switchNetwork] Error switching network:', switchError);
+        toast({
+          title: 'Network Switch Failed',
+          description: 'Failed to switch to Hardhat network',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    }
+  }, [toast]);
+  
+  // Fetch all officers from the blockchain
+  const fetchAllOfficers = useCallback(async (): Promise<Officer[]> => {
+    try {
+      if (!officerContract) {
+        console.error('[fetchAllOfficers] Officer contract not initialized');
+        return [];
+      }
 
+      console.log('[fetchAllOfficers] Fetching officers from blockchain...');
+      const officerCount = await officerContract.getOfficerCount();
+      const officers: Officer[] = [];
+
+      for (let i = 0; i < officerCount.toNumber(); i++) {
+        const officer = await officerContract.getOfficerAtIndex(i);
+        if (officer && officer.walletAddress !== ethers.constants.AddressZero) {
+          officers.push({
+            id: i.toString(),
+            walletAddress: officer.walletAddress,
+            name: officer.name,
+            email: officer.email,
+            isActive: officer.isActive
+          });
+        }
+      }
+
+      console.log(`[fetchAllOfficers] Found ${officers.length} officers`);
+      return officers;
+    } catch (error) {
+      console.error('[fetchAllOfficers] Error fetching officers:', error);
+      return [];
+    }
+  }, [officerContract]);
+
+  // Define the addOfficer function
+  const addOfficer = useCallback(async (walletAddress: string, name: string, email: string): Promise<boolean> => {
+    // Force development mode to false to always use blockchain in production
+    const isDev = false;
+    
+    if (isDev) {
+      try {
+        console.log('[addOfficer] Running in development mode, using local storage');
+        
+        // Create a new officer object
+        const newOfficer: Officer = {
+          id: walletAddress,
+          name,
+          email,
+          isActive: true,
+          walletAddress,
+          username: email.split('@')[0] || 'user',
+          updatedAt: Math.floor(Date.now() / 1000),
+          permissions: {
+            canCreate: true,
+            canApprove: true,
+          },
+          createdAt: Math.floor(Date.now() / 1000),
+        };
+
+        // Get existing officers from local storage
+        const localOfficers = getLocalOfficers();
+
+        // Check if officer already exists
+        const existingOfficerIndex = localOfficers.findIndex((o) =>
+          o.walletAddress.toLowerCase() === walletAddress.toLowerCase()
+        );
+
+        if (existingOfficerIndex >= 0) {
+          // Update existing officer
+          localOfficers[existingOfficerIndex] = {
+            ...localOfficers[existingOfficerIndex],
+            name,
+            email,
+            updatedAt: Math.floor(Date.now() / 1000),
+          };
+          console.log('[addOfficer] Updated existing officer in local storage');
+        } else {
+          // Add new officer
+          localOfficers.push(newOfficer);
+          console.log('[addOfficer] Added new officer to local storage');
+        }
+
+        // Save to local storage
+        saveLocalOfficers(localOfficers);
+        setOfficers(localOfficers);
+
+        // Show success toast
+        toast({
+          title: 'Officer Added',
+          description: `${name} has been added as an officer (Development Mode)`,
+        });
+
+        return true;
+      } catch (err: any) {
+        console.error('[addOfficer] Error adding officer to local storage:', err);
+
+        // Show error toast
+        toast({
+          title: 'Error Adding Officer',
+          description: `Failed to add officer: ${err.message || 'Unknown error'}`,
+          variant: 'destructive',
+        });
+
+        return false;
+      }
+    } else if (officerContract && signer) {
+      console.log('[addOfficer] Running in production mode, using blockchain');
+      try {
+        // Ensure we have a connected wallet
+        if (!isConnected) {
+          console.log('[addOfficer] No wallet connected, attempting to connect');
+          const connected = await connectWallet();
+          if (!connected) {
+            toast({
+              title: 'Wallet Connection Required',
+              description: 'Please connect your wallet to add an officer',
+              variant: 'destructive',
+            });
+            throw new Error('Wallet connection required to add an officer');
+          }
+        }
+
+        // Check if we're on the correct network
+        if (!isCorrectNetwork) {
+          console.log('[addOfficer] Wrong network, attempting to switch');
+          const switched = await switchNetwork();
+          if (!switched) {
+            toast({
+              title: 'Network Switch Required',
+              description: 'Please switch to the Hardhat network to add an officer',
+              variant: 'destructive',
+            });
+            throw new Error('Please switch to the correct network to add an officer');
+          }
+        }
+
+        // Show pending toast
+        toast({
+          title: 'Transaction Pending',
+          description: 'Adding officer to blockchain, please wait for confirmation...',
+        });
+
+        // Execute the contract transaction
+        console.log('[addOfficer] Sending transaction to blockchain...');
+        const tx = await officerContract.addOfficer(walletAddress, name, email);
+        console.log('[addOfficer] Transaction sent:', tx.hash);
+
+        // Wait for transaction confirmation
+        const receipt = await tx.wait();
+        console.log('[addOfficer] Transaction confirmed:', receipt);
+
+        // Show success toast
+        toast({
+          title: 'Officer Added',
+          description: `${name} has been successfully added as an officer`,
+        });
+
+        // Refresh officers list
+        await fetchAllOfficers();
+
+        return true;
+      } catch (err: any) {
+        console.error('[addOfficer] Error adding officer to blockchain:', err);
+
+        // Check if the error is "officer already exists"
+        const errorMessage = err.message || '';
+        if (
+          errorMessage.includes('Officer already exists') ||
+          errorMessage.includes('already registered') ||
+          errorMessage.includes('already an officer')
+        ) {
+          console.log('[addOfficer] Officer already exists, treating as success');
+
+          // Show info toast
+          toast({
+            title: 'Officer Already Exists',
+            description: `${name} is already registered as an officer`,
+          });
+
+          return true;
+        }
+
+        // Show error toast
+        toast({
+          title: 'Error Adding Officer',
+          description: `Failed to add officer: ${errorMessage || 'Unknown error'}`,
+          variant: 'destructive',
+        });
+
+        return false;
+      }
+    } else {
+      console.error('[addOfficer] No contract available or signer not initialized');
+
+      // Show error toast
+      toast({
+        title: 'Error Adding Officer',
+        description: 'Blockchain connection not available. Please connect your wallet.',
+        variant: 'destructive',
+      });
+
+      return false;
+    }
+  }, [isConnected, isCorrectNetwork, officerContract, signer, toast, connectWallet, switchNetwork, fetchAllOfficers]);
+  
   // Create context value with all the required methods and state
   // Define the fetchTenders function outside of the context value to avoid reference issues
-  const fetchTendersImpl = async () => {
+  const fetchTendersImpl = useCallback(async () => {
     try {
       // Check if we're in development mode
-      const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
+      const isDev = FORCE_DEV_MODE || false; // Set to false to always use blockchain
       
       if (isDev) {
         // Use local storage for development mode
@@ -643,9 +904,9 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Return empty array on error
       return [];
     }
-  };
+  }, [FORCE_DEV_MODE, tenderContract, formatTender, setTenders]);
 
-  const contextValue = useMemo<Web3ContextType>(() => ({
+  const contextValue = useMemo(() => ({
     account,
     isConnected,
     isLoading,
@@ -667,12 +928,13 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
     disconnectWallet,
     switchNetwork,
     fetchTenders: fetchTendersImpl,
+    addOfficer,
     
     // Add the missing createNewTender function
     createNewTender: async (tenderData: Omit<TenderBase, 'id' | 'createdAt' | 'status' | 'bidCount' | 'bids' | 'isActive' | 'winner'>) => {
       try {
         // Check if we're in development mode
-        const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
+        const isDev = FORCE_DEV_MODE || false; // Set to false to always use blockchain
         
         if (isDev) {
           // Use local storage for development mode
@@ -912,69 +1174,88 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
         );
         return bids;
       } catch (err) {
-        console.error('Error fetching bids:', err);
+        console.error('Error fetching bids for tender:', err);
         return [];
       }
     },
-    addOfficer: async (walletAddress, name, email) => {
-      if (!officerContract) return false;
+    addOfficer: async (walletAddress: string, name: string, email: string) => {
+      const { toast } = useToast();
+      
+      // Check if wallet is connected
+      if (!isConnected) {
+        const connected = await connectWallet();
+        if (!connected) {
+          toast({
+            title: "Error",
+            description: "Wallet connection required to add an officer",
+            variant: "destructive"
+          });
+          throw new Error('Wallet connection required to add an officer');
+        }
+      }
+      
+      // Check if on correct network
+      if (!isCorrectNetwork) {
+        const switched = await switchNetwork();
+        if (!switched) {
+          toast({
+            title: "Error",
+            description: "Please switch to the correct network to add an officer",
+            variant: "destructive"
+          });
+          throw new Error('Please switch to the correct network to add an officer');
+        }
+      }
+      
       try {
+        // Show pending toast
+        toast({
+          title: "Processing",
+          description: "Adding officer to the blockchain...",
+        });
+        
+        // Add officer to blockchain
         const tx = await officerContract.addOfficer(walletAddress, name, email);
+        
+        // Show waiting toast
+        toast({
+          title: "Waiting",
+          description: "Waiting for transaction confirmation...",
+        });
+        
+        // Wait for transaction to be mined
         await tx.wait();
+        
+        // Show success toast
+        toast({
+          title: "Success",
+          description: "Officer added successfully!",
+          variant: "default"
+        });
+        
+        // Refresh officers list
+        await fetchAllOfficers();
+        
         return true;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error adding officer:', err);
+        
+        // Check if officer already exists
+        if (err.message && err.message.includes('Officer already exists')) {
+          toast({
+            title: "Error",
+            description: "Officer with this wallet address already exists",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to add officer: " + (err.message || 'Unknown error'),
+            variant: "destructive"
+          });
+        }
+        
         return false;
-      }
-    },
-    updateOfficer: async (walletAddress, updates) => {
-      if (!officerContract) return false;
-      try {
-        const tx = await officerContract.updateOfficer(
-          walletAddress,
-          updates.name || '',
-          updates.email || '',
-          updates.isActive ?? true
-        );
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error updating officer:', err);
-        return false;
-      }
-    },
-    removeOfficer: async (walletAddress) => {
-      if (!officerContract) return false;
-      try {
-        const tx = await officerContract.removeOfficer(walletAddress);
-        await tx.wait();
-        return true;
-      } catch (err) {
-        console.error('Error removing officer:', err);
-        return false;
-      }
-    },
-    fetchOfficer: async (walletAddress) => {
-      if (!officerContract) return null;
-      try {
-        const officer = await officerContract.getOfficer(walletAddress);
-        return {
-          id: walletAddress,
-          name: officer.name,
-          email: officer.email,
-          isActive: officer.isActive,
-          walletAddress,
-          username: officer.username,
-          updatedAt: officer.updatedAt?.toNumber() || Math.floor(Date.now() / 1000),
-          permissions: {
-            canCreate: officer.permissions?.canCreate || false,
-            canApprove: officer.permissions?.canApprove || false,
-          },
-          createdAt: officer.createdAt?.toNumber() || Math.floor(Date.now() / 1000)
-        };
-      } catch (err) {
-        console.error('Error fetching officer:', err);
-        return null;
       }
     },
     fetchAllOfficers: async () => {
@@ -986,17 +1267,17 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const officer = await officerContract.getOfficer(address);
             return {
               id: address,
+              walletAddress: address,
               name: officer.name,
               email: officer.email,
               isActive: officer.isActive,
-              walletAddress: address,
-              username: officer.username,
-              updatedAt: officer.updatedAt?.toNumber() || Math.floor(Date.now() / 1000),
+              username: officer.email.split('@')[0] || 'user',
+              createdAt: officer.createdAt.toNumber(),
+              updatedAt: officer.updatedAt.toNumber(),
               permissions: {
-                canCreate: officer.permissions?.canCreate || false,
-                canApprove: officer.permissions?.canApprove || false,
-              },
-              createdAt: officer.createdAt?.toNumber() || Math.floor(Date.now() / 1000)
+                canCreate: true,
+                canApprove: true
+              }
             };
           })
         );
@@ -1007,9 +1288,22 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return [];
       }
     },
-    formatDate,
-    parseBigNumber,
-    parseTimestamp
+  // Define the context value with all the functions and state
+  const contextValue = useMemo(() => ({
+    account,
+    isConnected,
+    isLoading,
+    error,
+    networkName,
+    chainId,
+    isCorrectNetwork,
+    connectWallet,
+    disconnectWallet,
+    switchNetwork,
+    tenders,
+    officers,
+    fetchAllOfficers,
+    addOfficer
   }), [
     account,
     isConnected,
@@ -1018,40 +1312,39 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
     networkName,
     chainId,
     isCorrectNetwork,
-    provider,
-    signer,
-    tenderContract,
-    officerContract,
-    userAuthContract,
-    tenders,
-    officers,
-    currentTender,
-    currentOfficer,
-    isOfficerState,
     connectWallet,
     disconnectWallet,
     switchNetwork,
-    formatDate,
-    parseBigNumber,
-    parseTimestamp,
-    formatTender
+    tenders,
+    officers,
+    fetchAllOfficers,
+    addOfficer
   ]);
 
-  // Initialize contracts on mount
+  // Return the provider component
+  return (
+    <Web3Context.Provider value={contextValue}>
+      {children}
+    </Web3Context.Provider>
+  );
+};
+
+  export default Web3Provider;
+
   useEffect(() => {
     const init = async () => {
       if (window.ethereum && account) {
         try {
-          const web3Provider = new providers.Web3Provider(window.ethereum);
+          const web3Provider = new Web3Provider(window.ethereum);
           const signer = web3Provider.getSigner();
-          
+
           let tenderContractInstance;
           let officerContractInstance;
           let userAuthContractInstance;
-          
+
           // Check if we're in development mode (using placeholder addresses)
           const isDev = CONTRACT_ADDRESSES.TENDER_MANAGEMENT.includes('0x1234');
-          
+
           if (isDev) {
             // Use local storage for development mode instead of mock contracts
             console.log('Using local storage for development mode');

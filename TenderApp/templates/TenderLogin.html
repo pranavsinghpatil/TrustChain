@@ -1,76 +1,161 @@
 {% load static %}
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Smart Tender/Contract Management System Using Blockchain</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="{% static 'default.css' %}" rel="stylesheet" type="text/css" media="screen" />
- <script LANGUAGE="Javascript" >
-function validate(){
-	var x=document.forms["f1"]["username"].value;
-	var y=document.forms["f1"]["password"].value;
-	if(x == null || x==""){
-		window.alert("Username must be enter");
-		document.f1.t1.focus();
-		return false;
-	}
-	if(y == null || y==""){
-		window.alert("Password must be enter");
-		document.f1.t2.focus();
-		return false;
-	}
-	return true;
-}
-		
-	
-	</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustChain - Blockchain Tender Management</title>
+    <link href="{% static 'dark-theme.css' %}" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script>
+    function validate() {
+      var username = document.forms["loginForm"]["username"].value;
+      var password = document.forms["loginForm"]["password"].value;
+      
+      if (username == null || username == "") {
+        window.alert("Please enter your username");
+        document.loginForm.username.focus();
+        return false;
+      }
+      
+      if (password == null || password == "") {
+        window.alert("Please enter your password");
+        document.loginForm.password.focus();
+        return false;
+      }
+      
+      return true;
+    }
+    </script>
 </head>
 <body>
 <div id="wrapper">
-  <div id="header">
-    <div id="logo">
-      <h1><font color="orange" size=6>Smart Tender/Contract Management System Using Blockchain</font></h1>
-	  <marquee><font color="pink" size=4>Smart Tender/Contract Management System Using Blockchain</font></marquee>
-    </div>
-   
+  <header>
+    <nav class="container" style="display: flex; justify-content: space-between; padding: 10px 0;">
+      <div style="display: flex; align-items: center;">
+        <i class="fas fa-shield-alt" style="color: #3aaa94; margin-right: 8px;"></i> 
+        <span style="color: #3aaa94; font-weight: 600;">TrustChain</span>
+      </div>
+      <div>
+        <span style="opacity: 0.7;">Please Login/Register first</span>
+      </div>
+      <div>
+        <a href="#" style="color: #3aaa94; text-decoration: none;">About Us</a>
+      </div>
+    </nav>
+  </header>
   
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="{% url 'TenderLogin' %}" class="active"><i class="fas fa-user-shield"></i> Tender Officer Login</a></li>
+        <li><a href="{% url 'BidderLogin' %}"><i class="fas fa-user"></i> Bidder Login</a></li>
+        <li><a href="{% url 'Register' %}"><i class="fas fa-user-plus"></i> New Bidder Signup</a></li>
+      </ul>
     </div>
   </div>
-  <div id="menu">
-     <ul>
-      <li><a href="{% url 'index' %}">Home</a></li>
-      <li><a href="{% url 'TenderLogin' %}">Tender Officer Login</a></li>
-	  <li><a href="{% url 'BidderLogin' %}">Bidder Login</a></li>
-      <li><a href="{% url 'Register' %}">New Bidder Signup Here</a></li>
-      
-   </ul>
+  
+  <div id="page">
+    <div class="container">
+      <div style="max-width: 480px; margin: 60px auto;">
+        <div class="card">
+          <div style="text-align: center; padding: 30px 0 15px;">
+            <div style="width: 60px; height: 60px; background-color: rgba(58, 170, 148, 0.1); display: flex; align-items: center; justify-content: center; border-radius: 50%; margin: 0 auto;">
+              <i class="fas fa-shield-alt" style="font-size: 24px; color: #3aaa94;"></i>
+            </div>
+            <h2 style="margin: 15px 0 5px; color: #3aaa94;">TrustChain</h2>
+            <p style="opacity: 0.7; margin: 0;">Blockchain-based tender management system</p>
+          </div>
+          
+          <div style="display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <a href="{% url 'TenderLogin' %}" style="flex: 1; text-align: center; padding: 15px; background-color: rgba(58, 170, 148, 0.1); color: #3aaa94; text-decoration: none; font-weight: 500;">Login</a>
+            <a href="{% url 'Register' %}" style="flex: 1; text-align: center; padding: 15px; color: #e0e0e0; text-decoration: none; opacity: 0.7;">Register</a>
+          </div>
+          
+          <div class="card-body">
+            {% if data %}
+              <div class="alert-message mb-3">{{ data }}</div>
+            {% endif %}
+            
+            <form name="loginForm" method="post" action="{% url 'TenderLoginAction' %}" onsubmit="return validate()">
+              {% csrf_token %}
+              
+              <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" class="form-control" placeholder="admin">
+              </div>
+              
+              <div class="form-group">
+                <label for="password">Password</label>
+                <div style="position: relative;">
+                  <input type="password" name="password" id="password" class="form-control" placeholder="••••••">
+                  <button type="button" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #3aaa94;">
+                    <i class="far fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div style="margin: 25px 0;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                  <div style="width: 20px; height: 20px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; margin-right: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-check" style="font-size: 12px; color: #3aaa94; display: none;"></i>
+                  </div>
+                  <span style="opacity: 0.8;">Connect Wallet</span>
+                </label>
+              </div>
+              
+              <button type="submit" class="btn-primary" style="width: 100%;">
+                <i class="fas fa-sign-in-alt"></i> Login
+              </button>
+              
+              <div style="margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+                <p style="opacity: 0.6; font-size: 14px;">New Bidder? <a href="{% url 'Register' %}" style="color: #3aaa94; text-decoration: none;">Register here</a></p>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+          <div style="opacity: 0.7; font-size: 14px;">Default accounts for testing:</div>
+          <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+            <div style="text-align: center; padding: 10px; background-color: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+              <div style="opacity: 0.7; margin-bottom: 8px;">Admin</div>
+              <div>Username: admin</div>
+              <div>Password: admin@0</div>
+            </div>
+            <div style="text-align: center; padding: 10px; background-color: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+              <div style="opacity: 0.7; margin-bottom: 8px;">Officer</div>
+              <div>Username: teno</div>
+              <div>Password: tender@0</div>
+            </div>
+            <div style="text-align: center; padding: 10px; background-color: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+              <div style="opacity: 0.7; margin-bottom: 8px;">Bidder</div>
+              <div>Username: sam</div>
+              <div>Password: sam@0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="entry">
-   <br/><br/><br/>
-	<font size="" color="white"><center>{{ data }}</center></font>
-	 <br>
-	 <center><font size="3" color="white">Tender Login Screen</font></center>
-	<form name="f1" method="post" action={% url 'TenderLoginAction' %} OnSubmit="return validate()">
-	{% csrf_token %}
-	<br><br>
-	<TABLE align=center width="35%" class="notepad">
-		<TR><TH align="left"><font size="" color="white">Username
-		<TD>&nbsp;&nbsp;<Input type=text name="username" value='' class="form-control">
-		<div id='nameid'></div>
-		</TD>
-		</TR>
-		
-		<TR><TH align="left"><font size="" color="white">Password
-		<TD>&nbsp;&nbsp;<Input type='password' name="password"  value='' class="form-control">
-		</TR>
-		  <TR>
-				 <TD></TD>
-			<TD>	
-		  <input type="submit" value="login">
-		 
-		  </TABLE>
-		
-</form>
-</div>
+
+  <div id="footer">
+    <div class="container">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center;">
+          <i class="fas fa-shield-alt" style="color: #3aaa94; margin-right: 10px;"></i>
+          <span style="font-weight: 600; color: #3aaa94;">TrustChain</span>
+        </div>
+        <div>
+          <a href="#" style="margin: 0 10px; color: #e0e0e0; opacity: 0.7; text-decoration: none;"><i class="fab fa-github"></i></a>
+          <a href="#" style="margin: 0 10px; color: #e0e0e0; opacity: 0.7; text-decoration: none;"><i class="fab fa-linkedin"></i></a>
+          <a href="#" style="margin: 0 10px; color: #e0e0e0; opacity: 0.7; text-decoration: none;"><i class="fab fa-twitter"></i></a>
+        </div>
+      </div>
+      <p style="margin-top: 15px; opacity: 0.5; font-size: 14px;">&copy; 2025 TrustChain. All rights reserved.</p>
+    </div>
+  </div>
 
 </body>
 </html>
