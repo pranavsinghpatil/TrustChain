@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrustChain - Bidder Login</title>
     <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'common.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -125,19 +126,17 @@
     function validate() {
         const username = document.forms["loginForm"]["username"].value;
         const password = document.forms["loginForm"]["password"].value;
-        
-        if (username == null || username === "") {
-            window.alert("Please enter your username");
-            document.loginForm.username.focus();
+
+        if (username.trim() === '') {
+            alert('Please enter your username');
             return false;
         }
-        
-        if (password == null || password === "") {
-            window.alert("Please enter your password");
-            document.loginForm.password.focus();
+
+        if (password.trim() === '') {
+            alert('Please enter your password');
             return false;
         }
-        
+
         return true;
     }
 

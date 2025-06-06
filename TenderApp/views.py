@@ -338,8 +338,13 @@ def TenderLoginAction(request):
 
 def BidderLoginAction(request):
     if request.method == 'POST':
-        username = request.POST.get('username', False)
-        password = request.POST.get('password', False)
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        if not username or not password:
+            context = {'data': 'Please enter both username and password'}
+            return render(request, 'BidderLogin.html', context)
+            
         status = 'none'
         for i in range(len(blockchain.chain)):
             if i > 0:
@@ -353,14 +358,15 @@ def BidderLoginAction(request):
                     if arr[1] == username and arr[2] == password:
                         status = 'success'
                         break
+                        
         if status == 'success':
-            file = open('session.txt','w')
-            file.write(username)
-            file.close()
-            context= {'data':"Welcome "+username}
+            # Use Django's session management
+            request.session['bidder_username'] = username
+            request.session['is_bidder'] = True
+            context = {'data': f'Welcome {username}'}
             return render(request, 'BidderScreen.html', context)
         else:
-            context= {'data':'Invalid login details'}
+            context = {'data': 'Invalid login details'}
             return render(request, 'BidderLogin.html', context)
         
         
