@@ -2,60 +2,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winner Selection - Smart Contract Management System</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <link rel="stylesheet" href="{% static 'modern.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<title>TrustChain - Winner Selection</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+  // Show loading overlay immediately when page loads
+  window.addEventListener('load', function() {
+    // Get the loading overlay element
+    var loadingOverlay = document.getElementById('loading-overlay');
+    
+    // Add a class to fade out the loading overlay
+    setTimeout(function() {
+      loadingOverlay.classList.add('fade-out');
+      
+      // Hide and remove the overlay after the fade animation completes
+      setTimeout(function() {
+        loadingOverlay.style.display = 'none';
+      }, 500);
+    }, 500); // Delay to ensure content is ready and progress bar animation has advanced
+  });
+  
+  // Set the loading overlay to be visible by default
+  document.write('<style>#loading-overlay{display:flex;}</style>');
+</script>
 </head>
 <body>
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Tender Evaluation Data...</h3>
+    <p>Please wait while we retrieve and decrypt bid information from the blockchain for winner selection</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
 <div id="wrapper">
   <div id="header">
     <div class="container">
-      <div id="logo">
-        <h1>Smart Tender/Contract Management System</h1>
-        <p>Powered by Blockchain Technology</p>
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
       </div>
     </div>
   </div>
-  
   <div id="menu">
     <div class="container">
       <ul>
-        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-medical"></i> Create Tender</a></li>
-        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-balance-scale"></i> Evaluate Tenders</a></li>
-        <li><a href="{% url 'WinnerSelection' %}" class="active"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'TenderScreen' %}"><i class="fas fa-th-large"></i> Dashboard</a></li>
+        <li><a href="{% url 'OfficerOngoingTenders' %}"><i class="fas fa-stream" style="color:#18c964;"></i> Ongoing Tenders</a></li>
+        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-contract"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-tasks"></i> Evaluate & Negotiate</a></li>
+        <li class="current_page_item"><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'OfficerNotifications' %}"><i class="fas fa-bell" style="color:#0056b3;"></i> Notifications</a></li>
         <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
     </div>
   </div>
-  
   <div id="page">
     <div class="container">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-center"><i class="fas fa-trophy"></i> Winner Selection</h3>
-        </div>
-        <div class="card-body">
-          <div class="tender-showcase mb-4">
-            <img src="{% static 'images/images.jpg' %}" alt="Blockchain Tender" class="img-fluid">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-award"></i> Winner Selection</h2>
           </div>
-          
-          <div class="winner-data">
-            {{ data|safe }}
+          <div class="entry">
+            <div class="card">
+              <div class="card-title">
+                <h3>Select Tender Winners</h3>
+              </div>
+              {{ data|safe }}
+              
+              {% if not data %}
+              <div class="text-center" style="padding: 2rem;">
+                <i class="fas fa-info-circle fa-3x" style="color: var(--primary-color); margin-bottom: 1rem;"></i>
+                <h4>No Evaluated Tenders Available</h4>
+                <p>There are currently no evaluated tenders ready for winner selection. Please evaluate tenders first.</p>
+                <a href="{% url 'EvaluateTender' %}" class="btn action-btn"><i class="fas fa-tasks"></i> Go to Evaluation</a>
+              </div>
+              {% endif %}
+            </div>
+            
+            <div class="card">
+              <div class="winner-info" style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                <div style="flex: 0 0 80px; margin-right: 1rem;">
+                  <i class="fas fa-award fa-4x" style="color: gold;"></i>
+                </div>
+                <div>
+                  <h3>Blockchain-Powered Winner Selection</h3>
+                  <p>The winner selection process on TrustChain is backed by blockchain technology, ensuring:</p>
+                </div>
+              </div>
+              
+              <div class="process-steps">
+                <div class="process-step">
+                  <div class="step-number">1</div>
+                  <div class="step-content">
+                    <h4><i class="fas fa-balance-scale"></i> Transparent Selection</h4>
+                    <p>All selection criteria and decisions are recorded on the blockchain, ensuring complete transparency in the process.</p>
+                  </div>
+                </div>
+                
+                <div class="process-step">
+                  <div class="step-number">2</div>
+                  <div class="step-content">
+                    <h4><i class="fas fa-shield-alt"></i> Tamper-Proof Results</h4>
+                    <p>Once a winner is selected, the decision is immutably stored and cannot be altered, providing security for all parties.</p>
+                  </div>
+                </div>
+                
+                <div class="process-step">
+                  <div class="step-number">3</div>
+                  <div class="step-content">
+                    <h4><i class="fas fa-handshake"></i> Automated Notifications</h4>
+                    <p>Winners and other participants are automatically notified of the results, ensuring prompt communication.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="alert alert-info">
+                <i class="fas fa-lightbulb"></i> <strong>Pro Tip:</strong> After selecting a winner, you can view the complete audit trail of the tender process, from creation to winner selection, in the blockchain ledger.
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <div id="footer">
-    <div class="container">
-      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
-    </div>
-  </div>
 
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 </body>
 </html>

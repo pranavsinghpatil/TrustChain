@@ -2,6 +2,9 @@
 import os
 import sys
 
+# Import runserver configuration to set default port to 5050
+import runserver
+
 if __name__ == '__main__':
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Tender.settings')
     try:

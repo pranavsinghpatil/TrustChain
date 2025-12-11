@@ -2,94 +2,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit Bid - Smart Contract Management System</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <link rel="stylesheet" href="{% static 'modern.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <script>
-    function validate() {
-        var bidAmount = document.forms["bidForm"]["t2"].value;
-        
-        if (bidAmount == null || bidAmount == "") {
-            window.alert("Please enter a bid amount");
-            document.bidForm.t2.focus();
-            return false;
-        }
-        
-        if (isNaN(bidAmount)) {
-            window.alert("Bid amount must be a number");
-            document.bidForm.t2.focus();
-            return false;
-        }
-        
-        return true;
+<title>TrustChain - Submit Bid</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<script type="text/javascript">
+// Page load overlay handling
+window.addEventListener('load', function() {
+  // Get the initial loading overlay element
+  var pageLoadOverlay = document.getElementById('page-loading-overlay');
+  
+  // Add a class to fade out the loading overlay
+  setTimeout(function() {
+    pageLoadOverlay.classList.add('fade-out');
+    
+    // Hide and remove the overlay after the fade animation completes
+    setTimeout(function() {
+      pageLoadOverlay.style.display = 'none';
+    }, 500);
+  }, 500);
+});
+
+// Set the loading overlay to be visible by default
+document.write('<style>#page-loading-overlay{display:flex;}</style>');
+
+// Form submission overlay handling
+function showLoading() {
+  document.getElementById('submission-overlay').style.display = 'flex';
+  document.getElementById('submitButton').disabled = true;
+  
+  // Animate the progress bar
+  var progressBar = document.getElementById('submission-progress');
+  var width = 0;
+  var interval = setInterval(function() {
+    if (width >= 95) {
+      clearInterval(interval);
+    } else {
+      width += 0.5;
+      progressBar.style.width = width + '%';
     }
-    </script>
+  }, 50);
+}
+
+function validateBid() {
+	var bidAmount = document.forms["bidForm"]["t2"].value;
+	var companyName = document.forms["bidForm"]["companyName"].value;
+	var contactPerson = document.forms["bidForm"]["contactPerson"].value;
+	var contactEmail = document.forms["bidForm"]["contactEmail"].value;
+	var contactPhone = document.forms["bidForm"]["contactPhone"].value;
+	var completionTime = document.forms["bidForm"]["completionTime"].value;
+	
+	if(bidAmount === null || bidAmount.trim() === "") {
+		alert("Please enter a bid amount");
+		document.bidForm.t2.focus();
+		return false;
+	}
+	
+	// Check if bid amount is a valid number
+	if(isNaN(bidAmount) || parseFloat(bidAmount) <= 0) {
+		alert("Please enter a valid positive number for the bid amount");
+		document.bidForm.t2.focus();
+		return false;
+	}
+	
+	// Validate company name
+	if(companyName === null || companyName.trim() === "") {
+		alert("Please enter your company name");
+		document.bidForm.companyName.focus();
+		return false;
+	}
+	
+	// Validate contact person
+	if(contactPerson === null || contactPerson.trim() === "") {
+		alert("Please enter the contact person's name");
+		document.bidForm.contactPerson.focus();
+		return false;
+	}
+	
+	// Validate email format
+	var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	if(!emailRegex.test(contactEmail)) {
+		alert("Please enter a valid email address");
+		document.bidForm.contactEmail.focus();
+		return false;
+	}
+	
+	// Validate completion time
+	if(completionTime === null || completionTime.trim() === "") {
+		alert("Please enter the estimated completion time");
+		document.bidForm.completionTime.focus();
+		return false;
+	}
+	
+	// Check if completion time is a valid number
+	if(isNaN(completionTime) || parseInt(completionTime) <= 0) {
+		alert("Please enter a valid positive number for completion time in days");
+		document.bidForm.completionTime.focus();
+		return false;
+	}
+	
+	// Show loading animation when form is valid
+	document.getElementById('loading-overlay').style.display = 'flex';
+	
+	// Disable form submission button to prevent double clicks
+	document.getElementById('submitButton').disabled = true;
+	
+	return true;
+}
+</script>
 </head>
 <body>
+<!-- Initial Page Loading Overlay -->
+<div id="page-loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Tender Details...</h3>
+    <p>Please wait while we securely retrieve tender information from the blockchain</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Form Submission Loading Overlay -->
+<div id="submission-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Processing Your Bid</h3>
+    <p>Please wait while we securely record your bid on the blockchain. This ensures immutability and transparency in the bidding process.</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="submission-progress"></div>
+    </div>
+  </div>
+</div>
+
 <div id="wrapper">
   <div id="header">
     <div class="container">
-      <div id="logo">
-        <h1>Smart Tender/Contract Management System</h1>
-        <p>Powered by Blockchain Technology</p>
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
       </div>
     </div>
   </div>
-  
   <div id="menu">
     <div class="container">
       <ul>
-        <li><a href="{% url 'BidTender' %}" class="active"><i class="fas fa-gavel"></i> Bid Tender</a></li>
-        <li><a href="{% url 'ViewTender' %}"><i class="fas fa-search"></i> View Tender Status</a></li>
+        <li><a href="{% url 'BidderScreen' %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="{% url 'BidTender' %}"><i class="fas fa-gavel"></i> Bid Tender</a></li>
+        <li><a href="{% url 'ViewTender' %}"><i class="fas fa-clipboard-list"></i> View Tender Status</a></li>
+        <li><a href="{% url 'BidderNotifications' %}"><i class="fas fa-bell"></i> Notifications {% if unread_notification_count > 0 %}<span class="badge badge-danger" style="font-size: 0.7rem; position: relative; top: -1px; margin-left: 3px;">{{ unread_notification_count }}</span>{% endif %}</a></li>
         <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
     </div>
   </div>
   
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Processing your bid...</div>
+  </div>
   <div id="page">
     <div class="container">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-center"><i class="fas fa-gavel"></i> Submit Your Bid</h3>
-        </div>
-        
-        <div class="card-body">
-          {% if data %}
-            <div class="alert-message mb-3">{{ data }}</div>
-          {% endif %}
-          
-          <form name="bidForm" method="post" action="{% url 'BidTenderActionPage' %}" onsubmit="return validate()">
-            {% csrf_token %}
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-gavel"></i> Submit Bid</h2>
+          </div>
+          <div class="entry">
+            {% if data %}
+            <div class="alert {% if error %}alert-danger{% elif success %}alert-success{% else %}alert-info{% endif %}">
+              {{ data|safe }}
+              {% if success %}
+              <div class="mt-3">
+                <a href="{% url 'BidTender' %}" class="btn btn-primary mr-2"><i class="fas fa-arrow-left"></i> Back to Available Tenders</a>
+                <a href="{% url 'ViewTender' %}" class="btn btn-info"><i class="fas fa-clipboard-list"></i> View Tender Status</a>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
             
-            <div class="tender-details mb-4">
-              {{ data1|safe }}
+            {% if not success %}
+            <div class="card">
+              <div class="card-title">
+                <h3>Bid Details</h3>
+              </div>
+              
+              <!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <p>Processing your bid submission...</p>
+    <p>Please wait while we encrypt and secure your data on the blockchain.</p>
+  </div>
+</div>
+
+<form name="bidForm" method="post" action="{% url 'BidTenderActionPage' %}" onsubmit="showLoading(); return validateBid();">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                  <label for="tenderTitle"><i class="fas fa-file-contract"></i> Tender Title</label>
+                  {% if data1 %}
+                    {{ data1|safe }}
+                  {% else %}
+                    <input type="text" name="t1" id="tenderTitle" class="form-control" readonly>
+                  {% endif %}
+                </div>
+                
+                <div class="form-group">
+                  <label for="bidAmount"><i class="fas fa-coins"></i> Bid Amount</label>
+                  <input type="text" name="t2" id="bidAmount" class="form-control" placeholder="Enter your bid amount" required>
+                  <small class="form-text">Enter your best bid amount. This will be recorded on the blockchain and cannot be modified later.</small>
+                </div>
+                
+                <div class="form-group">
+                  <label for="companyName"><i class="fas fa-building"></i> Company Name</label>
+                  <input type="text" name="companyName" id="companyName" class="form-control" placeholder="Enter your company name" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="contactPerson"><i class="fas fa-user"></i> Contact Person</label>
+                  <input type="text" name="contactPerson" id="contactPerson" class="form-control" placeholder="Enter contact person name" required>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label for="contactEmail"><i class="fas fa-envelope"></i> Email Address</label>
+                    <input type="email" name="contactEmail" id="contactEmail" class="form-control" placeholder="Enter email address" required>
+                  </div>
+                  <div class="form-group col-md-6">
+                    <label for="contactPhone"><i class="fas fa-phone"></i> Phone Number</label>
+                    <input type="text" name="contactPhone" id="contactPhone" class="form-control" placeholder="Enter phone number" required>
+                  </div>
+                </div>
+                
+                <div class="form-group">
+                  <label for="completionTime"><i class="fas fa-calendar-check"></i> Estimated Completion Time (days)</label>
+                  <input type="number" name="completionTime" id="completionTime" class="form-control" min="1" placeholder="Enter estimated completion time in days" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="proposalDetails"><i class="fas fa-file-alt"></i> Proposal Details</label>
+                  <textarea name="proposalDetails" id="proposalDetails" class="form-control" rows="4" placeholder="Provide details of your implementation approach" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                  <label for="experience"><i class="fas fa-briefcase"></i> Relevant Experience</label>
+                  <textarea name="experience" id="experience" class="form-control" rows="3" placeholder="Describe your relevant experience for this tender" required></textarea>
+                </div>
+                
+                <div class="text-center button-group">
+                  <button type="submit" id="submitButton" class="btn action-btn"><i class="fas fa-paper-plane"></i> Submit Bid</button>
+                  <a href="{% url 'BidTender' %}" class="btn btn-secondary action-btn"><i class="fas fa-arrow-left"></i> Back to Tenders</a>
+                </div>
+              </form>
             </div>
             
-            <div class="form-group">
-              <label for="bidAmount"><i class="fas fa-dollar-sign"></i> Bid Amount</label>
-              <input type="text" name="t2" id="bidAmount" class="form-control" placeholder="Enter your bid amount">
+            <div class="card">
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Once submitted, your bid will be stored on the blockchain and cannot be altered.
+              </div>
+              
+              <h4>Bidding Guidelines</h4>
+              <ul class="feature-list">
+                <li><i class="fas fa-check-circle"></i> Ensure your bid is accurate before submission</li>
+                <li><i class="fas fa-check-circle"></i> All bids are recorded with a timestamp on the blockchain</li>
+                <li><i class="fas fa-check-circle"></i> Bid evaluation is done transparently through smart contracts</li>
+                <li><i class="fas fa-check-circle"></i> You will be notified of the outcome in the "View Tender Status" section</li>
+              </ul>
             </div>
-            
-            <div class="form-group text-center">
-              <button type="submit" class="btn-primary">
-                <i class="fas fa-paper-plane"></i> Submit Bid
-              </button>
-            </div>
-          </form>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <div id="footer">
-    <div class="container">
-      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
-    </div>
-  </div>
 
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 </body>
 </html>

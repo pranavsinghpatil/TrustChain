@@ -2,130 +2,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrustChain - Blockchain Tender Management</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <!-- Add Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<title>TrustChain - Blockchain Based E-Tendering System</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}" />
+<link href="{% static 'feature-img.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
 <div id="wrapper">
   <div id="header">
     <div class="container">
-      <div id="logo">
-        <h1>Smart Tender/Contract Management System</h1>
-        <p>Powered by Blockchain Technology</p>
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
       </div>
     </div>
   </div>
-  
   <div id="menu">
     <div class="container">
       <ul>
         <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
         <li><a href="{% url 'TenderLogin' %}"><i class="fas fa-user-shield"></i> Tender Officer Login</a></li>
-        <li><a href="{% url 'BidderLogin' %}"><i class="fas fa-user"></i> Bidder Login</a></li>
+        <li><a href="{% url 'BidderLogin' %}"><i class="fas fa-user-tie"></i> Bidder Login</a></li>
         <li><a href="{% url 'Register' %}"><i class="fas fa-user-plus"></i> New Bidder Signup</a></li>
       </ul>
     </div>
   </div>
   <div id="page">
     <div class="container">
-      <div id="content" class="animated">
-        <div class="post">
-          <div class="title">
-            <span class="blockchain-badge"><i class="fas fa-cube"></i> Blockchain Powered</span>
-            <h2>Smart Tender Management System</h2>
-          </div>
+      <div id="content">
+
           <div class="entry">
             {% if data %}
-              <div class="alert-message">{{ data }}</div>
+              <div class="card">
+                {{ data }}
+              </div>
             {% endif %}
             
-            <div class="card mb-3">
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-6">
-                    <img src="{% static 'images/images.jpg' %}" alt="Blockchain Technology" class="img-fluid rounded" style="width: 100%; max-height: 250px; object-fit: cover;">
-                  </div>
-                  <div class="col-md-6">
-                    <h3 class="mb-3">About Our Tender System</h3>
-                    <p>The Smart Tender/Contract Management System leverages blockchain technology to ensure a secure, transparent, and efficient tender management process.</p>
-                    <p>Our platform provides a trustworthy environment for both Tender Officers and Bidders, eliminating fraud and ensuring fairness in the tendering process.</p>
+            <!-- HERO SECTION -->
+            <section class="hero-section">
+              <div class="hero-bg"></div>
+              <div class="hero-overlay"></div>
+              <div class="hero-content">
+                <h1><i class="fas fa-link"></i> TrustChain</h1>
+                <p class="hero-subtitle">Secure, Transparent, and Efficient Blockchain-based Tender Management</p>
+                <a href="{% url 'Register' %}" class="btn action-btn hero-btn"><i class="fas fa-user-plus"></i> Get Started</a>
+              </div>
+            </section>
+
+            <!-- FEATURES SECTION -->
+            <section class="features-section">
+              <div class="features-container">
+                <div class="feature-card">
+                  
+                  <h3><i class="fas fa-shield-alt"></i> Security & Trust</h3>
+                  <p>All tenders and bids are recorded immutably on the blockchain, ensuring data integrity and trust for all parties involved.</p>
+                </div>
+                <div class="feature-card">
+                  
+                  <h3><i class="fas fa-file-contract"></i> Smart Contracts</h3>
+                  <p>Automated, transparent, and tamper-proof contract execution for fair and efficient tender management.</p>
+                </div>
+                <div class="feature-card">
+                  
+                  <h3><i class="fas fa-eye"></i> Complete Transparency</h3>
+                  <p>Every action is auditable and visible, eliminating corruption and ensuring a level playing field for all bidders.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- ABOUT SECTION -->
+            <section class="about-section">
+              <div class="section-header">
+                <h2 style="color: #18c964; font-size: 2.5rem; margin-bottom: 30px; text-align: center;"><i class="fas fa-info-circle"></i> About TrustChain</h2>
+              </div>
+              <div class="about-card" style="padding: 40px; background-color: #f8f9fa; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto;">
+                <div style="display: flex; flex-direction: column; gap: 25px;">
+                  <p style="font-size: 1.2rem; line-height: 1.7; text-align: justify;">
+                    <strong>TrustChain</strong> is a cutting-edge blockchain platform designed to revolutionize the tender management process. By leveraging blockchain technology, we ensure complete transparency, security, and efficiency in all tender operations.
+                  </p>
+                  <p style="font-size: 1.2rem; line-height: 1.7; text-align: justify;">
+                    Our system eliminates issues found in traditional tendering by providing an <strong>immutable record</strong> of all transactions, secure document verification, and tamper-proof bid submissions.
+                  </p>
+                  <p style="font-size: 1.2rem; line-height: 1.7; text-align: justify;">
+                    With TrustChain, government agencies, private companies, and contractors can participate in a transparent bidding process that is protected from fraud, manipulation, and corruption. Our platform ensures fairness by enforcing rules automatically through smart contracts and maintaining a permanent, verifiable record of all activities.
+                  </p>
+                  <div style="display: flex; justify-content: center; margin-top: 15px;">
+                    <a href="{% url 'Register' %}" class="btn action-btn" style="padding: 12px 30px; font-size: 1.1rem; background-color: #18c964; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;"><i class="fas fa-user-plus"></i> Join TrustChain Today</a>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <div class="card tender-card">
-                  <div class="card-body">
-                    <i class="fas fa-shield-alt fa-3x mb-3" style="color: var(--secondary);"></i>
-                    <h3>Enhanced Security</h3>
-                    <p>All tender data is securely stored on a blockchain, ensuring immutability and preventing unauthorized alterations.</p>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card tender-card">
-                  <div class="card-body">
-                    <i class="fas fa-eye fa-3x mb-3" style="color: var(--secondary);"></i>
-                    <h3>Full Transparency</h3>
-                    <p>Every action in the tender process is recorded on the blockchain, providing a transparent audit trail for all stakeholders.</p>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4 mb-3">
-                <div class="card tender-card">
-                  <div class="card-body">
-                    <i class="fas fa-handshake fa-3x mb-3" style="color: var(--secondary);"></i>
-                    <h3>Fair Bidding</h3>
-                    <p>Our system ensures a level playing field for all bidders with transparent evaluation criteria and secure bidding process.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </section>
+
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="footer">
-    <div class="container">
-      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
-      <div class="social-links">
-        <a href="#" class="social-link"><i class="fab fa-github"></i></a>
-        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
-        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-      </div>
-    </div>
-  </div>
+  <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 
-  <!-- Add JavaScript for interactive features -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Add animation classes to elements when they come into view
-      const animateOnScroll = function() {
-        const elements = document.querySelectorAll('.card, .post');
-        elements.forEach(element => {
-          const position = element.getBoundingClientRect();
-          // If element is in viewport
-          if(position.top < window.innerHeight && position.bottom >= 0) {
-            element.classList.add('animated');
-          }
-        });
-      };
-      
-      // Run once on page load
-      animateOnScroll();
-      
-      // Run on scroll
-      window.addEventListener('scroll', animateOnScroll);
-    });
-  </script>
 </body>
 </html>

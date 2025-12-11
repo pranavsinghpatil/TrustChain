@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# DB
+db.sqlite3
+
+# static files
+staticfiles/
+
+# session
+session.txt
+
+# backup files
+classic/
+TenderApp/views_backup_20250609_033705.py
+TenderApp/views_patch.py
+
+# scripts
+clear_tender_data_direct.py
+delete_tenders.py
+fix_cache_system.py
+run_clear_data.py
+runserver.py

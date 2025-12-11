@@ -2,80 +2,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrustChain - Tender Officer Dashboard</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <link rel="stylesheet" href="{% static 'modern.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<title>TrustChain - Tender Officer Dashboard</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
-<body class="bg-dark">
-    <!-- Navigation -->
-    <nav class="nav-container">
-        <div class="container py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <div class="bg-gradient p-2 rounded">
-                        <i class="fas fa-handshake text-black"></i>
-                    </div>
-                    <h1 class="text-primary text-2xl font-bold">TrustChain</h1>
-                </div>
-                <div class="flex gap-4">
-                    <a href="{% url 'CreateTender' %}" class="nav-link">
-                        <i class="fas fa-file-medical"></i> Create Tender
-                    </a>
-                    <a href="{% url 'EvaluateTender' %}" class="nav-link">
-                        <i class="fas fa-balance-scale"></i> Evaluate Tenders
-                    </a>
-                    <a href="{% url 'WinnerSelection' %}" class="nav-link">
-                        <i class="fas fa-trophy"></i> Winner Selection
-                    </a>
-                    <a href="{% url 'index' %}" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </div>
-            </div>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="container py-8">
-        <div class="glass-card animate-fadeIn">
-            <div class="flex items-center gap-2 mb-6">
-                <i class="fas fa-user-shield text-primary text-2xl"></i>
-                <h2 class="text-primary text-2xl font-bold">Tender Officer Dashboard</h2>
-            </div>
-
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'TenderScreen' %}"><i class="fas fa-th-large"></i> Dashboard</a></li>
+        <li><a href="{% url 'OfficerOngoingTenders' %}"><i class="fas fa-stream" style="color:#18c964;"></i> Ongoing Tenders</a></li>
+        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-contract"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-tasks"></i> Evaluate & Negotiate</a></li>
+        <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'OfficerNotifications' %}"><i class="fas fa-bell" style="color:#0056b3;"></i> Notifications</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page">
+    <div class="container">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-user-shield"></i> Tender Officer Dashboard</h2>
+          </div>
+          <!-- Welcome banner removed -->
+          <div class="entry">
             {% if data %}
-            <div class="glass-card mb-6">
-                {{ data }}
+            <div class="card">
+              {{ data }}
             </div>
             {% endif %}
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="glass-card">
-                    <img src="{% static 'images/images.jpg' %}" alt="Blockchain Tender" class="w-full rounded mb-4">
-                </div>
-                <div class="glass-card">
-                    <h3 class="text-primary text-xl font-bold mb-4">
-                        <i class="fas fa-shield-alt mr-2"></i>
-                        Secured by Blockchain
-                    </h3>
-                    <p class="text-muted mb-4">
-                        All tender operations are securely recorded on the blockchain, ensuring transparency 
-                        and immutability of the tender process.
-                    </p>
-                    <p class="text-muted">
-                        Use the navigation menu above to create new tenders, evaluate submissions, 
-                        and select winning bids.
-                    </p>
-                </div>
+            
+            <div class="card">
+              <div class="card-title">
+                <h3>Tender Management Actions</h3>
+              </div>
+              <div class="text-center" style="display: flex; flex-wrap: wrap; justify-content: space-around; gap: 15px; margin: 2rem 0;">
+                <a href="{% url 'CreateTender' %}" class="btn" style="min-width: 180px; margin-bottom: 15px;">
+                  <i class="fas fa-file-contract fa-2x"></i><br>
+                  Create Tender
+                </a>
+                <a href="{% url 'EvaluateTender' %}" class="btn btn-secondary" style="min-width: 180px; margin-bottom: 15px;">
+                  <i class="fas fa-tasks fa-2x"></i><br>
+                  Evaluate & Negotiate
+                </a>
+                <a href="{% url 'WinnerSelection' %}" class="btn" style="background-color: var(--success-color); min-width: 180px; margin-bottom: 15px;">
+                  <i class="fas fa-trophy fa-2x"></i><br>
+                  Winner Selection
+                </a>
+              </div>
             </div>
-        </div>
-    </main>
 
-    <!-- Footer -->
-    {% include 'includes/footer.html' %}
+            <div class="card">
+              <img src="{% static 'images/images.jpg' %}" alt="Blockchain Technology" class="img-fluid" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 6px; margin-bottom: 1rem;" />
+              <h3>TrustChain Officer Portal</h3>
+              <p>As a tender officer, you have full control over the tender management process. Create new tenders, evaluate submissions, and select winners with complete transparency and security.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 </body>
 </html>

@@ -2,158 +2,302 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Tender - Smart Contract Management System</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <link rel="stylesheet" href="{% static 'modern.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<title>TrustChain - Create New Tender</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+
 <script>
-function validate() {
-  const title = document.forms["tenderForm"]["t1"].value;
-  const description = document.forms["tenderForm"]["t2"].value;
-  const openDate = document.forms["tenderForm"]["t3"].value;
-  const closeDate = document.forms["tenderForm"]["t4"].value;
-  const amount = document.forms["tenderForm"]["t5"].value;
+  // Show loading overlay on page load
+  window.addEventListener('load', function() {
+    var loadingOverlay = document.getElementById('loading-overlay');
+    
+    setTimeout(function() {
+      loadingOverlay.classList.add('fade-out');
+      
+      setTimeout(function() {
+        loadingOverlay.style.display = 'none';
+      }, 500);
+    }, 500);
+  });
   
-  if (title === null || title === "") {
-    window.alert("Please enter the tender title");
-    document.tenderForm.tenderTitle.focus();
-    return false;
+  // Set form submission overlay handling
+  function showSubmissionOverlay() {
+    document.getElementById('submission-overlay').style.display = 'flex';
+    
+    // Animate the progress bar
+    var progressBar = document.getElementById('submission-progress');
+    var width = 0;
+    var interval = setInterval(function() {
+      if (width >= 95) {
+        clearInterval(interval);
+      } else {
+        width += 0.5;
+        progressBar.style.width = width + '%';
+      }
+    }, 50);
+    
+    return true; // Allow the form to submit
   }
   
-  if (description === null || description === "") {
-    window.alert("Please enter the tender description");
-    document.tenderForm.tenderDescription.focus();
-    return false;
-  }
-  
-  if (openDate === null || openDate === "") {
-    window.alert("Please select the open date");
-    document.tenderForm.openDate.focus();
-    return false;
-  }
-  
-  if (closeDate === null || closeDate === "") {
-    window.alert("Please select the close date");
-    document.tenderForm.closeDate.focus();
-    return false;
-  }
-  
-  if (amount === null || amount === "") {
-    window.alert("Please enter the tender amount");
-    document.tenderForm.tenderAmount.focus();
-    return false;
-  }
-  
-  return true;
+  // Set the loading overlay to be visible by default
+  document.write('<style>#loading-overlay{display:flex;}</style>');
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+ <script LANGUAGE="Javascript" >
+function validate(){
+	var x=document.forms["f1"]["t1"].value;
+	var y=document.forms["f1"]["t2"].value;
+	var open=document.forms["f1"]["t3"].value;
+	var close=document.forms["f1"]["t4"].value;
+	var amt=document.forms["f1"]["t5"].value;
+	var industry=document.forms["f1"]["industry"].value;
+	var category=document.forms["f1"]["category"].value;
+	var location=document.forms["f1"]["location"].value;
+	var duration=document.forms["f1"]["duration"].value;
+	
+	if(x == null || x==""){
+		window.alert("Tender title must be entered");
+		document.f1.t1.focus();
+		return false;
+	}
+	if(y == null || y==""){
+		window.alert("Description must be entered");
+		document.f1.t2.focus();
+		return false;
+	}
+	if(open == null || open==""){
+		window.alert("Opening date must be chosen");
+		document.f1.t3.focus();
+		return false;
+	}
+	if(close == null || close==""){
+		window.alert("Closing date must be chosen");
+		document.f1.t4.focus();
+		return false;
+	}
+	if(amt == null || amt==""){
+		window.alert("Amount must be entered");
+		document.f1.t5.focus();
+		return false;
+	}
+	if(industry == null || industry==""){
+		window.alert("Industry must be selected");
+		document.f1.industry.focus();
+		return false;
+	}
+	if(category == null || category==""){
+		window.alert("Project category must be selected");
+		document.f1.category.focus();
+		return false;
+	}
+	if(location == null || location==""){
+		window.alert("Project location must be entered");
+		document.f1.location.focus();
+		return false;
+	}
+	if(duration == null || duration=="" || isNaN(duration) || parseInt(duration) <= 0){
+		window.alert("Valid project duration must be entered");
+		document.f1.duration.focus();
+		return false;
+	}
+	return true;
 }
 </script>
-<!-- Keep the date picker script -->
-<script type="text/javascript" src="{% static 'datetimepicker.js' %}"></script>
+<script language="javascript" type="text/javascript" src="{% static 'datetimepicker.js' %}">
+</script>
 
 </head>
 <body>
+<!-- Initial Page Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Create Tender Form...</h3>
+    <p>Please wait while we initialize the tender creation interface</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Form Submission Loading Overlay -->
+<div id="submission-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Creating Tender</h3>
+    <p>Please wait while we securely record your tender on the blockchain. This ensures immutability and transparency in the tender process.</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="submission-progress"></div>
+    </div>
+  </div>
+</div>
+
 <div id="wrapper">
   <div id="header">
     <div class="container">
-      <div id="logo">
-        <h1>Smart Tender/Contract Management System</h1>
-        <p>Powered by Blockchain Technology</p>
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
       </div>
     </div>
   </div>
-  
   <div id="menu">
     <div class="container">
       <ul>
-        <li><a href="{% url 'CreateTender' %}" class="active"><i class="fas fa-file-medical"></i> Create Tender</a></li>
-        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-balance-scale"></i> Evaluate Tenders</a></li>
+        <li><a href="{% url 'TenderScreen' %}"><i class="fas fa-th-large"></i> Dashboard</a></li>
+        <li><a href="{% url 'OfficerOngoingTenders' %}"><i class="fas fa-stream" style="color:#18c964;"></i> Ongoing Tenders</a></li>
+        <li class="current_page_item"><a href="{% url 'CreateTender' %}"><i class="fas fa-file-contract"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-tasks"></i> Evaluate & Negotiate</a></li>
         <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'OfficerNotifications' %}"><i class="fas fa-bell" style="color:#0056b3;"></i> Notifications</a></li>
         <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
     </div>
   </div>
-  
   <div id="page">
     <div class="container">
-      <div class="row">
-        <div class="card" style="max-width: 800px; margin: 0 auto;">
-          <div class="card-header">
-            <h3 class="text-center"><i class="fas fa-file-medical"></i> Create New Tender</h3>
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-file-contract"></i> Create New Tender</h2>
           </div>
-          <div class="card-body">
+          <div class="entry">
             {% if data %}
-              <div class="alert-message mb-3">{{ data|safe }}</div>
+            <div class="card">
+              {{ data|safe }}
+            </div>
             {% endif %}
             
-            <form name="tenderForm" method="post" action="{% url 'CreateTenderAction' %}" onsubmit="return validate()">
-              {% csrf_token %}
-              
-              <div class="form-group">
-                <label for="t1"><i class="fas fa-heading"></i> Tender Title</label>
-                <input type="text" name="t1" id="t1" class="form-control" placeholder="Enter tender title">
+            <div class="card">
+              <div class="card-title">
+                <h3>Tender Details</h3>
               </div>
-              
-              <div class="form-group">
-                <label for="t2"><i class="fas fa-align-left"></i> Tender Description</label>
-                <textarea name="t2" id="t2" class="form-control" rows="3" placeholder="Enter detailed description of the tender"></textarea>
-              </div>
-              
-              <div class="form-group row">
-                <div class="col-md-6">
-                  <label for="t3"><i class="fas fa-calendar-plus"></i> Open Date</label>
-                  <div class="input-group">
-                    <input type="text" name="t3" id="demo" class="form-control" placeholder="Select open date" maxlength="25">
-                    <div class="input-group-append">
-                      <a href="javascript:NewCal('demo','ddmmyyyy',false,24)" class="btn-outline-secondary">
-                        <i class="fas fa-calendar"></i>
-                      </a>
+              <form name="f1" action="{% url 'CreateTenderAction' %}" method="POST" onsubmit="if(validate()) { return showSubmissionOverlay(); } else { return false; }">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                  <label for="t1"><i class="fas fa-heading"></i> Tender Title</label>
+                  <input type="text" name="t1" id="t1" placeholder="Enter tender title" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                  <label for="t2"><i class="fas fa-align-left"></i> Tender Description</label>
+                  <textarea name="t2" id="t2" placeholder="Enter detailed description of the tender" class="form-control" rows="4"></textarea>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label for="demo"><i class="fas fa-calendar-plus"></i> Opening Date</label>
+                    <div class="input-group">
+                      <input name="t3" type="date" id="demo" class="modern-date-picker form-control">
+                      <div class="input-group-append">
+                        <button class="btn btn-success rounded-circle" type="button" onclick="NewCal('demo','ddmmyyyy',false,24)">
+                          <i class="fas fa-calendar-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="form-group col-md-6">
+                    <label for="demo1"><i class="fas fa-calendar-times"></i> Closing Date</label>
+                    <div class="input-group">
+                      <input name="t4" type="date" id="demo1" class="modern-date-picker form-control">
+                      <div class="input-group-append">
+                        <button class="btn btn-success rounded-circle" type="button" onclick="NewCal('demo1','ddmmyyyy',false,24)">
+                          <i class="fas fa-calendar-alt"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                <div class="col-md-6">
-                  <label for="t4"><i class="fas fa-calendar-times"></i> Close Date</label>
+                <div class="form-group">
+                  <label for="t5"><i class="fas fa-coins"></i> Tender Amount</label>
                   <div class="input-group">
-                    <input type="text" name="t4" id="demo1" class="form-control" placeholder="Select close date" maxlength="25">
-                    <div class="input-group-append">
-                      <a href="javascript:NewCal('demo1','ddmmyyyy',false,24)" class="btn-outline-secondary">
-                        <i class="fas fa-calendar"></i>
-                      </a>
+                    <div class="input-group-prepend">
+                      <span class="input-group-text">$</span>
                     </div>
+                    <input type="text" name="t5" id="t5" placeholder="Enter tender amount" class="form-control">
                   </div>
                 </div>
-              </div>
-              
-              <div class="form-group">
-                <label for="t5"><i class="fas fa-coins"></i> Tender Amount</label>
-                <div class="input-group">
-                  <div class="input-group-prepend">
-                    <span class="input-group-text">₹</span>
+                
+                <h4 class="mt-4"><i class="fas fa-info-circle"></i> Additional Project Information</h4>
+                
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label for="industry"><i class="fas fa-industry"></i> Industry</label>
+                    <select name="industry" id="industry" class="form-control">
+                      <option value="">-- Select Industry --</option>
+                      <option value="Construction">Construction</option>
+                      <option value="IT & Software">IT & Software</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Transportation">Transportation</option>
+                      <option value="Energy">Energy</option>
+                      <option value="Education">Education</option>
+                      <option value="Telecommunications">Telecommunications</option>
+                      <option value="Agriculture">Agriculture</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
-                  <input type="text" name="t5" id="t5" class="form-control" placeholder="Enter tender amount">
+                  
+                  <div class="form-group col-md-6">
+                    <label for="category"><i class="fas fa-project-diagram"></i> Project Category</label>
+                    <select name="category" id="category" class="form-control">
+                      <option value="">-- Select Category --</option>
+                      <option value="Infrastructure">Infrastructure</option>
+                      <option value="Software Development">Software Development</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Maintenance">Maintenance</option>
+                      <option value="Supply & Procurement">Supply & Procurement</option>
+                      <option value="Research & Development">Research & Development</option>
+                      <option value="Training">Training</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
                 </div>
+                
+                <div class="form-group">
+                  <label for="location"><i class="fas fa-map-marker-alt"></i> Project Location</label>
+                  <input type="text" name="location" id="location" class="form-control" placeholder="City, State or Country">
+                </div>
+                
+
+                
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label for="eligibility"><i class="fas fa-check-circle"></i> Eligibility Criteria</label>
+                    <textarea name="eligibility" id="eligibility" class="form-control" rows="3" placeholder="Specify eligibility criteria for bidders"></textarea>
+                  </div>
+                  
+                  <div class="form-group col-md-6">
+                    <label for="specifications"><i class="fas fa-clipboard-list"></i> Technical Specifications</label>
+                    <textarea name="specifications" id="specifications" class="form-control" rows="3" placeholder="List important technical specifications"></textarea>
+                  </div>
+                </div>
+                
+                <div class="text-center button-group">
+                  <button type="submit" class="btn action-btn"><i class="fas fa-plus-circle"></i> Create Tender</button>
+                </div>
+              </form>
+            </div>
+            
+            <div class="card">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <strong>Important:</strong> All tenders created will be securely stored on the blockchain, ensuring immutability and transparency throughout the tender process.
               </div>
-              
-              <div class="form-group text-center mt-4">
-                <button type="submit" class="btn-primary">
-                  <i class="fas fa-plus-circle"></i> Create Tender
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <div id="footer">
-    <div class="container">
-      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
-    </div>
-  </div>
 
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 </body>
 </html>

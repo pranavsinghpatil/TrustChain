@@ -2,59 +2,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bid Tender - Smart Contract Management System</title>
-    <link rel="stylesheet" href="{% static 'dark-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'common.css' %}">
-    <link rel="stylesheet" href="{% static 'modern.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<title>TrustChain - Bid on Tenders</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'custom.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+  // Show loading overlay immediately when page loads
+  window.addEventListener('load', function() {
+    // Get the loading overlay element
+    var loadingOverlay = document.getElementById('loading-overlay');
+    
+    // Add a class to fade out the loading overlay
+    setTimeout(function() {
+      loadingOverlay.classList.add('fade-out');
+      
+      // Hide and remove the overlay after the fade animation completes
+      setTimeout(function() {
+        loadingOverlay.style.display = 'none';
+      }, 500);
+    }, 500); // Delay to ensure content is ready and progress bar animation has advanced
+  });
+  
+  // Set the loading overlay to be visible by default (in case JS is disabled)
+  document.write('<style>#loading-overlay{display:flex;}</style>');
+</script>
+
+<style>/* This comment is now inside the style tag */
+[style*="background-color: white"],
+[style*="background-color:#ffffff"],
+[style*="background-color: #fff"],
+[style*="background:#ffffff"],
+[style*="background: white"],
+[style*="background: #fff"],
+.card,
+.panel,
+.container-card,
+.white-bg {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  border-color: #b2ebf2 !important;
+}
+</style>
+
 </head>
 <body>
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Tenders...</h3>
+    <p>Please wait while we securely retrieve tender information from the blockchain</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
 <div id="wrapper">
   <div id="header">
     <div class="container">
-      <div id="logo">
-        <h1>Smart Tender/Contract Management System</h1>
-        <p>Powered by Blockchain Technology</p>
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
       </div>
     </div>
   </div>
-  
   <div id="menu">
     <div class="container">
       <ul>
-        <li><a href="{% url 'BidTender' %}" class="active"><i class="fas fa-gavel"></i> Bid Tender</a></li>
-        <li><a href="{% url 'ViewTender' %}"><i class="fas fa-search"></i> View Tender Status</a></li>
+        <li><a href="{% url 'BidderScreen' %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li class="current_page_item"><a href="{% url 'BidTender' %}"><i class="fas fa-gavel"></i> Bid Tender</a></li>
+        <li><a href="{% url 'ViewTender' %}"><i class="fas fa-clipboard-list"></i> View Tender Status</a></li>
+        <li><a href="{% url 'BidderNotifications' %}"><i class="fas fa-bell"></i> Notifications {% if unread_notification_count > 0 %}<span class="badge badge-danger" style="font-size: 0.7rem; position: relative; top: -1px; margin-left: 3px;">{{ unread_notification_count }}</span>{% endif %}</a></li>
         <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
     </div>
   </div>
-  
   <div id="page">
     <div class="container">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-center"><i class="fas fa-gavel"></i> Bid on Available Tenders</h3>
-        </div>
-        <div class="card-body">
-          <div class="tender-showcase mb-4">
-            <img src="{% static 'images/images.jpg' %}" alt="Blockchain Tender" class="img-fluid">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-list"></i> Available Tenders</h2>
           </div>
-          
-          <div class="tender-bid-data">
-            {{ data|safe }}
+          <div class="entry">
+            <div class="card">
+              <h3>Available Tenders</h3>
+              <p>Below are the available tenders open for bidding. Click "View Details" to see complete information about each tender.</p>
+              {{ data|safe }}
+            </div>
+            
+            {% if not data %}
+            <div class="card info-card">
+              <i class="fas fa-info-circle fa-3x" style="color: var(--primary-color); margin-bottom: 1rem;"></i>
+              <h3>No Active Tenders</h3>
+              <p>There are currently no active tenders available for bidding. Please check back later or contact the tender officer for more information.</p>
+            </div>
+            {% endif %}
+            
+            <div class="card">
+              <img src="{% static 'images/images.jpg' %}" alt="Blockchain Technology" class="img-fluid" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 6px; margin-bottom: 1rem;" />
+              <h3>Bidding with TrustChain</h3>
+              <p>Our blockchain-based system ensures transparency and security in the bidding process. Your bids are cryptographically secured and cannot be tampered with, providing a fair opportunity for all participants.</p>
+              <div class="alert alert-info">
+                <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> Make sure to review all tender details carefully before submitting your bid to ensure compliance with all requirements.  
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <div id="footer">
-    <div class="container">
-      <p>&copy; {% now "Y" %} Smart Tender Management System | Powered by Blockchain Technology</p>
-    </div>
-  </div>
+
+  <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
 
 </body>
 </html>
