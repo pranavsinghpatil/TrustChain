@@ -1,0 +1,372 @@
+/* Custom CSS for TrustChain Tender Cards */
+
+/* Apply dashboard header gradient to notifications page header and navbar */
+.BidderNotifications #header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+}
+
+.BidderNotifications #menu {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-dark) 100%) !important;
+}
+
+/* Notifications Styles */
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-item {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+  transition: background-color 0.2s ease;
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background: linear-gradient(135deg, #b2ebf2 0%, #81d4fa 100%) !important;
+}
+
+.notification-item.unread {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+}
+
+.notification-item.unread:hover {
+  background: linear-gradient(135deg, #81d4fa 0%, #4fc3f7 100%) !important;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  float: left;
+}
+
+.notification-icon.success {
+  background-color: #d4edda;
+  color: #28a745;
+}
+
+.notification-icon.warning {
+  background-color: #fff3cd;
+  color: #ffc107;
+}
+
+.notification-icon.info {
+  background-color: #d1ecf1;
+  color: #17a2b8;
+}
+
+.notification-icon.danger {
+  background-color: #f8d7da;
+  color: #dc3545;
+}
+
+.notification-content {
+  display: inline-block;
+  width: calc(100% - 60px);
+}
+
+.notification-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #343a40;
+}
+
+.notification-text {
+  color: #6c757d;
+  margin-bottom: 5px;
+}
+
+.notification-time {
+  color: #999;
+  font-size: 0.8em;
+  text-align: right;
+}
+
+/* Badge for notification count */
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Welcome Banner Styles */
+.welcome-banner {
+  display: flex;
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); /* Updated to blue gradient */
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.welcome-banner:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+.welcome-banner.officer {
+  background: linear-gradient(135deg, #e8f4f8 0%, #d0e6f0 100%);
+}
+
+.welcome-avatar {
+  background-color: #18c964;
+  color: white;
+  border-radius: 50%;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+
+.welcome-avatar i {
+  font-size: 2rem;
+}
+
+.welcome-text {
+  flex-grow: 1;
+}
+
+.welcome-text h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.welcome-text p {
+  margin: 0;
+  color: #555;
+}
+
+.username {
+  color: #18c964;
+  font-weight: 700;
+}
+
+/* Performance Improvements */
+.btn, .action-btn, .tender-action-btn {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  will-change: transform;
+}
+
+/* Add preload animation */
+.btn:active, .action-btn:active, .tender-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Apply welcome-banner gradient to all white background components */
+.notification-item,
+.tender-card,
+.welcome-banner,
+.tender-card-header,
+.tender-card-body,
+.tender-card-actions,
+.bid-form,
+.card,
+.card-body,
+.form-container,
+.table-container,
+.info-box,
+.action-panel,
+.content-panel,
+.alert-info,
+.bid-status-card {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+  border-color: #b2ebf2;
+}
+
+
+.tender-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.tender-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 300px; /* Fixed height for consistent cards */
+}
+
+.tender-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.tender-card-header {
+  padding: 15px;
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tender-card-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.tender-card-body {
+  padding: 15px;
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tender-card-body .description {
+  margin-bottom: 15px;
+  color: #555;
+}
+
+.details-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.detail-item {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.detail-item i {
+  margin-right: 5px;
+  color: #18c964;
+}
+
+.tender-card-actions {
+  padding: 15px;
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.tender-action-btn {
+  min-width: 90px;
+  max-width: 120px;
+  width: 110px;
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+/* Tender Detail Page Styling */
+.tender-detail {
+  padding: 25px;
+}
+
+.tender-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tender-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.tender-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.info-item {
+  margin-bottom: 10px;
+}
+
+.info-item label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.info-item p {
+  margin: 0;
+  padding: 8px 0;
+  color: #333;
+}
+
+.action-area {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 15px;
+}
+
+/* Enhance existing buttons */
+.action-btn {
+  background-color: #18c964;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  transition: background-color 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #0faa50;
+  color: white;
+}
+
+.btn-outline-primary {
+  color: #18c964;
+  border-color: #18c964;
+}
+
+.btn-outline-primary:hover {
+  background-color: #18c964;
+  color: white;
+}

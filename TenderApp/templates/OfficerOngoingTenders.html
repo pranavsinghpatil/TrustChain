@@ -1,0 +1,238 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Ongoing Tenders - TrustChain Officer</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js"></script>
+    
+    <script>
+      // Show loading overlay immediately when page loads
+      window.addEventListener('load', function() {
+        // Get the loading overlay element
+        var loadingOverlay = document.getElementById('loading-overlay');
+        
+        // Add a class to fade out the loading overlay
+        setTimeout(function() {
+          loadingOverlay.classList.add('fade-out');
+          
+          // Hide and remove the overlay after the fade animation completes
+          setTimeout(function() {
+            loadingOverlay.style.display = 'none';
+          }, 500);
+        }, 500); // Delay to ensure content is ready and progress bar animation has advanced
+      });
+      
+      // Set the loading overlay to be visible by default (in case JS is disabled)
+      document.write('<style>#loading-overlay{display:flex;}</style>');
+    </script>
+</head>
+<body>
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Ongoing Tenders...</h3>
+    <p>Please wait while we securely retrieve and decrypt tender data from the blockchain</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'TenderScreen' %}"><i class="fas fa-th-large"></i> Dashboard</a></li>
+        <li><a href="{% url 'OfficerOngoingTenders' %}"><i class="fas fa-stream" style="color:#18c964;"></i> Ongoing Tenders</a></li>
+        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-contract"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-tasks"></i> Evaluate & Negotiate</a></li>
+        <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li><a href="{% url 'OfficerNotifications' %}"><i class="fas fa-bell" style="color:#0056b3;"></i> Notifications</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page">
+    <div class="container">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-stream"></i> Ongoing Tenders</h2>
+          </div>
+          <div class="entry">
+            <div class="card">
+              {% if tenders %}
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Open Date</th>
+                    <th>Close Date</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for tender in tenders %}
+                  <tr>
+                    <td>{{ tender.title }}</td>
+                    <td>{{ tender.description }}</td>
+                    <td>
+                      <div class="date-box">
+                        <div><i class="far fa-calendar-alt"></i> {{ tender.open_date }}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="date-box">
+                        <div><i class="far fa-calendar-alt"></i> {{ tender.close_date }}</div>
+                      </div>
+                    </td>
+                    <td>{{ tender.amount }}</td>
+                    <td>
+                      {% if '/officer/ongoing-tenders/' in request.path %}
+                        <a href="{% url 'EditTender' tender_title=tender.title %}" class="btn btn-primary btn-sm tender-action-btn"><i class="fas fa-edit"></i> Edit</a>
+                        <form action="{% url 'CloseTender' %}" method="GET" style="display: inline;">
+                          <input type="hidden" name="title" value="{{ tender.title }}">
+                          <button type="submit" class="btn btn-warning btn-sm tender-action-btn" onclick="return confirm('Are you sure you want to close tender: {{ tender.title }}?\nThis will immediately terminate the tender and move it to closed tenders section.');"> 
+                            <i class="fas fa-lock"></i> Close
+                          </button>
+                        </form>
+                        <form action="{% url 'DeleteTender' %}" method="GET" style="display: inline;">
+                          <input type="hidden" name="title" value="{{ tender.title }}">
+                          <button type="submit" class="btn btn-danger btn-sm tender-action-btn" onclick="return confirm('Are you sure you want to delete tender: {{ tender.title }}?\nThis action cannot be undone.');">
+                            <i class="fas fa-trash-alt"></i> Delete
+                          </button>
+                        </form>
+                      {% else %}
+                        <a href="{% url 'ViewTender' %}?title={{ tender.title }}" class="btn btn-info btn-sm"><i class="fas fa-eye"></i> View</a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% else %}
+                <div class="alert alert-info"><i class="fas fa-info-circle"></i> No ongoing tenders at the moment.</div>
+              {% endif %}
+              
+              <!-- Closed/Awarded Tenders Section -->
+              <h2 style="margin-top: 30px; color: #18c964;"><i class="fas fa-history"></i> Closed & Awarded Tenders</h2>
+              
+              {% if closed_tenders %}
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Open Date</th>
+                    <th>Close Date</th>
+                    <th>Status</th>
+                    <th>Amount (₹)</th>
+                    <th>Winner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for tender in closed_tenders %}
+                  <tr>
+                    <td>{{ tender.title }}</td>
+                    <td>{{ tender.description }}</td>
+                    <td>{{ tender.open_date }}</td>
+                    <td>{{ tender.close_date }}</td>
+                    <td>
+                      {% if tender.status == 'Awarded' %}
+                      <span class="badge" style="background-color: #dc3545; color: white; font-size: 0.8em; padding: 2px 5px; border-radius: 3px;">{{ tender.status }}</span>
+                      {% else %}
+                      <span class="badge" style="background-color: #6c757d; color: white; font-size: 0.8em; padding: 2px 5px; border-radius: 3px;">{{ tender.status }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ tender.amount }}</td>
+                    <td>{% if tender.status == 'Awarded' %}{{ tender.winner }}{% else %}-{% endif %}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% else %}
+                <div class="alert alert-info"><i class="fas fa-info-circle"></i> No closed tenders to display.</div>
+              {% endif %}
+              
+              <!-- Debug Information Section - Removed -->
+              <!-- Debug information is now hidden as requested -->
+            </div>
+            
+            <!-- Delete Tender Confirmation Modal -->
+            <div class="modal fade" id="deleteTenderModal" tabindex="-1" role="dialog" aria-labelledby="deleteTenderModalLabel" aria-hidden="true">
+              <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                  <div class="modal-header" style="background-color: #dc3545; color: white;">
+                    <h5 class="modal-title" id="deleteTenderModalLabel"><i class="fas fa-exclamation-triangle"></i> Delete Tender</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                    <p>Are you sure you want to delete the tender <strong id="tenderTitleToDelete"></strong>?</p>
+                    <p>This action cannot be undone and will permanently remove this tender from the blockchain.</p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete Tender</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Javascript for handling delete modal -->
+            <script>
+              $(document).ready(function() {
+                // Direct click handler for delete buttons
+                $('.delete-btn').on('click', function() {
+                  var tenderTitle = $(this).data('title');
+                  
+                  // Set the tender title in the modal text
+                  $('#tenderTitleToDelete').text(tenderTitle);
+                  
+                  // Set the value in the hidden form field
+                  $('#tenderTitleInput').val(tenderTitle);
+                  
+                  // Manually show the modal
+                  $('#deleteTenderModal').modal('show');
+                });
+                
+                // Handle delete confirmation button click
+                $('#confirmDeleteBtn').on('click', function() {
+                  var title = $('#tenderTitleToDelete').text();
+                  window.location.href = "{% url 'DeleteTender' %}?title=" + encodeURIComponent(title);
+                });
+              });
+            </script>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
+</body>
+</html>

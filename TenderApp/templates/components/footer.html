@@ -1,0 +1,83 @@
+<!-- Modern Footer Component - Exact Match to Reference Image -->
+<footer class="modern-footer">
+  <div class="modern-footer-container">
+    <!-- Brand Section -->
+    <div class="modern-footer-brand">
+      <h3><i class="fas fa-link"></i> TrustChain</h3>
+      <p>Revolutionizing government procurement through blockchain technology. Ensuring transparency, efficiency, and trust in tender management.</p>
+    </div>
+    
+    <!-- Quick Links Section -->
+    <div class="modern-footer-section">
+      <h4>Quick Links</h4>
+      <ul class="modern-footer-links">
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Active Tenders</a></li>
+        <li><a href="https://github.com/pranavsinghpatil/Savvy-Acumen/issues/new">Help Center [Raise a New Issue]</a></li>
+        <li><a href="#">FAQs</a></li>
+      </ul>
+    </div>
+    
+    <!-- Contact Section -->
+    <div class="modern-footer-section">
+      <h4>Contact Us</h4>
+      <div class="contact-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <div>Block 3, CGO Complex, Wagholi, Pune</div>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-phone-alt"></i>
+        <div>1800-123-4567</div>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-envelope"></i>
+        <div>support@trustchain.gov.in</div>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-globe"></i>
+        <div>www.trustchain.gov.in</div>
+      </div>
+    </div>
+    
+    <!-- Social Section -->
+    <div class="modern-footer-section">
+      <h4>Connect With Us</h4>
+      <div class="social-links">
+        <a href="https://twitter.com/elonmusk" class="social-icon" target="_blank"><i class="fab fa-twitter"></i></a>
+        <a href="https://www.facebook.com/zuck" class="social-icon" target="_blank"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.linkedin.com/in/williamhgates" class="social-icon" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://www.instagram.com/cristiano" class="social-icon" target="_blank"><i class="fab fa-instagram"></i></a>
+      </div>
+      <div style="margin-top: 1.5rem;">
+        <a href="https://github.com/pranavsinghpatil/Savvy-Acumen" class="github-star" target="_blank">
+          <i class="fas fa-star"></i> Star on GitHub <span class="github-star-count" style="margin-left: 0.5rem; padding: 0.15rem 0.4rem; background: rgba(255,255,255,0.2); border-radius: 4px;">--</span>
+        </a>
+      </div>
+      <script>
+        // Fetch GitHub stars count
+        fetch('https://api.github.com/repos/pranavsinghpatil/Savvy-Acumen')
+          .then(response => response.json())
+          .then(data => {
+            document.querySelector('.github-star-count').textContent = data.stargazers_count || '--';
+          })
+          .catch(error => console.error('Error fetching GitHub stars:', error));
+      </script>
+    </div>
+  </div>
+  
+  <!-- Bottom Section -->
+  <div class="modern-footer-bottom">
+    <div class="modern-footer-bottom-container">
+      <div class="modern-footer-copyright">
+        2025 TrustChain. All rights reserved.
+      </div>
+      <div class="modern-footer-bottom-links">
+        <a href="#">About Us</a>
+        <a href="#">FAQs</a>
+        <a href="#">Terms</a>
+        <a href="#">Privacy</a>
+        <a href="#">Sitemap</a>
+      </div>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,174 @@
+/* Modern Footer Styles */
+.modern-footer {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: #ffffff;
+  padding: 3rem 0 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.modern-footer-container {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.modern-footer-brand {
+  flex: 1 1 25%;
+  min-width: 250px;
+  padding-right: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.modern-footer-brand h3 {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.modern-footer-brand h3 svg,
+.modern-footer-brand h3 i {
+  color: #18c964;
+  margin-right: 0.5rem;
+}
+
+.modern-footer-brand p {
+  color: #ffffff;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.modern-footer-section {
+  flex: 1 1 25%;
+  min-width: 200px;
+  margin-bottom: 1.5rem;
+}
+
+.modern-footer-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: #fff;
+}
+
+.modern-footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.modern-footer-links li {
+  margin-bottom: 0.75rem;
+}
+
+.modern-footer-links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.modern-footer-links a:hover {
+  color: #fff;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.contact-item i,
+.contact-item svg {
+  margin-right: 0.75rem;
+  margin-top: 0.25rem;
+  color: #ffffff;
+}
+
+.social-links {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.social-icon:hover {
+  background-color: #18c964;
+  transform: translateY(-2px);
+}
+
+.github-star {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.github-star i {
+  margin-right: 0.5rem;
+}
+
+.github-star:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.modern-footer-bottom {
+  background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.3) 100%);
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2rem;
+  text-align: right;
+}
+
+.modern-footer-bottom-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+
+.modern-footer-bottom-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.modern-footer-bottom-links a {
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.modern-footer-bottom-links a:hover {
+  color: #fff;
+}
+
+.modern-footer-copyright {
+  color: #ffffff;
+}

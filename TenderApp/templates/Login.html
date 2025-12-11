@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>TrustChain - Login</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<script LANGUAGE="Javascript">
+function validate(){
+	var x=document.forms["f1"]["username"].value;
+	var y=document.forms["f1"]["password"].value;
+	var accountType = document.querySelector('input[name="account_type"]:checked').value;
+	
+	if(x == null || x==""){
+		window.alert("Username must be entered");
+		document.f1.username.focus();
+		return false;
+	}
+	if(y == null || y==""){
+		window.alert("Password must be entered");
+		document.f1.password.focus();
+		return false;
+	}
+	if(accountType == null || accountType==""){
+		window.alert("Please select account type");
+		return false;
+	}
+	return true;
+}
+
+// Function to update the form action based on account type selection
+function updateAction(accountType) {
+  const form = document.getElementById('login-form');
+  if (accountType === 'bidder') {
+    form.action = "{% url 'BidderLoginAction' %}";
+  } else if (accountType === 'officer') {
+    form.action = "{% url 'TenderLoginAction' %}";
+  }
+}
+</script>
+<style>
+.radio-container {
+  display: flex;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.radio-option {
+  margin: 0 15px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.radio-option.active {
+  background-color: #0056b3;
+  color: white;
+}
+
+.radio-option input {
+  display: none;
+}
+
+.radio-option label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.radio-option i {
+  margin-right: 8px;
+}
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
+        <li class="current_page_item"><a href="{% url 'Login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+        <li><a href="{% url 'Register' %}"><i class="fas fa-user-plus"></i> New Bidder Signup</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page">
+    <div class="container">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-sign-in-alt"></i> Login</h2>
+          </div>
+          <div class="entry">
+            {% if data %}
+              <div class="card">
+                {{ data|safe }}
+              </div>
+            {% endif %}
+            
+            <div class="card">
+              <form name="f1" id="login-form" method="post" action="{% url 'BidderLoginAction' %}" onsubmit="return validate()">
+                {% csrf_token %}
+                
+                <div class="radio-container">
+                  <div class="radio-option" onclick="this.querySelector('input').checked = true; updateAction('bidder'); document.querySelectorAll('.radio-option').forEach(e => e.classList.remove('active')); this.classList.add('active');">
+                    <input type="radio" id="bidder" name="account_type" value="bidder" checked>
+                    <label for="bidder"><i class="fas fa-user-tie"></i> Bidder</label>
+                  </div>
+                  <div class="radio-option" onclick="this.querySelector('input').checked = true; updateAction('officer'); document.querySelectorAll('.radio-option').forEach(e => e.classList.remove('active')); this.classList.add('active');">
+                    <input type="radio" id="officer" name="account_type" value="officer">
+                    <label for="officer"><i class="fas fa-user-shield"></i> Tender Officer</label>
+                  </div>
+                </div>
+                
+                <div class="form-group">
+                  <label for="username"><i class="fas fa-user"></i> Username</label>
+                  <input type="text" name="username" id="username" placeholder="Enter your username" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                  <label for="password"><i class="fas fa-lock"></i> Password</label>
+                  <input type="password" name="password" id="password" placeholder="Enter your password" class="form-control">
+                </div>
+                
+                <div class="text-center">
+                  <button type="submit" class="btn"><i class="fas fa-sign-in-alt"></i> Login</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
+  
+  <script>
+    // Initialize the first radio option as active
+    document.querySelector('.radio-option').classList.add('active');
+  </script>
+</body>
+</html>

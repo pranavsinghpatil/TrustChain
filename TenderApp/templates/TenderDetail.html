@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>TrustChain - Tender Details</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'custom.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'BidTender' %}"><i class="fas fa-list"></i> All Tenders</a></li>
+        <li class="current_page_item"><a href="#"><i class="fas fa-file-contract"></i> Tender Detail</a></li>
+        <li><a href="{% url 'ViewTender' %}"><i class="fas fa-clipboard-list"></i> View Tender Status</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page">
+    <div class="container">
+      <div id="content">
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-file-contract"></i> Tender Details</h2>
+          </div>
+          <div class="entry">
+            {% if tender %}
+            <div class="card tender-detail">
+              <div class="tender-header">
+                <h3>{{ tender.title }}</h3>
+                <span class="badge badge-success"><i class="fas fa-clock"></i> Open To Bid</span>
+              </div>
+              
+              <div class="tender-info">
+                <div class="info-item">
+                  <label><i class="fas fa-info-circle"></i> Description:</label>
+                  <p>{{ tender.description }}</p>
+                </div>
+                
+                <div class="info-row">
+                  <div class="info-item">
+                    <label><i class="fas fa-calendar-plus"></i> Open Date:</label>
+                    <p>{{ tender.open_date }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label><i class="fas fa-calendar-times"></i> Close Date:</label>
+                    <p>{{ tender.close_date }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label><i class="fas fa-coins"></i> Base Amount:</label>
+                    <p>{{ tender.amount }}</p>
+                  </div>
+                </div>
+                
+                <div class="info-row">
+                  <div class="info-item">
+                    <label><i class="fas fa-industry"></i> Industry:</label>
+                    <p>{{ tender.industry }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label><i class="fas fa-project-diagram"></i> Project Category:</label>
+                    <p>{{ tender.category }}</p>
+                  </div>
+                  <div class="info-item">
+                    <label><i class="fas fa-map-marker-alt"></i> Location:</label>
+                    <p>{{ tender.location }}</p>
+                  </div>
+                </div>
+                
+                {% if tender.eligibility %}
+                <div class="info-item">
+                  <label><i class="fas fa-check-circle"></i> Eligibility Criteria:</label>
+                  <p>{{ tender.eligibility }}</p>
+                </div>
+                {% endif %}
+                
+                {% if tender.specifications %}
+                <div class="info-item">
+                  <label><i class="fas fa-cogs"></i> Technical Specifications:</label>
+                  <p>{{ tender.specifications }}</p>
+                </div>
+                {% endif %}
+              </div>
+              
+              <div class="action-area">
+                <a href="{% url 'BidTenderAction' %}?title={{ tender.title }}" class="btn action-btn"><i class="fas fa-gavel"></i> Submit Bid</a>
+                <a href="{% url 'BidTender' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Tenders</a>
+              </div>
+            </div>
+            {% else %}
+            <div class="card info-card">
+              <i class="fas fa-exclamation-circle fa-3x" style="color: var(--warning-color); margin-bottom: 1rem;"></i>
+              <h3>Tender Not Found</h3>
+              <p>The requested tender could not be found or may have expired.</p>
+              <div class="action-area">
+                <a href="{% url 'BidTender' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Tenders</a>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Include modern footer component -->
+  {% include 'components/footer.html' %}
+</body>
+</html>

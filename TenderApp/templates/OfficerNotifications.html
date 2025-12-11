@@ -1,0 +1,266 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>TrustChain - Officer Notifications</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="{% static 'trustchain.css' %}" rel="stylesheet" type="text/css" media="screen" />
+<link href="{% static 'footer.css' %}" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+  // Show loading overlay immediately when page loads
+  window.addEventListener('load', function() {
+    // Get the loading overlay element
+    var loadingOverlay = document.getElementById('loading-overlay');
+    
+    // Add a class to fade out the loading overlay
+    setTimeout(function() {
+      loadingOverlay.classList.add('fade-out');
+      
+      // Hide and remove the overlay after the fade animation completes
+      setTimeout(function() {
+        loadingOverlay.style.display = 'none';
+      }, 500);
+    }, 500); // Delay to ensure content is ready and progress bar animation has advanced
+  });
+  
+  // Set the loading overlay to be visible by default (in case JS is disabled)
+  document.write('<style>#loading-overlay{display:flex;}</style>');
+</script>
+
+<style>
+[style*="background-color: white"],
+[style*="background-color:#ffffff"],
+[style*="background-color: #fff"],
+[style*="background:#ffffff"],
+[style*="background: white"],
+[style*="background: #fff"],
+.card,
+.panel,
+.container-card,
+.white-bg {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+  border-color: #b2ebf2 !important;
+}
+
+/* Notification specific styles */
+.notification-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.notification-card:hover {
+  transform: translateY(-5px);
+}
+
+.notification-header {
+  padding: 15px;
+  background-color: rgba(0, 86, 179, 0.8);
+  color: white;
+  font-weight: 500;
+}
+
+.notification-header.unread {
+  background-color: #18c964;
+}
+
+.notification-body {
+  padding: 15px;
+  background: white;
+}
+
+.notification-footer {
+  padding: 10px 15px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background: #f9f9f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.notification-timestamp {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.section-title {
+  border-bottom: 2px solid #18c964;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  color: #0056b3;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  color: #ccc;
+}
+</style>
+
+</head>
+<body>
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    <h3>Loading Notifications...</h3>
+    <p>Please wait while we securely retrieve notification data from the blockchain</p>
+    <div class="progress-container">
+      <div class="progress-bar" id="loading-progress"></div>
+    </div>
+  </div>
+</div>
+
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'TenderScreen' %}"><i class="fas fa-th-large"></i> Dashboard</a></li>
+        <li><a href="{% url 'OfficerOngoingTenders' %}"><i class="fas fa-stream" style="color:#18c964;"></i> Ongoing Tenders</a></li>
+        <li><a href="{% url 'CreateTender' %}"><i class="fas fa-file-contract"></i> Create Tender</a></li>
+        <li><a href="{% url 'EvaluateTender' %}"><i class="fas fa-tasks"></i> Evaluate & Negotiate</a></li>
+        <li><a href="{% url 'WinnerSelection' %}"><i class="fas fa-trophy"></i> Winner Selection</a></li>
+        <li class="current_page_item"><a href="{% url 'OfficerNotifications' %}"><i class="fas fa-bell"></i> Notifications {% if unread_count > 0 %}<span class="badge badge-danger" style="font-size: 0.7rem; position: relative; top: -1px; margin-left: 3px;">{{ unread_count }}</span>{% endif %}</a></li>
+        <li><a href="{% url 'index' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page">
+    <div class="container">
+      <div id="content">
+        {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+          <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="post">
+          <div class="title">
+            <h2 style="color:#18c964;"><i class="fas fa-bell"></i> Notifications</h2>
+          </div>
+          <div class="entry">
+            <!-- Bid Edit Requests Section -->
+            <h3 class="section-title"><i class="fas fa-edit"></i> Bid Edit Requests</h3>
+            {% if edit_requests %}
+              {% for request in edit_requests %}
+                <div class="notification-card">
+                  <div class="notification-header {% if request.unread %}unread{% endif %}">
+                    <h4>Bid Edit Request - {{ request.tender }}</h4>
+                  </div>
+                  <div class="notification-body">
+                    <p><i class="fas fa-user"></i> <strong>Bidder:</strong> {{ request.bidder }}</p>
+                    <p><i class="fas fa-file-alt"></i> <strong>Tender:</strong> {{ request.tender }}</p>
+                    <p><i class="fas fa-clock"></i> <strong>Requested:</strong> {{ request.timestamp }}</p>
+                  </div>
+                  <div class="notification-footer">
+                    <div class="notification-actions">
+                      <a href="?action=approve&tender={{ request.tender }}&bidder={{ request.bidder }}&mark_read={{ request.id }}" class="btn btn-sm btn-success"><i class="fas fa-check"></i> Approve</a>
+                      <a href="?action=reject&tender={{ request.tender }}&bidder={{ request.bidder }}&mark_read={{ request.id }}" class="btn btn-sm btn-danger"><i class="fas fa-times"></i> Reject</a>
+                      <a href="?mark_read={{ request.id }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-check-circle"></i> Mark As Read</a>
+                    </div>
+                    <span class="notification-timestamp">{{ request.timestamp }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No bid edit requests at this time</p>
+              </div>
+            {% endif %}
+
+            <!-- New Bids Section -->
+            <h3 class="section-title"><i class="fas fa-gavel"></i> New Bid Submissions</h3>
+            {% if new_bids %}
+              {% for bid in new_bids %}
+                <div class="notification-card">
+                  <div class="notification-header {% if bid.unread %}unread{% endif %}">
+                    <h4>New Bid Submitted - {{ bid.tender }}</h4>
+                  </div>
+                  <div class="notification-body">
+                    <p><i class="fas fa-user"></i> <strong>Bidder:</strong> {{ bid.bidder }}</p>
+                    <p><i class="fas fa-file-alt"></i> <strong>Tender:</strong> {{ bid.tender }}</p>
+                    <p><i class="fas fa-coins"></i> <strong>Bid Amount:</strong> {{ bid.amount }}</p>
+                  </div>
+                  <div class="notification-footer">
+                    <div class="notification-actions">
+                      <a href="?mark_read={{ bid.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-check-circle"></i> Mark As Read</a>
+                    </div>
+                    <span class="notification-timestamp">{{ bid.timestamp }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No new bids at this time</p>
+              </div>
+            {% endif %}
+
+            <!-- New Tenders Section -->
+            <h3 class="section-title"><i class="fas fa-file-invoice"></i> New Tenders Created</h3>
+            {% if new_tenders %}
+              {% for tender in new_tenders %}
+                <div class="notification-card">
+                  <div class="notification-header {% if tender.unread %}unread{% endif %}">
+                    <h4>New Tender Created - {{ tender.tender }}</h4>
+                  </div>
+                  <div class="notification-body">
+                    <p><i class="fas fa-file-alt"></i> <strong>Tender:</strong> {{ tender.tender }}</p>
+                  </div>
+                  <div class="notification-footer">
+                    <div class="notification-actions">
+                      <a href="?mark_read={{ tender.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-check-circle"></i> Mark As Read</a>
+                    </div>
+                    <span class="notification-timestamp">{{ tender.timestamp }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No new tenders created recently</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div style="clear: both;">&nbsp;</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

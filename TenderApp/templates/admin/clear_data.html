@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrustChain - Clear Tender Data</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'trustchain.css' %}">
+  <style>
+    .admin-panel {
+      background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+      border-radius: 8px;
+      padding: 30px;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-header {
+      background-color: #0056b3;
+      color: white;
+      padding: 15px;
+      border-radius: 5px 5px 0 0;
+      margin-bottom: 20px;
+    }
+    
+    .danger-zone {
+      border: 2px dashed #dc3545;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    
+    .danger-zone h4 {
+      color: #dc3545;
+    }
+    
+    .account-list {
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    
+    .warning-text {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    
+    .success-message {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    
+    .error-message {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div id="wrapper">
+  <div id="header">
+    <div class="container">
+      <div class="logo-container">
+        <div class="logo">
+          <h1><i class="fas fa-link"></i> TrustChain</h1>
+          <p>Secure Blockchain-based Tender Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="container">
+      <ul>
+        <li><a href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="{% url 'TenderLogin' %}"><i class="fas fa-user-shield"></i> Admin</a></li>
+        <li class="current_page_item"><a href="#"><i class="fas fa-eraser"></i> Clear Data</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="page" class="mt-4">
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <div class="admin-panel">
+            <div class="admin-header">
+              <h2><i class="fas fa-database"></i> Blockchain Data Management</h2>
+              <p>Clear all tender data while preserving user accounts</p>
+            </div>
+            
+            {% if success %}
+              <div class="success-message">
+                <h4><i class="fas fa-check-circle"></i> Success!</h4>
+                <p>{{ success|safe }}</p>
+              </div>
+            {% elif error %}
+              <div class="error-message">
+                <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+                <p>{{ error }}</p>
+              </div>
+            {% else %}
+              <div class="danger-zone">
+                <h4><i class="fas fa-exclamation-triangle"></i> Danger Zone</h4>
+                <p>This action will <span class="warning-text">permanently delete</span> all tender data from the blockchain, including:</p>
+                <ul>
+                  <li>All tender listings</li>
+                  <li>All bids</li>
+                  <li>All notifications</li>
+                  <li>All transaction history</li>
+                </ul>
+                <p>Only user account information will be preserved.</p>
+              </div>
+              
+              <div class="mb-4">
+                <h4>Before proceeding:</h4>
+                <p>This action cannot be undone. Make sure you have backed up any important data.</p>
+              </div>
+              
+              <form method="post" action="{% url 'ClearTenderData' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                  <div class="custom-control custom-checkbox mb-3">
+                    <input type="checkbox" class="custom-control-input" id="confirmDelete" required>
+                    <label class="custom-control-label" for="confirmDelete">I understand this will permanently delete all tender data</label>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-danger" id="clearDataBtn" disabled>
+                  <i class="fas fa-trash-alt"></i> Clear All Tender Data
+                </button>
+              </form>
+            {% endif %}
+            
+            {% if success %}
+              <div class="mt-4">
+                <a href="{% url 'TenderScreen' %}" class="btn btn-primary">
+                  <i class="fas fa-arrow-left"></i> Return to Admin Dashboard
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {% include 'components/footer.html' %}
+</div>
+
+<script>
+  // Enable button only when checkbox is checked
+  document.getElementById('confirmDelete').addEventListener('change', function() {
+    document.getElementById('clearDataBtn').disabled = !this.checked;
+  });
+</script>
+</body>
+</html>
